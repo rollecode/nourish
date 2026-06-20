@@ -1,14 +1,17 @@
 name: Publish
 
-# Publish everything to GitHub Pages (nourish.snowies.com) on merge to `upstream`:
-#   /                         the marketing site (compositor.website, carries the CNAME)
-#   /docs                     generated rustdoc + coverage site
-#   /release/latest/fedora44  the install bundle (package.tar.gz + SHA256SUMS) that
-#                             compositor.installer/get.sh fetches — installer + binaries
-#                             + every component, built by compositor.installer/prepare.sh.
+# Publish everything on merge to `upstream` — the single deployment source of truth. The
+# install bundle is built ONCE (the `bundle` job) and fed to both channels so they can never
+# drift:
+#   Pages (nourish.snowies.com):
+#     /                         the marketing site (compositor.website, carries the CNAME)
+#     /docs                     generated rustdoc + coverage site
+#     /release/latest/fedora44  the install bundle (package.tar.gz + SHA256SUMS) get.sh fetches
+#   GitHub Release:
+#     the rolling `latest` release — the same package.tar.gz + SHA256SUMS attached as assets.
 #
-# `upstream-integration` is the candidate branch (CI builds the bundle as an artifact via
-# ci.yml); merging it into `upstream` is what actually publishes.
+# `upstream-integration` is the candidate branch (CI builds + validates via ci.yml); merging
+# it into `upstream` is the single release action — one build feeds both Pages and the Release.
 on:
   push:
     branches: [upstream]
@@ -127,3 +130,35 @@ jobs:
           path: public
       - id: deploy
         uses: actions/deploy-pages@v4
+
+  # Publish the SAME bundle as a GitHub Release on every upstream push, so the Release assets
+  # and the Pages /release/ download are always the identical artifact (no drift). The rolling
+  # `latest` tag is moved to the merged commit each push — tag + binaries together.
+  release:
+    needs: bundle
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: install-bundle
+          path: dist
+      - name: Update the rolling "latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          notes="Automatically built from \`upstream\` @ ${GITHUB_SHA:0:7}.
+
+          \`package.tar.gz\` is the install bundle — prebuilt compositor + components + the
+          \`y5-install\` installer — the same artifact served at
+          https://nourish.snowies.com/release/latest/fedora44/. Extract it and run
+          \`y5-install/install.sh\`."
+          # Recreate so the 'latest' tag tracks the current upstream commit (no stale tag).
+          gh release delete latest --yes --cleanup-tag 2>/dev/null || true
+          gh release create latest \
+            --target "$GITHUB_SHA" \
+            --title "Latest (upstream build)" \
+            --notes "$notes" \
+            dist/package.tar.gz dist/SHA256SUMS

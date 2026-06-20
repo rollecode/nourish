@@ -4,7 +4,7 @@ version = "0.0.1"
 edition = "2024"
 description = "y5 — a Wayland compositor with an infinite, zoomable canvas (the y5_compositor binary). Publicly branded Nourish."
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/snowies/nourish"
+repository = "https://github.com/y5-snowies/nourish"
 homepage = "https://nourish.snowies.com"
 readme = "../../../../../README.md"
 

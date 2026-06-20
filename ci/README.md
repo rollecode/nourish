@@ -58,32 +58,31 @@ Nothing is hardcoded, so adding/renaming a workspace needs **no pipeline edit**.
 ## Branch flow
 
 ```
-feature → upstream-integration ──(CI green)──▶ auto PR/MR →upstream ──(you approve)──▶ upstream
-        │ candidate bundle artifact                                                       │
-        │ (ci.yml installer-bundle)                                          Publish: site + docs +
-        │                                                                    install bundle to Pages
-        │                                                                    (/release/latest/fedora44)
-        │                                                                            │
-        │                                                                    tag vX.Y.Z
-        │                                                                            ▼
-        │                                                       Release: install bundle attached (CD)
+feature → upstream-integration ──(CI green)──▶ auto PR →upstream ──(approve & merge)──▶ upstream
+        │ candidate bundle artifact (ci.yml installer-bundle)                             │
+        │                                                          Publish — one build, two channels:
+        │                                              ├─ Pages: site /, docs /docs, bundle /release/latest/fedora44/
+        │                                              └─ GitHub Release `latest`: package.tar.gz + SHA256SUMS
 ```
 
 - **upstream-integration** (candidate): full CI on every push; the `installer-bundle` job
-  builds the full install bundle as a downloadable artifact so the candidate can be tried
-  before merge. On green, the promotion PR/MR to `upstream` is opened/updated with the report.
-- **upstream** (publish): protected — approve & merge the promotion request manually (set
-  branch protection / approval rules in the platform UI). A push here runs **Publish**, which
-  deploys the marketing site (`/`), docs (`/docs`) **and the install bundle**
-  (`/release/latest/fedora44/package.tar.gz` + `SHA256SUMS`) to Pages — the URL
-  `compositor.installer/get.sh` fetches.
-- **tag `v*`**: attaches the same install bundle to a GitHub/GitLab Release for manual
-  download (CD). Live host deploy (`environment/build-release.sh remote`) is a separate,
-  optional, manual job.
+  builds the install bundle as a downloadable artifact so the candidate can be tried before
+  merge. On green, the promotion PR to `upstream` is opened/updated with the report.
+- **upstream** (the single release action): protected — approve & merge the promotion request
+  (set branch protection in the UI). A push here runs **Publish**, which builds the install
+  bundle **once** and ships that one artifact to both channels, so they can't drift:
+    - **Pages** (`nourish.snowies.com`): marketing site `/`, docs `/docs`, and the bundle at
+      `/release/latest/fedora44/` (the URL `compositor.installer/get.sh` fetches).
+    - **GitHub Release `latest`**: the same `package.tar.gz` + `SHA256SUMS` as assets, with the
+      `latest` tag moved to the merged commit each time — tag + binaries together, no manual step.
+  Live host deploy (`environment/build-release.sh remote`) remains a separate, optional, manual job.
 
 The install bundle is built by `compositor.installer/prepare.sh` (via `package-installer.sh`)
 and contains every shipped binary + component + the interactive `y5-install`; building it in
 CI is why the image carries the dev-tool window's GTK/WebKit `-devel` deps.
+
+> GitLab mirror: `ci/.gitlab/release.yml` still cuts a release on a `v*` tag (not yet aligned
+> to this upstream-driven model). GitHub Pages + the `latest` Release are the primary channel.
 
 ## Required secrets / variables (set in the platform UI, never in the repo)
 
