@@ -18,10 +18,20 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: read   # the site job reads the coverage artifact from the upstream-integration CI run
 
 concurrency:
   group: pages
   cancel-in-progress: true
+
+env:
+  # Mirror ci.yml: keep sccache + cargo dirs in the workspace so actions/cache persists them
+  # across runs, and drop debug symbols from the doc/coverage builds. Without these the site
+  # job recompiled the whole tree cold, with full debug info — which is why it was slow and
+  # ran out of disk. (Coverage is unaffected: cargo-llvm-cov reads the coverage map, not DWARF.)
+  SCCACHE_DIR: ${{ github.workspace }}/.sccache
+  CARGO_HOME: ${{ github.workspace }}/.cargo-home
+  CARGO_PROFILE_DEV_DEBUG: "0"
 
 jobs:
   # The public site: marketing root + rustdoc/coverage under /docs.
@@ -30,8 +40,32 @@ jobs:
     container: ghcr.io/${{ github.repository_owner }}/y5-ci:fedora44
     steps:
       - uses: actions/checkout@v4
-      - name: Build docs + coverage site
-        run: ci/scripts/build-site.sh
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.SCCACHE_DIR }}
+            ${{ env.CARGO_HOME }}/registry
+          key: ${{ runner.os }}-site-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-site-
+      # Reuse coverage from upstream-integration's CI instead of recompiling it here — that
+      # instrumented build already ran on the candidate; publishing just needs the report.
+      - name: Reuse coverage from the latest upstream-integration CI run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .ci-coverage
+          run_id="$(gh run list --workflow=ci.yml --branch upstream-integration \
+            --status success --limit 1 --json databaseId --jq '.[0].databaseId' 2>/dev/null || true)"
+          if [ -n "${run_id:-}" ]; then
+            echo ">> reusing coverage from ci.yml run $run_id (upstream-integration)"
+            gh run download "$run_id" --name coverage-report --dir .ci-coverage \
+              || echo ">> coverage-report artifact missing on run $run_id — publishing without coverage"
+          else
+            echo ">> no successful upstream-integration CI run found — publishing without coverage"
+          fi
+      # rustdoc only (no coverage recompile); build-docs.sh folds in the reused .ci-coverage/.
+      - name: Build docs site
+        run: ci/scripts/build-docs.sh
       - name: Assemble site tree (marketing at root, docs under /docs)
         run: |
           mv public _site_docs
@@ -50,6 +84,15 @@ jobs:
     container: ghcr.io/${{ github.repository_owner }}/y5-ci:fedora44
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          # Same key prefix as ci.yml's installer-bundle job, so the bundle built while
+          # validating upstream-integration warms this publish build too.
+          path: |
+            ${{ env.SCCACHE_DIR }}
+            ${{ env.CARGO_HOME }}/registry
+          key: ${{ runner.os }}-installer-bundle-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-installer-bundle-
       - name: Build install bundle (installer + binaries + components)
         run: ci/scripts/package-installer.sh
       - uses: actions/upload-artifact@v4
