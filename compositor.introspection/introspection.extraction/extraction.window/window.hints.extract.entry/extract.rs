@@ -2,6 +2,7 @@ use compositor_introspection_extraction_window_desktop_search::desktop::find_by_
 use compositor_introspection_extraction_window_hints_attributes_identity::attributes::{
     DBusActivatable, DesktopEntryPath, DisplayName, IconName, IconPath,
 };
+use compositor_introspection_extraction_window_hints_attributes_identity_more::attributes::{AppId, Title};
 use compositor_introspection_extraction_window_hints_attributes_launch::attributes::EnvOverlay;
 use compositor_introspection_extraction_window_hints_inferred::inferred::InferredHints;
 use compositor_introspection_extraction_window_hints_source::source::{Confidence, SourceMethod};
@@ -33,6 +34,17 @@ pub fn push_env_hints(meta: &Meta, hints: &mut InferredHints) {
             "GIO_LAUNCHED_DESKTOP_FILE env var",
             Confidence::High,
         );
+    }
+}
+
+/// Surface identity carried straight from the live surface (app_id / title),
+/// so a placeholder can capture a new window by matching these exactly.
+pub fn push_surface_identity_hints(meta: &Meta, hints: &mut InferredHints) {
+    if let Some(app_id) = &meta.app_id {
+        hints.push::<AppId>(app_id.clone(), SourceMethod::WaylandSurface, "Wayland app_id / X11 WM_CLASS", Confidence::High);
+    }
+    if let Some(title) = &meta.title {
+        hints.push::<Title>(title.clone(), SourceMethod::WaylandSurface, "Wayland/X11 window title", Confidence::High);
     }
 }
 

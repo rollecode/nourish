@@ -3,7 +3,7 @@ use compositor_introspection_extraction_window_hints_attributes_launch::attribut
     ExecArgs, ExecProgram, WorkingDirectory,
 };
 use compositor_introspection_extraction_window_hints_extract_entry::extract::{
-    push_desktop_hints, push_env_hints,
+    push_desktop_hints, push_env_hints, push_surface_identity_hints,
 };
 use compositor_introspection_extraction_window_hints_inferred::inferred::InferredHints;
 use compositor_introspection_extraction_window_hints_source::source::{Confidence, SourceMethod};
@@ -66,7 +66,8 @@ pub fn extract_base_hints(node: &MetaNode) -> InferredHints {
         );
     }
 
-    // ---- Environment + desktop entry resolution -------------------------
+    // ---- Surface identity + environment + desktop entry resolution ------
+    push_surface_identity_hints(meta, &mut hints);
     push_env_hints(meta, &mut hints);
     push_desktop_hints(meta, &mut hints);
 

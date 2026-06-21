@@ -11,6 +11,7 @@ compositor_introspection_extraction_window_handler_traits = { workspace = true }
 compositor_introspection_extraction_window_handlers = { workspace = true }
 compositor_introspection_extraction_window_hints_attribute = { workspace = true }
 compositor_introspection_extraction_window_hints_attributes_identity = { workspace = true }
+compositor_introspection_extraction_window_hints_attributes_identity_more = { workspace = true }
 compositor_introspection_extraction_window_hints_attributes_launch = { workspace = true }
 compositor_introspection_extraction_window_hints_descriptor = { workspace = true }
 compositor_introspection_extraction_window_hints_extract = { workspace = true }

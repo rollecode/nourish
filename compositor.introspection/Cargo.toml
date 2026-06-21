@@ -175,6 +175,7 @@ compositor_introspection_extraction_window_handlers_terminal_flags = { path = "i
 compositor_introspection_extraction_window_handlers_terminal_id = { path = "introspection.extraction/extraction.window/window.handlers.terminal.id" }
 compositor_introspection_extraction_window_hints_attribute = { path = "introspection.extraction/extraction.window/window.hints.attribute" }
 compositor_introspection_extraction_window_hints_attributes_identity = { path = "introspection.extraction/extraction.window/window.hints.attributes.identity" }
+compositor_introspection_extraction_window_hints_attributes_identity_more = { path = "introspection.extraction/extraction.window/window.hints.attributes.identity.more" }
 compositor_introspection_extraction_window_hints_attributes_launch = { path = "introspection.extraction/extraction.window/window.hints.attributes.launch" }
 compositor_introspection_extraction_window_hints_codec = { path = "introspection.extraction/extraction.window/window.hints.codec" }
 compositor_introspection_extraction_window_hints_codec_register = { path = "introspection.extraction/extraction.window/window.hints.codec.register" }
@@ -196,6 +197,7 @@ compositor_introspection_inference_hint_base = { path = "introspection.inference
 compositor_introspection_inference_hint_data = { path = "introspection.inference/inference.hint/hint.data" }
 compositor_introspection_inference_hint_descriptors = { path = "introspection.inference/inference.hint/hint.descriptors" }
 compositor_introspection_launchplan_plan_base = { path = "introspection.launchplan/launchplan.plan/plan.base" }
+compositor_introspection_launchplan_plan_capture = { path = "introspection.launchplan/launchplan.plan/plan.capture" }
 compositor_introspection_launchplan_plan_core = { path = "introspection.launchplan/launchplan.plan/plan.core" }
 compositor_introspection_launchplan_plan_exec_opts = { path = "introspection.launchplan/launchplan.plan/plan.exec.opts" }
 compositor_introspection_launchplan_plan_exec_pid = { path = "introspection.launchplan/launchplan.plan/plan.exec.pid" }

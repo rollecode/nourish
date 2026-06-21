@@ -20,6 +20,10 @@ pub struct PersistedHint {
 pub struct PersistedPrefField {
     pub name: String,
     pub enabled: bool,
+    /// Whether this attribute is armed for transient capture. Defaults to
+    /// `false` so configs written before the capture feature load cleanly.
+    #[serde(default)]
+    pub capture: bool,
     pub value: Option<serde_json::Value>,
 }
 
@@ -87,6 +91,7 @@ fn persist_prefs(prefs: &Preferences) -> Vec<PersistedPrefField> {
         .map(|(name, f)| PersistedPrefField {
             name: name.to_string(),
             enabled: f.enabled,
+            capture: f.capture,
             value: f.override_value.as_ref().and_then(|arc| codec::encode(name, arc)),
         })
         .collect()
@@ -119,6 +124,7 @@ fn apply_prefs(prefs: &mut Preferences, fields: &[PersistedPrefField]) {
     for f in fields {
         let Some(name) = codec::static_name(&f.name) else { continue };
         prefs.set_enabled_by_name(name, f.enabled);
+        prefs.set_capture_by_name(name, f.capture);
         if let Some(val) = &f.value {
             if let (Some(arc), Some(tid)) = (codec::decode(&f.name, val), codec::value_type_id(&f.name)) {
                 prefs.set_raw(name, arc, tid);

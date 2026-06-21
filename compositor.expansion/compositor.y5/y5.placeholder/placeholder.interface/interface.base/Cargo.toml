@@ -27,6 +27,7 @@ uuid.workspace = true
 compositor_y5_surface_draw_handle.workspace = true
 compositor_y5_placeholder_surface_base.workspace = true
 compositor_introspection_launchplan_plan_base.workspace = true
+compositor_introspection_launchplan_plan_capture.workspace = true
 compositor_y5_placeholder_protocol_base.workspace = true
 compositor_y5_surface_protocol_base.workspace = true
 compositor_introspection_restoration_state_base.workspace = true

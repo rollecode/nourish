@@ -108,6 +108,7 @@ compositor_introspection_extraction_window_handlers_terminal_flags = { path = ".
 compositor_introspection_extraction_window_handlers_terminal_id = { path = "../../compositor.introspection/introspection.extraction/extraction.window/window.handlers.terminal.id" }
 compositor_introspection_extraction_window_hints_attribute = { path = "../../compositor.introspection/introspection.extraction/extraction.window/window.hints.attribute" }
 compositor_introspection_extraction_window_hints_attributes_identity = { path = "../../compositor.introspection/introspection.extraction/extraction.window/window.hints.attributes.identity" }
+compositor_introspection_extraction_window_hints_attributes_identity_more = { path = "../../compositor.introspection/introspection.extraction/extraction.window/window.hints.attributes.identity.more" }
 compositor_introspection_extraction_window_hints_attributes_launch = { path = "../../compositor.introspection/introspection.extraction/extraction.window/window.hints.attributes.launch" }
 compositor_introspection_extraction_window_hints_codec = { path = "../../compositor.introspection/introspection.extraction/extraction.window/window.hints.codec" }
 compositor_introspection_extraction_window_hints_codec_register = { path = "../../compositor.introspection/introspection.extraction/extraction.window/window.hints.codec.register" }
@@ -129,6 +130,7 @@ compositor_introspection_inference_hint_base = { path = "../../compositor.intros
 compositor_introspection_inference_hint_data = { path = "../../compositor.introspection/introspection.inference/inference.hint/hint.data" }
 compositor_introspection_inference_hint_descriptors = { path = "../../compositor.introspection/introspection.inference/inference.hint/hint.descriptors" }
 compositor_introspection_launchplan_plan_base = { path = "../../compositor.introspection/introspection.launchplan/launchplan.plan/plan.base" }
+compositor_introspection_launchplan_plan_capture = { path = "../../compositor.introspection/introspection.launchplan/launchplan.plan/plan.capture" }
 compositor_introspection_launchplan_plan_core = { path = "../../compositor.introspection/introspection.launchplan/launchplan.plan/plan.core" }
 compositor_introspection_launchplan_plan_exec_opts = { path = "../../compositor.introspection/introspection.launchplan/launchplan.plan/plan.exec.opts" }
 compositor_introspection_launchplan_plan_exec_pid = { path = "../../compositor.introspection/introspection.launchplan/launchplan.plan/plan.exec.pid" }

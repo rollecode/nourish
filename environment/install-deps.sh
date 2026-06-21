@@ -16,8 +16,6 @@ sudo dnf install -y \
     mesa-libEGL-devel \
     mesa-libGL-devel \
     mesa-libgbm-devel \
-    libva-intel-driver \
-    intel-media-driver \
     libglvnd-devel \
     ffmpeg-free-devel
 

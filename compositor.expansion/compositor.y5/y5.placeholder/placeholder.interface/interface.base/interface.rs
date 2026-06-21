@@ -79,11 +79,17 @@ pub fn on_window_map_initial(state: &mut Loop, window: Window) -> bool {
 
         let mut pending_restoration: Vec<PendingRestoration> = vec![];
         for (ph, _) in &state.inner.placeholder_mut().visible {
-            if !ph.launching || ph.restoration.is_none() {
+            // A placeholder is a match candidate if it's mid-launch (token/PID
+            // restoration) OR has capture-armed attributes (adopt-on-map). A
+            // capture-only candidate carries no token and pid `-1`, so neither
+            // the token nor the PID-tree signal can spuriously bind it.
+            let is_launching = ph.launching && ph.restoration.is_some();
+            let is_capture_armed = !compositor_introspection_launchplan_plan_capture::capture::capture_keys(&ph.launch).is_empty();
+            if !is_launching && !is_capture_armed {
                 continue;
             }
 
-            if let Some(restore) = &ph.restoration {
+            let (activation_env, launched_pid) = if let Some(restore) = &ph.restoration {
                 let mut activation_env = HashMap::new();
                 activation_env.insert(
                     String::from(compositor_introspection_restoration_state_base::token::ACTIVATION_TOKEN_ENV),
@@ -93,14 +99,17 @@ pub fn on_window_map_initial(state: &mut Loop, window: Window) -> bool {
                     String::from(compositor_introspection_restoration_state_base::token::STARTUP_ID_ENV),
                     restore.token.clone(),
                 );
+                (activation_env, restore.child.map(|w| w as i32).unwrap_or(-1))
+            } else {
+                (HashMap::new(), -1)
+            };
 
-                pending_restoration.push(PendingRestoration {
-                    id: ph.uuid,
-                    plan: ph.launch.clone(),
-                    launched_pid: restore.child.and_then(|w| Some(w as i32)).unwrap_or(-1),
-                    activation_env: activation_env,
-                });
-            }
+            pending_restoration.push(PendingRestoration {
+                id: ph.uuid,
+                plan: ph.launch.clone(),
+                launched_pid,
+                activation_env,
+            });
         }
 
         // println!("CHecking pending restoration");

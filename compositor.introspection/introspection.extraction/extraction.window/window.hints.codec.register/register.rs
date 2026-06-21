@@ -11,6 +11,8 @@ pub fn register_standard_codecs() {
     REGISTERED.call_once(|| {
         use w::attributes::*;
         codec::register::<DisplayName>();
+        codec::register::<Title>();
+        codec::register::<AppId>();
         codec::register::<DesktopEntryPath>();
         codec::register::<IconPath>();
         codec::register::<IconName>();

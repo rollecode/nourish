@@ -78,5 +78,12 @@ impl Preferences {
     pub fn set_enabled_by_name(&mut self, name: &'static str, enabled: bool) {
         self.fields.entry(name).or_default().enabled = enabled;
     }
+    /// Whether the attribute is capture-armed (default false if no entry).
+    pub fn is_capture_by_name(&self, name: &str) -> bool {
+        self.fields.get(name).map(|f| f.capture).unwrap_or(false)
+    }
+    pub fn set_capture_by_name(&mut self, name: &'static str, capture: bool) {
+        self.fields.entry(name).or_default().capture = capture;
+    }
     pub fn clear_by_name(&mut self, name: &str) { self.fields.remove(name); }
 }

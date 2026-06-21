@@ -2,6 +2,9 @@
 
 use uuid::Uuid;
 use compositor_introspection_extraction_window_base::{InferredHints, MetaNode};
+use compositor_introspection_extraction_window_hints_codec::codec;
+use compositor_introspection_extraction_window_hints_codec_register::register;
+use compositor_introspection_launchplan_plan_capture::capture as plan_capture;
 use compositor_introspection_restoration_state_matcher::matcher::MatchResult;
 use compositor_introspection_restoration_state_pending::pending::PendingRestoration;
 use compositor_introspection_restoration_state_registry::registry::MatcherRegistry;
@@ -37,12 +40,48 @@ pub fn match_window(
             .and_then(|id| matchers.get(id))
             .or_else(|| matchers.fallback());
 
-        let Some(matcher) = matcher else { continue };
+        // Explicit-launch signals (activation token / PID tree) take
+        // precedence: if the per-handler matcher claims the window, bind it.
+        if let Some(matcher) = matcher {
+            if matcher.matches(pending, candidate, candidate_hints, candidate_token) == MatchResult::Yes {
+                return Some(pending.id);
+            }
+        }
 
-        match matcher.matches(pending, candidate, candidate_hints, candidate_token) {
-            MatchResult::Yes => return Some(pending.id),
-            MatchResult::No => continue,
+        // Otherwise fall through to transient capture: a placeholder with
+        // capture-armed attributes adopts a window whose values match, even
+        // though no Launch spawned it.
+        if capture_matches(pending, candidate_hints) {
+            return Some(pending.id);
         }
     }
     None
+}
+
+/// Transient-capture predicate: every attribute the placeholder armed for
+/// capture must exactly equal the new window's value. Empty capture set =>
+/// never matches (the placeholder only restores via an explicit Launch).
+///
+/// Values are type-erased (`Arc<dyn Any>`), so we compare their codec-encoded
+/// JSON — the same encoding persistence uses — which gives value equality
+/// without per-type downcasts. A missing value on either side, or an
+/// unregistered codec, fails the match (exact equality requires both present).
+fn capture_matches(pending: &PendingRestoration, candidate_hints: &InferredHints) -> bool {
+    let keys = plan_capture::capture_keys(&pending.plan);
+    if keys.is_empty() {
+        return false;
+    }
+    register::register_standard_codecs();
+    for key in keys {
+        let (Some(stored), Some(live)) =
+            (plan_capture::current_raw_by_key(&pending.plan, key), candidate_hints.best_raw(key))
+        else {
+            return false;
+        };
+        let stored_json = codec::encode(key, &stored);
+        if stored_json.is_none() || stored_json != codec::encode(key, &live) {
+            return false;
+        }
+    }
+    true
 }

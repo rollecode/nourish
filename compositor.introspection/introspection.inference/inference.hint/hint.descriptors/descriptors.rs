@@ -8,8 +8,8 @@
 
 use compositor_introspection_extraction_window_base::{
     attributes::{
-        DBusActivatable, DBusServiceName, DesktopEntryPath, DetectedHandler, DisplayName,
-        EnvOverlay, ExecArgs, ExecProgram, IconName, IconPath, Sandbox, WorkingDirectory,
+        AppId, DBusActivatable, DBusServiceName, DesktopEntryPath, DetectedHandler, DisplayName,
+        EnvOverlay, ExecArgs, ExecProgram, IconName, IconPath, Sandbox, Title, WorkingDirectory,
     },
     AppHandler, AttributeDescriptor, HandlerRegistry, HintAttribute,
 };
@@ -19,6 +19,8 @@ use compositor_introspection_extraction_window_base::{
 pub fn identity_descriptors() -> Vec<AttributeDescriptor> {
     vec![
         DisplayName::descriptor(),
+        Title::descriptor(),
+        AppId::descriptor(),
         IconPath::descriptor(),
         IconName::descriptor(),
         DesktopEntryPath::descriptor(),

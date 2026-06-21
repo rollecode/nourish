@@ -21,6 +21,7 @@ pub fn render<'a>(
         });
 
     let enabled = ui.working.is_pref_enabled(descriptor);
+    let captured = compositor_introspection_launchplan_plan_capture::capture::is_pref_capture(&ui.working, descriptor);
     let desc_key = descriptor.key;
 
     let enable_toggle: Element<'_, _, _, _> = checkbox(enabled)
@@ -30,7 +31,24 @@ pub fn render<'a>(
         })
         .into();
 
-    let header = row![enable_toggle, label]
+    // Capture toggle: arm this attribute as a match criterion for adopting a
+    // newly-mapped window without an explicit Launch.
+    let capture_toggle: Element<'_, _, _, _> = row![
+        checkbox(captured).on_toggle(move |v| PlaceholderMessage::AttributeCaptureToggled {
+            descriptor_key: desc_key,
+            capture: v,
+        }),
+        text("capture")
+            .size(style::TEXT_SIZE_HINT)
+            .style(|_| iced_widget::text::Style {
+                color: Some(style::TEXT_HINT),
+            }),
+    ]
+    .spacing(4)
+    .align_y(Alignment::Center)
+    .into();
+
+    let header = row![enable_toggle, label, capture_toggle]
         .spacing(8)
         .align_y(Alignment::Center);
 

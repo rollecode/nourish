@@ -2014,6 +2014,7 @@ dependencies = [
  "compositor_introspection_extraction_window_handlers",
  "compositor_introspection_extraction_window_hints_attribute",
  "compositor_introspection_extraction_window_hints_attributes_identity",
+ "compositor_introspection_extraction_window_hints_attributes_identity_more",
  "compositor_introspection_extraction_window_hints_attributes_launch",
  "compositor_introspection_extraction_window_hints_descriptor",
  "compositor_introspection_extraction_window_hints_extract",
@@ -2302,6 +2303,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_introspection_extraction_window_hints_attributes_identity_more"
+version = "0.0.1"
+dependencies = [
+ "compositor_introspection_extraction_window_hints_attribute",
+ "compositor_introspection_extraction_window_hints_descriptor",
+ "compositor_introspection_extraction_window_hints_id",
+]
+
+[[package]]
 name = "compositor_introspection_extraction_window_hints_attributes_launch"
 version = "0.0.1"
 dependencies = [
@@ -2358,6 +2368,7 @@ dependencies = [
  "compositor_introspection_extraction_window_desktop_entry",
  "compositor_introspection_extraction_window_desktop_search",
  "compositor_introspection_extraction_window_hints_attributes_identity",
+ "compositor_introspection_extraction_window_hints_attributes_identity_more",
  "compositor_introspection_extraction_window_hints_attributes_launch",
  "compositor_introspection_extraction_window_hints_inferred",
  "compositor_introspection_extraction_window_hints_source",
@@ -2482,6 +2493,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_introspection_launchplan_plan_capture"
+version = "0.0.1"
+dependencies = [
+ "compositor_introspection_extraction_window_base",
+ "compositor_introspection_launchplan_plan_base",
+ "compositor_introspection_launchplan_plan_query",
+]
+
+[[package]]
 name = "compositor_introspection_launchplan_plan_core"
 version = "0.0.1"
 dependencies = [
@@ -2600,6 +2620,9 @@ name = "compositor_introspection_restoration_state_match"
 version = "0.0.1"
 dependencies = [
  "compositor_introspection_extraction_window_base",
+ "compositor_introspection_extraction_window_hints_codec",
+ "compositor_introspection_extraction_window_hints_codec_register",
+ "compositor_introspection_launchplan_plan_capture",
  "compositor_introspection_restoration_state_matcher",
  "compositor_introspection_restoration_state_pending",
  "compositor_introspection_restoration_state_registry",
@@ -8456,6 +8479,7 @@ dependencies = [
  "bitflags 2.13.0",
  "compositor_developer_debug_instance_record",
  "compositor_introspection_launchplan_plan_base",
+ "compositor_introspection_launchplan_plan_capture",
  "compositor_introspection_restoration_state_base",
  "compositor_introspection_sampler_window_base",
  "compositor_orchestration_core_state_base",
@@ -8560,6 +8584,7 @@ dependencies = [
  "compositor_introspection_extraction_window_base",
  "compositor_introspection_inference_hint_base",
  "compositor_introspection_launchplan_plan_base",
+ "compositor_introspection_launchplan_plan_capture",
  "compositor_support_iced_core_engine_base",
  "iced_core",
  "iced_widget",

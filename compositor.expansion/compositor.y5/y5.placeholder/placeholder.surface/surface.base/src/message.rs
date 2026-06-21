@@ -47,6 +47,14 @@ pub enum PlaceholderMessage {
         enabled: bool,
     },
 
+    /// An attribute's capture flag toggled. When armed, a newly-mapped
+    /// window must match this attribute for the placeholder to adopt it
+    /// without an explicit Launch.
+    AttributeCaptureToggled {
+        descriptor_key: &'static str,
+        capture: bool,
+    },
+
     /// User typed a new text value for an attribute (Text/Path/EnumOf).
     AttributeTextChanged {
         descriptor_key: &'static str,

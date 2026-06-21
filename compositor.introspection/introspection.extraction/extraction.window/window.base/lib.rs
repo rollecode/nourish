@@ -25,6 +25,7 @@ pub mod hints {
     pub use compositor_introspection_extraction_window_hints_attribute::attribute;
     pub mod attributes {
         pub use compositor_introspection_extraction_window_hints_attributes_identity::attributes::*;
+        pub use compositor_introspection_extraction_window_hints_attributes_identity_more::attributes::*;
         pub use compositor_introspection_extraction_window_hints_attributes_launch::attributes::*;
     }
     pub use compositor_introspection_extraction_window_hints_id::{category, handler_id};

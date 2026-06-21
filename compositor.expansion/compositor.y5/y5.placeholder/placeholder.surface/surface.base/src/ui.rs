@@ -124,6 +124,14 @@ impl IcedUi for PlaceholderUi {
                     self.working.set_enabled_raw(&d, enabled);
                 }
             }
+            PlaceholderMessage::AttributeCaptureToggled {
+                descriptor_key,
+                capture,
+            } => {
+                if let Some(d) = self.descriptor_by_key(descriptor_key) {
+                    compositor_introspection_launchplan_plan_capture::capture::set_capture_raw(&mut self.working, &d, capture);
+                }
+            }
             PlaceholderMessage::AttributeTextChanged {
                 descriptor_key,
                 value,
