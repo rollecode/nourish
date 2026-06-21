@@ -17,6 +17,34 @@ pub struct ParallaxUniforms {
     pub alpha: f32,
 }
 
+/// One compiled fullscreen-shader variant a renderer can run: a SPIR-V module
+/// (holding a vertex + fragment entry point) plus the push-constant payload for
+/// this frame. Renderer-agnostic and shader-agnostic — a renderer that owns a
+/// native fullscreen pipeline (Vulkan) builds/caches a pipeline keyed by `id`
+/// and draws it with `push`; renderers without that path ignore it. The
+/// producing scene element owns the shader bytes and the push layout, so no
+/// shader-specific knowledge leaks into the renderer.
+#[derive(Clone, Copy)]
+pub struct ShaderVariant<'a> {
+    /// Stable per-shader id, used as the renderer's pipeline-cache key.
+    pub id: u64,
+    /// SPIR-V module bytes (contains both entry points).
+    pub spv: &'static [u8],
+    pub vert_entry: &'static str,
+    pub frag_entry: &'static str,
+    /// Push-constant bytes for this draw (already packed by the producer).
+    pub push: &'a [u8],
+}
+
+/// A renderer-native fullscreen-shader draw handed through the dispatch seam:
+/// the standard (SDR) variant plus an optional variant the renderer selects
+/// when compositing for HDR output.
+#[derive(Clone, Copy)]
+pub struct NativeShaderPass<'a> {
+    pub sdr: ShaderVariant<'a>,
+    pub hdr: Option<ShaderVariant<'a>>,
+}
+
 /// Per-renderer draw seam for scene elements that carry GLES-produced resources
 /// (iced UI, bevy 3D, parallax pixel shader).
 ///

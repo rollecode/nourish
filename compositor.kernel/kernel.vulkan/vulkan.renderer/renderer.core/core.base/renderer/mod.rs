@@ -24,6 +24,7 @@ use compositor_kernel_vulkan_device_factory_base::factory::VulkanDevice;
 use compositor_kernel_vulkan_device_queue_base::queue::RenderQueue;
 use compositor_kernel_vulkan_memory_upload_base::upload::StagingBuffer;
 use compositor_kernel_vulkan_pipeline_composite_base::composite::CompositePipelines;
+use compositor_kernel_vulkan_pipeline_fullscreen_base::fullscreen::FullscreenPass;
 use smithay::backend::allocator::dmabuf::Dmabuf;
 use smithay::backend::renderer::{ContextId, DebugFlags, TextureFilter};
 use smithay::backend::vulkan::PhysicalDevice;
@@ -45,14 +46,14 @@ pub struct VulkanRenderer {
     pub(super) cmd: vk::CommandBuffer,
     pub(super) pipeline_cache: vk::PipelineCache,
     pub(super) pipelines: HashMap<vk::Format, CompositePipelines>,
-    pub(super) background_pipelines:
-        HashMap<vk::Format, crate::background::BackgroundPipeline>,
+    /// Generic native fullscreen-shader passes, keyed by `(shader id, format)`.
+    /// Built on demand from the scene's `DrawOp::ShaderPass` and held for the
+    /// renderer's lifetime. The parallax background (SDR + HDR variants) is one
+    /// such pass; the kernel keeps no shader-specific knowledge.
+    pub(super) shader_passes: HashMap<(u64, vk::Format), FullscreenPass>,
     /// Per-format HDR composite pipelines (M5 1a), created on demand only when
     /// the HDR path is active. The SDR `pipelines` above are untouched.
     pub(super) hdr_pipelines: HashMap<vk::Format, crate::hdr_composite::HdrComposite>,
-    /// Per-format HDR parallax background pipelines (M5), created on demand only
-    /// when the HDR path is active. The SDR `background_pipelines` are untouched.
-    pub(super) hdr_background_pipelines: HashMap<vk::Format, crate::background::HdrBackground>,
     /// HDR output path active (COMPOSITOR_HDR + capable display); set from the
     /// backend. When true `submit_frame` composites via `hdr_pipelines` and
     /// outputs PQ/BT.2020.
@@ -154,17 +155,13 @@ impl Drop for VulkanRenderer {
             // Capture-target imports + the reusable SHM staging buffer.
             self.capture_cache.destroy(&self.dev);
             self.shm_staging.destroy(&self.dev);
-            let backgrounds: Vec<_> = self.background_pipelines.drain().collect();
-            for (_, bg) in backgrounds {
-                bg.destroy(&self.dev);
+            let passes: Vec<_> = self.shader_passes.drain().collect();
+            for (_, p) in passes {
+                p.destroy(&self.dev);
             }
             let hdr: Vec<_> = self.hdr_pipelines.drain().collect();
             for (_, h) in hdr {
                 h.destroy(&self.dev);
-            }
-            let hdr_bg: Vec<_> = self.hdr_background_pipelines.drain().collect();
-            for (_, b) in hdr_bg {
-                b.destroy(&self.dev);
             }
             for (_, p) in self.pipelines.drain() {
                 self.dev.device.destroy_pipeline(p.textured, None);

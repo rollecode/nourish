@@ -71,7 +71,24 @@ impl System for PlaceholderSystem {
             // so the disk write batches up to 1s instead of once per frame).
             PlaceholderCmd::SetGeometry(uuid, position, size) => {
                 cx.transact(false, |storage| {
-                    storage.get_mut(&PLACEHOLDER_MUT).modify_visible(&uuid, |ph| {
+                    let state = storage.get_mut(&PLACEHOLDER_MUT);
+                    // Visible (window-destroyed) tile — `uuid` is the placeholder id.
+                    state.modify_visible(&uuid, |ph| {
+                        if let Some((w, h)) = size {
+                            ph.size.0 = w;
+                            ph.size.1 = h;
+                        }
+                        if let Some((x, y)) = position {
+                            ph.position.0 = x;
+                            ph.position.1 = y;
+                        }
+                    });
+                    // Live (window-backed) map placeholder — `uuid` is the window id.
+                    // This is the slot half the rim `_reform` kept in sync via
+                    // `placeholder.interface::set`; without it the tile spawns at the
+                    // pre-drag geometry when the window later closes. The two uuid
+                    // namespaces don't collide, so exactly one of these matches.
+                    state.modify_present(&uuid, |ph| {
                         if let Some((w, h)) = size {
                             ph.size.0 = w;
                             ph.size.1 = h;

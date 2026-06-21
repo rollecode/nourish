@@ -23,11 +23,12 @@ pub mod frame;
 pub mod renderer;
 mod shm_cache;
 
-/// The native parallax background pipelines (SDR + HDR) and the HDR composite
-/// pipeline now live under `vulkan.pipeline`; re-export them at their historical
-/// `crate::background` / `crate::hdr_composite` paths so the renderer's existing
-/// references keep resolving.
-pub use compositor_kernel_vulkan_pipeline_background_base::background;
+/// Generic native fullscreen-shader pass (the parallax background and any other
+/// native fullscreen shader run through it). The specific shaders + push layouts
+/// live in the scene layer; the kernel keeps only this generalization.
+pub use compositor_kernel_vulkan_pipeline_fullscreen_base::fullscreen;
+/// The HDR composite pipeline lives under `vulkan.pipeline`; re-export at the
+/// historical `crate::hdr_composite` path.
 pub use compositor_kernel_vulkan_pipeline_hdr_base::hdr as hdr_composite;
 
 /// The `sync_file`/timeline `Fence` impls now live in `vulkan.sync/sync.fence`;

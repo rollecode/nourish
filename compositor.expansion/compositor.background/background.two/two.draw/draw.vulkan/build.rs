@@ -1,10 +1,10 @@
-//! Ahead-of-time HDR parallax shader compilation (M5).
+//! Ahead-of-time parallax shader compilation.
 //!
-//! Compiles `parallax_hdr.wgsl` to SPIR-V via naga at build time; `background.rs`
-//! embeds the result with `include_bytes!`. The SDR parallax + vertex shaders
-//! ship committed SPIR-V (sources `shaders/*.hlsl`, recompiled out-of-band with
-//! glslangValidator) and need no build step.
-//! - parallax_hdr.wgsl: vs_main + fs_main (HDR-graded parallax background)
+//! Compiles the WGSL parallax shaders to SPIR-V via naga at build time; `vulkan.rs`
+//! embeds the results with `include_bytes!`. Both modules expose `vs_main` +
+//! `fs_main`:
+//! - parallax.wgsl:     SDR parallax background
+//! - parallax_hdr.wgsl: HDR-graded (BT.2020 + PQ) parallax background
 
 use std::path::Path;
 
@@ -34,5 +34,6 @@ fn compile(name: &str) {
 }
 
 fn main() {
+    compile("parallax");
     compile("parallax_hdr");
 }

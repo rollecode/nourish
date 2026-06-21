@@ -8,12 +8,24 @@
 
 use smithay::backend::renderer::gles::{GlesPixelProgram, GlesTexture, Uniform};
 use smithay::utils::{Buffer as BufferCoord, Physical, Rectangle, Size};
-use compositor_orchestration_draw_dispatch_frame::{ParallaxUniforms, SceneDispatch};
+use compositor_orchestration_draw_dispatch_frame::{NativeShaderPass, SceneDispatch};
+use compositor_orchestration_draw_dispatch_frame::ShaderVariant as SeamVariant;
 
-use crate::background::BackgroundPush;
 use crate::error::VulkanError;
-use crate::frame::{DrawOp, VulkanFrame};
+use crate::frame::{DrawOp, ShaderVariant, VulkanFrame};
 use crate::renderer::VulkanRenderer;
+
+/// Copy a seam shader variant into an owned `DrawOp` variant (the push bytes
+/// must outlive this dispatch call, so they're copied into the queued op).
+fn own_variant(v: SeamVariant<'_>) -> ShaderVariant {
+    ShaderVariant {
+        id: v.id,
+        spv: v.spv,
+        vert_entry: v.vert_entry,
+        frag_entry: v.frag_entry,
+        push: v.push.to_vec(),
+    }
+}
 
 impl SceneDispatch for VulkanRenderer {
     // Vulkan consumes iced/bevy/parallax output via dmabuf import (PreImported),
@@ -43,17 +55,15 @@ impl SceneDispatch for VulkanRenderer {
         _damage: &[Rectangle<i32, Physical>],
         _alpha: f32,
         _uniforms: &[Uniform<'_>],
-        vk: ParallaxUniforms,
+        pass: NativeShaderPass<'_>,
     ) -> Result<(), VulkanError> {
-        // Native Vulkan parallax: queue a fullscreen background draw with the
-        // shader's push constants (the GLES program/uniforms are unused here).
-        // Replayed by the background pipeline during `submit_frame`.
-        let push = BackgroundPush {
-            res_zoom_time: [vk.resolution[0], vk.resolution[1], vk.zoom, vk.time],
-            pan_flow: [vk.pan[0], vk.pan[1], vk.flow_offset[0], vk.flow_offset[1]],
-            lock_alpha: [vk.lock_amount, vk.alpha, 0.0, 0.0],
-        };
-        frame.ops.push(DrawOp::Parallax { push });
+        // Native fullscreen shader: queue a generic shader pass carrying the
+        // producer's SPIR-V + push bytes (the GLES program/uniforms are unused
+        // here). Replayed by a `FullscreenPass` during `submit_frame`.
+        frame.ops.push(DrawOp::ShaderPass {
+            sdr: own_variant(pass.sdr),
+            hdr: pass.hdr.map(own_variant),
+        });
         Ok(())
     }
 }

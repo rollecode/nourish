@@ -1811,6 +1811,7 @@ version = "0.0.1"
 dependencies = [
  "compositor_background_two_draw_motion",
  "compositor_background_two_draw_program",
+ "compositor_background_two_draw_vulkan",
  "compositor_developer_stats_registry_base",
  "compositor_orchestration_draw_dispatch_frame",
  "smithay",
@@ -1837,6 +1838,15 @@ dependencies = [
  "smithay",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "compositor_background_two_draw_vulkan"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_stats_registry_base",
+ "compositor_orchestration_draw_dispatch_frame",
+ "naga",
 ]
 
 [[package]]
@@ -3938,16 +3948,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "compositor_kernel_vulkan_pipeline_background_base"
-version = "0.0.1"
-dependencies = [
- "ash",
- "compositor_kernel_vulkan_device_factory_base",
- "compositor_kernel_vulkan_renderer_error_base",
- "naga",
-]
-
-[[package]]
 name = "compositor_kernel_vulkan_pipeline_cache_base"
 version = "0.0.1"
 dependencies = [
@@ -3969,6 +3969,15 @@ dependencies = [
  "compositor_kernel_vulkan_device_factory_base",
  "smithay",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "compositor_kernel_vulkan_pipeline_fullscreen_base"
+version = "0.0.1"
+dependencies = [
+ "ash",
+ "compositor_kernel_vulkan_device_factory_base",
+ "compositor_kernel_vulkan_renderer_error_base",
 ]
 
 [[package]]
@@ -4005,9 +4014,9 @@ dependencies = [
  "compositor_kernel_vulkan_memory_import_base",
  "compositor_kernel_vulkan_memory_target_base",
  "compositor_kernel_vulkan_memory_upload_base",
- "compositor_kernel_vulkan_pipeline_background_base",
  "compositor_kernel_vulkan_pipeline_cache_base",
  "compositor_kernel_vulkan_pipeline_composite_base",
+ "compositor_kernel_vulkan_pipeline_fullscreen_base",
  "compositor_kernel_vulkan_pipeline_hdr_base",
  "compositor_kernel_vulkan_renderer_error_base",
  "compositor_kernel_vulkan_sync_export_base",

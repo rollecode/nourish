@@ -89,14 +89,14 @@ fn _initial_mapped(state: &mut Loop, window: Window) {
         .state
         .map_element(window.clone(), t.into_storage_point(), false);
 
-    // The compositor decides the window's size: accept the client's initial size as the
-    // authoritative slot and record it. Thereafter the window is enforced at this size
-    // (content of a different size is letterboxed); it changes only via `reform` (resize/tile).
-    // A 0x0 geometry means "no size yet" → leave unset so the renderer falls back to native.
-    let decided = window.geometry().size;
-    if decided.w > 0 && decided.h > 0 {
-        slot::set_expected_size(&window, decided);
-    }
+    // The compositor decides the window's size, but at map it has made no explicit decision yet:
+    // put the window in `Auto` so the slot follows the client's committed `geometry()` while it
+    // settles. A client whose first mapped buffer precedes its final `window_geometry` (CSD shadow
+    // excluded a frame later, a saved size applied on the next commit) then fills its frame instead
+    // of being covered & cropped at the stale first-frame size. The slot freezes (enforced) the
+    // moment the compositor reforms/tiles/fullscreens it (`set_expected_size`). A 0x0 geometry is
+    // still treated as "no size yet" by `expected_size` → the renderer falls back to native.
+    slot::set_expected_auto(&window);
 
     // Register the window in the spatial world's draw-order authority
     // (non-destructive; spawn = top of stack).

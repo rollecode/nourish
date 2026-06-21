@@ -76,8 +76,7 @@ impl Element for ParallaxBackground {
     fn is_framebuffer_effect(&self) -> bool { false }
 }
 
-// Renderer-agnostic: real on GlesFrame, a no-op on VulkanFrame (until a
-// vulkan-native parallax path lands), per the dispatch design.
+// Renderer-agnostic: GlesFrame runs the pixel program; VulkanFrame runs the native pass.
 impl<R: SceneDispatch> RenderElement<R> for ParallaxBackground {
     fn draw(
         &self,
@@ -90,11 +89,12 @@ impl<R: SceneDispatch> RenderElement<R> for ParallaxBackground {
         let (uniforms, vk) = compositor_background_two_draw_motion::uniforms(
             time, self.motion.lock_amount, self.pan, self.motion.flow_offset,
             self.motion.velocity, self.zoom, (dst.size.w as f32, dst.size.h as f32));
+        let pass = compositor_background_two_draw_vulkan::vulkan::ParallaxPass::new(&vk);
         R::draw_pixel_program(
             frame,
             self.program.as_ref(),
             Rectangle::from_loc_and_size((0.0, 0.0), (dst.size.w as f64, dst.size.h as f64)),
-            dst, Size::from((dst.size.w, dst.size.h)), damage, 1.0, &uniforms, vk,
+            dst, Size::from((dst.size.w, dst.size.h)), damage, 1.0, &uniforms, pass.pass(),
         )
     }
 }

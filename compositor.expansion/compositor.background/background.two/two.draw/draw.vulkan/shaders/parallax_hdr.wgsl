@@ -1,11 +1,14 @@
-// HDR parallax space background (M5). A WGSL port of parallax.frag.hlsl that
-// renders the same scene but grades it for HDR: the diffuse base sits at the
-// SDR reference white, while highlights (stars, planet rims, nebula cores) are
-// extended above it into the HDR range for tasteful "pop", plus a subtle extra
-// micro-star layer. Output is BT.2020 + PQ. Used ONLY on the HDR path; the SDR
-// parallax pipeline is untouched (byte-identical).
+// HDR parallax space background (M5). A WGSL port of the SDR parallax shader
+// that renders the same scene but grades it for HDR: the diffuse base sits at
+// the SDR reference white, while highlights (stars, planet rims, nebula cores)
+// are extended above it into the HDR range for tasteful "pop", plus a subtle
+// extra micro-star layer. Output is BT.2020 + PQ. Used ONLY on the HDR path.
+//
+// The value-noise `hash()` is the same driver-stable integer/bit-mix hash used
+// by the SDR variant (NOT a `fract(sin(...))` sine hash), so the cloud/nebula
+// noise has no rectangular artifacts under Vulkan.
 
-// Matches the renderer's HdrBackgroundPush (4×vec4 = 64 bytes).
+// Matches draw.vulkan's HdrPush (4×vec4 = 64 bytes).
 struct Push {
     res_zoom_time: vec4<f32>, // xy = resolution, z = zoom, w = time
     pan_flow: vec4<f32>,      // xy = pan, zw = flow_offset
@@ -25,7 +28,9 @@ fn vs_main(@builtin(vertex_index) vid: u32) -> VsOut {
 }
 
 fn hash(p: vec2<f32>) -> f32 {
-    return fract(sin(dot(p, vec2<f32>(127.1, 311.7))) * 43758.5453);
+    var p3 = fract(vec3<f32>(p.x, p.y, p.x) * 0.1031);
+    p3 = p3 + dot(p3, vec3<f32>(p3.y, p3.z, p3.x) + vec3<f32>(33.33));
+    return fract((p3.x + p3.y) * p3.z);
 }
 fn noise(p: vec2<f32>) -> f32 {
     let i = floor(p);
@@ -204,7 +209,6 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let luma = dot(lin, vec3<f32>(0.2627, 0.6780, 0.0593));
     let peak = min(max_nits, sdr_white * 4.0);
     let hi = smoothstep(0.5, 1.0, luma);
-    // Base at reference white + a slight presence lift; highlights extend up.
     var nits = lin * (sdr_white * 1.05) + lin * (hi * hi) * (peak - sdr_white);
     nits = rec709_to_bt2020(max(nits, vec3<f32>(0.0)));
     let enc = pq_encode(nits);

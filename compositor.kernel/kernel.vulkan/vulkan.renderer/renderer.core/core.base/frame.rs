@@ -74,6 +74,18 @@ impl Drop for VulkanFramebuffer<'_> {
     }
 }
 
+/// One resolved fullscreen-shader variant queued for this frame: the SPIR-V
+/// module + entry points (cached as a `FullscreenPass` keyed by `id`) and the
+/// owned push-constant bytes. The producing scene element owns all shader
+/// specifics; the renderer just runs it.
+pub(crate) struct ShaderVariant {
+    pub id: u64,
+    pub spv: &'static [u8],
+    pub vert_entry: &'static str,
+    pub frag_entry: &'static str,
+    pub push: Vec<u8>,
+}
+
 /// A single queued draw: a solid fill or a textured quad. Order is preserved
 /// (back-to-front z-order is the call order from the scene).
 pub(crate) enum DrawOp {
@@ -84,8 +96,13 @@ pub(crate) enum DrawOp {
         /// Per-surface HDR composite flag `[transfer, is_hdr, 0, 0]` (M5).
         surf: [f32; 4],
     },
-    /// Fullscreen native background (parallax shader) via the background pipeline.
-    Parallax { push: crate::background::BackgroundPush },
+    /// A fullscreen native shader pass (e.g. the parallax background): the SDR
+    /// variant plus an optional HDR-output variant; `submit_frame` builds/caches
+    /// a `FullscreenPass` per variant and picks by the active output mode.
+    ShaderPass {
+        sdr: ShaderVariant,
+        hdr: Option<ShaderVariant>,
+    },
 }
 
 pub struct VulkanFrame<'frame, 'buffer> {

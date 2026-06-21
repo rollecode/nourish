@@ -2751,6 +2751,8 @@ dependencies = [
  "compositor_orchestration_driver_audio_base",
  "compositor_orchestration_driver_capture_base",
  "compositor_orchestration_driver_introspection_base",
+ "compositor_orchestration_driver_lid_base",
+ "compositor_orchestration_driver_logind_base",
  "compositor_orchestration_driver_remote_base",
  "compositor_orchestration_driver_resume_base",
  "compositor_orchestration_environment_type_base",
@@ -2950,6 +2952,22 @@ version = "0.0.1"
 dependencies = [
  "compositor_introspection_sampler_window_base",
  "compositor_support_system_storage_token_base",
+]
+
+[[package]]
+name = "compositor_orchestration_driver_lid_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_storage_token_base",
+]
+
+[[package]]
+name = "compositor_orchestration_driver_logind_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_system_storage_token_base",
+ "zbus",
 ]
 
 [[package]]

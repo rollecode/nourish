@@ -25,6 +25,15 @@ impl VulkanRenderer {
         if self.use_hdr() {
             self.ensure_hdr_pipeline(format)?;
         }
+        let use_hdr = self.use_hdr();
+        // Build any fullscreen-shader-pass pipelines this frame references (a
+        // mutable borrow, done before the immutable borrows used to record).
+        for op in &ops {
+            if let DrawOp::ShaderPass { sdr, hdr } = op {
+                let v = if use_hdr { hdr.as_ref().unwrap_or(sdr) } else { sdr };
+                self.ensure_shader_pass(v, format)?;
+            }
+        }
 
         // The native-fence path reuses one command buffer + descriptor pool and
         // does NOT device_wait_idle, so before re-recording we must ensure the
@@ -49,10 +58,7 @@ impl VulkanRenderer {
             .pipelines
             .get(&format)
             .expect("pipelines ensured above");
-        let background = self
-            .background_pipelines
-            .get(&format)
-            .expect("background pipeline ensured above");
+        let shader_passes = &self.shader_passes;
         let pool = self.descriptor_pool;
         let cmd = self.cmd;
 
@@ -62,10 +68,6 @@ impl VulkanRenderer {
                 .hdr_pipelines
                 .get(&format)
                 .expect("hdr pipeline ensured above");
-            let hdr_bg = self
-                .hdr_background_pipelines
-                .get(&format)
-                .expect("hdr background ensured above");
             let t = compositor_developer_stats_registry_base::base::hdr_tuning();
             hdr.update_tuning(&crate::hdr_composite::HdrTuningUbo {
                 enabled: t.enabled,
@@ -98,14 +100,11 @@ impl VulkanRenderer {
                     for op in ops.iter() {
                         match op {
                             DrawOp::Solid { quad } => hdr.draw_solid(dev, cmd, to_push(quad, sdr)),
-                            DrawOp::Parallax { push } => {
-                                let hp = crate::background::HdrBackgroundPush {
-                                    res_zoom_time: push.res_zoom_time,
-                                    pan_flow: push.pan_flow,
-                                    lock_alpha: push.lock_alpha,
-                                    hdr: [t.sdr_white_nits, t.max_nits, 0.0, 0.0],
-                                };
-                                hdr_bg.draw(dev, cmd, &hp);
+                            DrawOp::ShaderPass { sdr: s, hdr: h } => {
+                                let v = if use_hdr { h.as_ref().unwrap_or(s) } else { s };
+                                if let Some(fp) = shader_passes.get(&(v.id, format)) {
+                                    fp.draw(dev, cmd, &v.push);
+                                }
                             }
                             DrawOp::Textured { quad, view: v, surf } => {
                                 match hdr.texture_set(dev, *v) {
@@ -129,7 +128,7 @@ impl VulkanRenderer {
             for op in &ops {
                 match op {
                     DrawOp::Solid { .. } => sets.push(None),
-                    DrawOp::Parallax { .. } => sets.push(None),
+                    DrawOp::ShaderPass { .. } => sets.push(None),
                     DrawOp::Textured { view, .. } => {
                         let layouts = [pipelines.descriptor_layout];
                         let info = vk::DescriptorSetAllocateInfo::default()
@@ -160,8 +159,11 @@ impl VulkanRenderer {
                                     dev, pipelines, cmd, *quad,
                                 );
                             }
-                            DrawOp::Parallax { push } => {
-                                background.draw(dev, cmd, push);
+                            DrawOp::ShaderPass { sdr, hdr } => {
+                                let v = if use_hdr { hdr.as_ref().unwrap_or(sdr) } else { sdr };
+                                if let Some(fp) = shader_passes.get(&(v.id, format)) {
+                                    fp.draw(dev, cmd, &v.push);
+                                }
                             }
                             DrawOp::Textured { quad, .. } => {
                                 compositor_kernel_vulkan_element_texture_base::texture::draw(

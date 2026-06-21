@@ -14,4 +14,4 @@
 //!   it as a blank draw until their renderer-native path lands.
 
 pub mod frame;
-pub use frame::{ParallaxUniforms, SceneDispatch};
+pub use frame::{NativeShaderPass, ParallaxUniforms, SceneDispatch, ShaderVariant};

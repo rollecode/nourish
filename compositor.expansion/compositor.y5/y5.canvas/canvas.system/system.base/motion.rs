@@ -194,7 +194,17 @@ pub(crate) fn motion(cx: &mut SystemCx, x: f64, y: f64, _screen_x: f64, _screen_
     };
 
     // Apply window reforms (force = interactive drag) reading `cx.platform.space()`.
+    // Each window owns a live `map` placeholder keyed by its UUID; keep its geometry
+    // in sync with the drag (rim `_reform` did this via `placeholder.interface::set`)
+    // so the tile spawns at the dragged-to geometry when the window later closes.
     for (window, update) in window_updates {
+        if let Some(uuid) = window.uuid() {
+            let position = update.position.map(|p| (p.x, p.y));
+            let size = update.size.map(|s| (s.w, s.h));
+            compositor_y5_placeholder_system_base::base::announce_placeholder_geometry(
+                cx.channels, uuid, position, size,
+            );
+        }
         reform_force(cx, window, update);
     }
 
@@ -252,8 +262,9 @@ pub(crate) fn motion(cx: &mut SystemCx, x: f64, y: f64, _screen_x: f64, _screen_
 /// (force = true): the interactive resize/move path. The Loop-coupled crate
 /// can't be called from a system (CYCLE via the orchestration focus accessors),
 /// so the smithay + `slot` core is replicated here, reading the live `Space`
-/// through `cx.platform`. The rim's extra side effects (group bbox invalidate,
-/// capture-region refresh, placeholder::set) are NOT reproduced — they are
+/// through `cx.platform`. The rim's `placeholder::set` side effect is reproduced by
+/// the caller (announced per window UUID before this runs); the remaining ones
+/// (group bbox invalidate, capture-region refresh) are NOT reproduced — they are
 /// settled on release / the next frame; see the migration report.
 fn reform_force(cx: &mut SystemCx, window: Window, update: Update) {
     let Some(platform) = cx

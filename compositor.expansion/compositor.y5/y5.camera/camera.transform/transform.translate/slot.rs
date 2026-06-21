@@ -12,8 +12,25 @@ use std::time::{Duration, Instant};
 use smithay::desktop::Window;
 use smithay::utils::{Logical, Size};
 
+/// A window's slot state.
+#[derive(Debug, Clone, Copy)]
+enum Slot {
+    /// The compositor has not yet made an explicit sizing decision for this window, so the
+    /// slot **follows the client's committed `geometry()`**. This is the pre-decision phase
+    /// (map → first `reform`/tile/fullscreen): the compositor sends no constraining configure
+    /// here, so the client is already free to pick its size. Tracking (rather than snapshotting
+    /// the first frame) makes a window that finalizes its geometry *after* its first mapped
+    /// buffer — sets `window_geometry` to exclude its CSD shadow, applies a saved/relaid-out
+    /// size — fill its frame, instead of being covered & cropped at the stale first-frame size
+    /// (the "needs a nudge to occupy its frame" symptom). The instant the compositor decides
+    /// (`set_expected_size`), the slot freezes to `Decided` and is enforced from then on.
+    Auto,
+    /// The compositor-decided size; enforced — content of a different size is letterboxed/covered.
+    Decided(Size<i32, Logical>),
+}
+
 #[derive(Debug, Default)]
-pub struct ExpectedSize(Mutex<Option<Size<i32, Logical>>>);
+pub struct ExpectedSize(Mutex<Option<Slot>>);
 
 /// Max interval between `send_configure`s during a continuous resize drag. Long on purpose: the
 /// render follows the cursor by **stretching** the current buffer, so we avoid poking the client
@@ -57,19 +74,40 @@ struct ResizePending {
 #[derive(Debug, Default)]
 pub struct ResizeState(Mutex<Option<ResizePending>>);
 
-/// The compositor-decided size for `window`, if any.
+/// The window's current slot size, if any. `Decided` returns the compositor's enforced size;
+/// `Auto` (no decision yet) follows the client's live `geometry()` so the window fills its frame
+/// as the client finalizes its geometry; unset / 0x0 geometry returns `None` (render natively).
 pub fn expected_size(window: &Window) -> Option<Size<i32, Logical>> {
-    window
+    match window
         .user_data()
         .get::<ExpectedSize>()
         .and_then(|e| *e.0.lock().unwrap())
+    {
+        Some(Slot::Decided(size)) => Some(size),
+        Some(Slot::Auto) => {
+            let g = window.geometry().size;
+            (g.w > 0 && g.h > 0).then_some(g)
+        }
+        None => None,
+    }
 }
 
-/// Record the compositor-decided size for `window`.
+/// Put `window` in `Auto`: the slot follows the client's committed `geometry()` until the
+/// compositor makes its first explicit sizing decision (`set_expected_size`). Used at initial
+/// map — accept the client's size while it settles, without freezing the stale first frame.
+pub fn set_expected_auto(window: &Window) {
+    window.user_data().insert_if_missing_threadsafe(ExpectedSize::default);
+    if let Some(e) = window.user_data().get::<ExpectedSize>() {
+        *e.0.lock().unwrap() = Some(Slot::Auto);
+    }
+}
+
+/// Record the compositor-decided size for `window` — freezes the slot to `Decided` and enforces
+/// it from now on (the window is no longer in `Auto` / client-follows mode).
 pub fn set_expected_size(window: &Window, size: Size<i32, Logical>) {
     window.user_data().insert_if_missing_threadsafe(ExpectedSize::default);
     if let Some(e) = window.user_data().get::<ExpectedSize>() {
-        *e.0.lock().unwrap() = Some(size);
+        *e.0.lock().unwrap() = Some(Slot::Decided(size));
     }
 }
 

@@ -130,6 +130,7 @@ compositor_background_two_draw_motion = { path = "../compositor.expansion/compos
 compositor_background_two_draw_parallax = { path = "../compositor.expansion/compositor.background/background.two/two.draw/draw.parallax" }
 compositor_background_two_draw_program = { path = "../compositor.expansion/compositor.background/background.two/two.draw/draw.program" }
 compositor_background_two_draw_scene = { path = "../compositor.expansion/compositor.background/background.two/two.draw/draw.scene" }
+compositor_background_two_draw_vulkan = { path = "../compositor.expansion/compositor.background/background.two/two.draw/draw.vulkan" }
 compositor_background_two_state_base = { path = "../compositor.expansion/compositor.background/background.two/two.state/state.base" }
 compositor_background_two_system_base = { path = "../compositor.expansion/compositor.background/background.two/two.system/system.base" }
 compositor_developer_debug_instance_channel = { path = "../compositor.developer/developer.debug/debug.instance/instance.channel" }
@@ -333,9 +334,9 @@ compositor_kernel_vulkan_memory_export_base = { path = "../compositor.kernel/ker
 compositor_kernel_vulkan_memory_import_base = { path = "../compositor.kernel/kernel.vulkan/vulkan.memory/memory.import/import.base" }
 compositor_kernel_vulkan_memory_target_base = { path = "../compositor.kernel/kernel.vulkan/vulkan.memory/memory.target/target.base" }
 compositor_kernel_vulkan_memory_upload_base = { path = "../compositor.kernel/kernel.vulkan/vulkan.memory/memory.upload/upload.base" }
-compositor_kernel_vulkan_pipeline_background_base = { path = "../compositor.kernel/kernel.vulkan/vulkan.pipeline/pipeline.background/background.base" }
 compositor_kernel_vulkan_pipeline_cache_base = { path = "../compositor.kernel/kernel.vulkan/vulkan.pipeline/pipeline.cache/cache.base" }
 compositor_kernel_vulkan_pipeline_composite_base = { path = "../compositor.kernel/kernel.vulkan/vulkan.pipeline/pipeline.composite/composite.base" }
+compositor_kernel_vulkan_pipeline_fullscreen_base = { path = "../compositor.kernel/kernel.vulkan/vulkan.pipeline/pipeline.fullscreen/fullscreen.base" }
 compositor_kernel_vulkan_pipeline_hdr_base = { path = "../compositor.kernel/kernel.vulkan/vulkan.pipeline/pipeline.hdr/hdr.base" }
 compositor_kernel_vulkan_renderer_core_base = { path = "../compositor.kernel/kernel.vulkan/vulkan.renderer/renderer.core/core.base" }
 compositor_kernel_vulkan_renderer_error_base = { path = "../compositor.kernel/kernel.vulkan/vulkan.renderer/renderer.error/error.base" }

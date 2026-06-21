@@ -337,7 +337,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "compositor_graphic_color_surface_base"
+name = "compositor_kernel_graphic_color_surface_base"
 version = "0.0.1"
 dependencies = [
  "smithay",
@@ -523,16 +523,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "compositor_kernel_vulkan_pipeline_background_base"
-version = "0.0.1"
-dependencies = [
- "ash",
- "compositor_kernel_vulkan_device_factory_base",
- "compositor_kernel_vulkan_renderer_error_base",
- "naga",
-]
-
-[[package]]
 name = "compositor_kernel_vulkan_pipeline_cache_base"
 version = "0.0.1"
 dependencies = [
@@ -557,6 +547,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_kernel_vulkan_pipeline_fullscreen_base"
+version = "0.0.1"
+dependencies = [
+ "ash",
+ "compositor_kernel_vulkan_device_factory_base",
+ "compositor_kernel_vulkan_renderer_error_base",
+]
+
+[[package]]
 name = "compositor_kernel_vulkan_pipeline_hdr_base"
 version = "0.0.1"
 dependencies = [
@@ -574,7 +573,7 @@ dependencies = [
  "compositor_developer_debug_instance_record",
  "compositor_developer_environment_config_base",
  "compositor_developer_stats_registry_base",
- "compositor_graphic_color_surface_base",
+ "compositor_kernel_graphic_color_surface_base",
  "compositor_kernel_vulkan_capture_blit_base",
  "compositor_kernel_vulkan_command_pool_base",
  "compositor_kernel_vulkan_command_record_base",
@@ -590,9 +589,9 @@ dependencies = [
  "compositor_kernel_vulkan_memory_import_base",
  "compositor_kernel_vulkan_memory_target_base",
  "compositor_kernel_vulkan_memory_upload_base",
- "compositor_kernel_vulkan_pipeline_background_base",
  "compositor_kernel_vulkan_pipeline_cache_base",
  "compositor_kernel_vulkan_pipeline_composite_base",
+ "compositor_kernel_vulkan_pipeline_fullscreen_base",
  "compositor_kernel_vulkan_pipeline_hdr_base",
  "compositor_kernel_vulkan_renderer_error_base",
  "compositor_kernel_vulkan_sync_export_base",

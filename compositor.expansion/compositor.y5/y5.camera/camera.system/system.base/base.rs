@@ -9,7 +9,7 @@ use compositor_y5_camera_state_base::state::{Camera, CAMERA, CAMERA_MUT};
 use compositor_y5_canvas_input_state::state::{ActiveOption, CanvasGrab};
 use compositor_y5_canvas_system_base::base::CANVAS;
 use compositor_y5_group_state_base::state::{GroupVisibility, GROUP};
-use compositor_y5_navigator_state_base::state::NAVIGATOR;
+use compositor_y5_navigator_state_base::state::{NavRequest, State, NAVIGATOR};
 use compositor_y5_surface_interface_core::hit::surface_under_filtered_cx;
 use compositor_y5_window_interface_record::window::LoopWindow;
 use smithay::desktop::Window;
@@ -80,6 +80,11 @@ impl System for CameraSystem {
             // position_updating. `do_pan` carries that gate; position_previous is
             // always advanced to the current screen cursor.
             let do_pan = cx.storage.get(&CANVAS).position_updating;
+            // A manual pan is direct user intent: drop any active navigator travel
+            // so the easing doesn't fight (and immediately overwrite) the drag.
+            if do_pan {
+                cancel_travel(cx);
+            }
             cx.write(&CAM_BUF, CamCmd::Pan(*screen_x, *screen_y, do_pan));
             return InputFlow::Pass;
         }
@@ -109,6 +114,9 @@ impl System for CameraSystem {
         // Canvas zoom, cursor-anchored. Synchronous via our own CAM_BUF (flushed
         // right after this input()), so the next scroll event reads the updated zoom.
         if *vertical != 0.0 {
+            // A manual zoom is direct user intent: drop any active navigator travel
+            // so the easing doesn't fight (and immediately overwrite) the gesture.
+            cancel_travel(cx);
             let (old_zoom, cam_position) = {
                 let camera = cx.storage.get(&CAMERA);
                 (*camera.transform.zoom(), camera.transform.position())
@@ -182,6 +190,16 @@ impl System for CameraSystem {
                 }
             }
         }
+    }
+}
+
+/// Cancel an in-progress navigator travel when the user pans/zooms by hand.
+/// Announced on the focused world's channel (the navigator owns the slot); only
+/// fires while a `Travel` is set, so it's a no-op once cancelled. `Machine::set`
+/// ignores the request while locked, so this never disturbs the lock state.
+fn cancel_travel(cx: &mut SystemCx) {
+    if matches!(cx.storage.get(&NAVIGATOR).state(), State::Travel(_)) {
+        compositor_y5_navigator_state_base::state::request(cx.channels, NavRequest::Set(State::Idle));
     }
 }
 

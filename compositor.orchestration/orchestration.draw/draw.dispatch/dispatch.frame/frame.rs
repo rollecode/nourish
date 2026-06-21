@@ -2,7 +2,9 @@ use smithay::backend::renderer::gles::{GlesFrame, GlesPixelProgram, GlesRenderer
 use smithay::backend::renderer::{Renderer, RendererSuper};
 use smithay::utils::{Buffer as BufferCoord, Physical, Rectangle, Size};
 
-pub use compositor_orchestration_draw_dispatch_uniforms::uniforms::ParallaxUniforms;
+pub use compositor_orchestration_draw_dispatch_uniforms::uniforms::{
+    NativeShaderPass, ParallaxUniforms, ShaderVariant,
+};
 use compositor_orchestration_draw_dispatch_uniforms::uniforms as gles;
 
 /// The per-renderer dispatch seam keeping GLES-welded scene elements (iced UI,
@@ -29,8 +31,9 @@ pub trait SceneDispatch: Renderer {
     ) -> Result<(), <Self as RendererSuper>::Error>;
 
     /// Run a GLES pixel-shader program over a region. Blank for renderers
-    /// without a pixel-shader path; `program` is `None` for those (`vk` carries
-    /// the renderer-agnostic uniforms for native background shaders).
+    /// without a pixel-shader path; `program` is `None` for those. `pass`
+    /// carries a renderer-native fullscreen-shader draw (SPIR-V + push bytes)
+    /// for renderers that composite the background with their own pipeline.
     #[allow(clippy::too_many_arguments)]
     fn draw_pixel_program(
         frame: &mut <Self as RendererSuper>::Frame<'_, '_>,
@@ -41,7 +44,7 @@ pub trait SceneDispatch: Renderer {
         damage: &[Rectangle<i32, Physical>],
         alpha: f32,
         uniforms: &[Uniform<'_>],
-        vk: ParallaxUniforms,
+        pass: NativeShaderPass<'_>,
     ) -> Result<(), <Self as RendererSuper>::Error>;
 }
 
@@ -66,7 +69,7 @@ impl SceneDispatch for GlesRenderer {
         damage: &[Rectangle<i32, Physical>],
         alpha: f32,
         uniforms: &[Uniform<'_>],
-        _vk: ParallaxUniforms,
+        _pass: NativeShaderPass<'_>,
     ) -> Result<(), <Self as RendererSuper>::Error> {
         gles::draw_pixel_program(frame, program, src, dst, size, damage, alpha, uniforms)
     }

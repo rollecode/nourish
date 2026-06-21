@@ -192,7 +192,10 @@
  "compositor.kernel/kernel.vulkan/vulkan.memory/memory.upload/upload.base": [
   "size"
  ],
- "compositor.kernel/kernel.vulkan/vulkan.pipeline/pipeline.background/background.base": [
+ "compositor.expansion/compositor.background/background.two/two.draw/draw.vulkan": [
+  "size"
+ ],
+ "compositor.kernel/kernel.vulkan/vulkan.pipeline/pipeline.fullscreen/fullscreen.base": [
   "size"
  ],
  "compositor.kernel/kernel.vulkan/vulkan.pipeline/pipeline.composite/composite.base": [

@@ -1751,77 +1751,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "compositor_background_three_picker_apply"
-version = "0.0.1"
-dependencies = [
- "bevy",
- "compositor_background_three_picker_constant",
- "compositor_background_three_picker_state",
- "compositor_developer_debug_instance_record",
-]
-
-[[package]]
-name = "compositor_background_three_picker_build"
-version = "0.0.1"
-dependencies = [
- "bevy",
- "compositor_background_three_picker_apply",
- "compositor_background_three_picker_spawn",
- "compositor_background_three_picker_state",
- "compositor_developer_debug_instance_record",
- "compositor_support_bevy_core_bridge_base",
- "compositor_support_bevy_core_placeholder_base",
- "wgpu",
-]
-
-[[package]]
-name = "compositor_background_three_picker_constant"
-version = "0.0.1"
-dependencies = [
- "compositor_developer_debug_instance_record",
-]
-
-[[package]]
-name = "compositor_background_three_picker_layout"
-version = "0.0.1"
-dependencies = [
- "bevy",
- "compositor_background_three_picker_constant",
- "compositor_developer_debug_instance_record",
-]
-
-[[package]]
-name = "compositor_background_three_picker_scene"
-version = "0.0.1"
-dependencies = [
- "bevy",
- "compositor_background_three_picker_build",
- "compositor_background_three_picker_state",
- "compositor_developer_debug_instance_record",
- "compositor_support_bevy_core_scene_base",
- "wgpu",
-]
-
-[[package]]
-name = "compositor_background_three_picker_spawn"
-version = "0.0.1"
-dependencies = [
- "bevy",
- "compositor_background_three_picker_constant",
- "compositor_background_three_picker_layout",
- "compositor_background_three_picker_state",
- "compositor_developer_debug_instance_record",
-]
-
-[[package]]
-name = "compositor_background_three_picker_state"
-version = "0.0.1"
-dependencies = [
- "bevy",
- "compositor_developer_debug_instance_record",
-]
-
-[[package]]
 name = "compositor_background_three_state_base"
 version = "0.0.1"
 dependencies = [
@@ -1852,6 +1781,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_background_three_system_prewarm"
+version = "0.0.1"
+dependencies = [
+ "compositor_background_three_system_base",
+ "compositor_developer_debug_instance_record",
+ "compositor_support_bevy_core_compositor_base",
+ "compositor_support_system_storage_slot_base",
+]
+
+[[package]]
 name = "compositor_background_two_draw_element"
 version = "0.0.1"
 dependencies = [
@@ -1872,6 +1811,7 @@ version = "0.0.1"
 dependencies = [
  "compositor_background_two_draw_motion",
  "compositor_background_two_draw_program",
+ "compositor_background_two_draw_vulkan",
  "compositor_developer_stats_registry_base",
  "compositor_orchestration_draw_dispatch_frame",
  "smithay",
@@ -1898,6 +1838,15 @@ dependencies = [
  "smithay",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "compositor_background_two_draw_vulkan"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_stats_registry_base",
+ "compositor_orchestration_draw_dispatch_frame",
+ "naga",
 ]
 
 [[package]]
@@ -2105,6 +2054,7 @@ dependencies = [
  "compositor_introspection_extraction_window_hints_attribute",
  "compositor_introspection_extraction_window_hints_descriptor",
  "compositor_introspection_extraction_window_hints_id",
+ "serde",
 ]
 
 [[package]]
@@ -2180,6 +2130,7 @@ dependencies = [
  "compositor_introspection_extraction_window_hints_attribute",
  "compositor_introspection_extraction_window_hints_descriptor",
  "compositor_introspection_extraction_window_hints_id",
+ "serde",
 ]
 
 [[package]]
@@ -2238,6 +2189,7 @@ dependencies = [
  "compositor_introspection_extraction_window_hints_attribute",
  "compositor_introspection_extraction_window_hints_descriptor",
  "compositor_introspection_extraction_window_hints_id",
+ "serde",
 ]
 
 [[package]]
@@ -2294,6 +2246,26 @@ dependencies = [
  "compositor_introspection_extraction_window_hints_descriptor",
  "compositor_introspection_extraction_window_hints_id",
  "compositor_introspection_extraction_window_hints_values",
+]
+
+[[package]]
+name = "compositor_introspection_extraction_window_hints_codec"
+version = "0.0.1"
+dependencies = [
+ "compositor_introspection_extraction_window_hints_attribute",
+ "compositor_introspection_extraction_window_hints_id",
+ "compositor_introspection_extraction_window_hints_source",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "compositor_introspection_extraction_window_hints_codec_register"
+version = "0.0.1"
+dependencies = [
+ "compositor_introspection_extraction_window_base",
+ "compositor_introspection_extraction_window_hints_codec",
+ "serde_json",
 ]
 
 [[package]]
@@ -2356,10 +2328,16 @@ dependencies = [
 [[package]]
 name = "compositor_introspection_extraction_window_hints_source"
 version = "0.0.1"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "compositor_introspection_extraction_window_hints_values"
 version = "0.0.1"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "compositor_introspection_extraction_window_icon"
@@ -2783,9 +2761,12 @@ dependencies = [
  "compositor_orchestration_driver_audio_base",
  "compositor_orchestration_driver_capture_base",
  "compositor_orchestration_driver_introspection_base",
+ "compositor_orchestration_driver_lid_base",
+ "compositor_orchestration_driver_logind_base",
  "compositor_orchestration_driver_remote_base",
  "compositor_orchestration_driver_resume_base",
  "compositor_orchestration_environment_type_base",
+ "compositor_orchestration_seat_gesture_state",
  "compositor_orchestration_seat_pointer_state",
  "compositor_orchestration_seat_pointer_texture",
  "compositor_orchestration_seat_system_pointer",
@@ -2893,6 +2874,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_orchestration_driver_lid_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_storage_token_base",
+]
+
+[[package]]
+name = "compositor_orchestration_driver_logind_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_system_storage_token_base",
+ "zbus",
+]
+
+[[package]]
 name = "compositor_orchestration_driver_remote_base"
 version = "0.0.1"
 dependencies = [
@@ -2918,6 +2915,10 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
 ]
+
+[[package]]
+name = "compositor_orchestration_seat_gesture_state"
+version = "0.0.1"
 
 [[package]]
 name = "compositor_orchestration_seat_pointer_element"
@@ -2993,6 +2994,7 @@ version = "0.0.1"
 dependencies = [
  "compositor_support_system_storage_slot_base",
  "compositor_support_system_world_host_base",
+ "uuid",
 ]
 
 [[package]]
@@ -4437,6 +4439,153 @@ name = "compositor_support_system_input_layer_base"
 version = "0.0.1"
 
 [[package]]
+name = "compositor_support_system_persist_boot_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_persist_document_entry",
+ "compositor_support_system_persist_document_rehydrate",
+ "compositor_support_system_persist_entry_base",
+ "compositor_support_system_persist_rehydrate_base",
+ "compositor_support_system_storage_slot_base",
+ "uuid",
+]
+
+[[package]]
+name = "compositor_support_system_persist_document_entry"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_persist_entry_base",
+ "compositor_support_system_storage_slot_base",
+]
+
+[[package]]
+name = "compositor_support_system_persist_document_rehydrate"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_system_persist_document_entry",
+ "compositor_support_system_persist_path_base",
+ "compositor_support_system_persist_store_base",
+ "compositor_support_system_persist_store_reconcile",
+ "compositor_support_system_storage_slot_base",
+ "uuid",
+]
+
+[[package]]
+name = "compositor_support_system_persist_document_sync"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_system_persist_document_entry",
+ "compositor_support_system_persist_path_base",
+ "compositor_support_system_persist_store_base",
+ "compositor_support_system_storage_slot_base",
+ "uuid",
+]
+
+[[package]]
+name = "compositor_support_system_persist_document_trait"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_persist_document_entry",
+ "compositor_support_system_persist_entry_base",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "compositor_support_system_persist_engine_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_system_persist_entry_base",
+ "compositor_support_system_persist_envelope_base",
+ "compositor_support_system_persist_path_base",
+ "compositor_support_system_persist_write_base",
+ "compositor_support_system_storage_slot_base",
+ "uuid",
+]
+
+[[package]]
+name = "compositor_support_system_persist_entry_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_storage_slot_base",
+]
+
+[[package]]
+name = "compositor_support_system_persist_envelope_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_persist_entry_base",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "compositor_support_system_persist_flush_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_persist_document_entry",
+ "compositor_support_system_persist_document_sync",
+ "compositor_support_system_persist_engine_base",
+ "compositor_support_system_persist_entry_base",
+ "compositor_support_system_storage_slot_base",
+ "compositor_support_system_trait_system_base",
+ "uuid",
+]
+
+[[package]]
+name = "compositor_support_system_persist_mark_base"
+version = "0.0.1"
+dependencies = [
+ "uuid",
+]
+
+[[package]]
+name = "compositor_support_system_persist_path_base"
+version = "0.0.1"
+dependencies = [
+ "uuid",
+]
+
+[[package]]
+name = "compositor_support_system_persist_rehydrate_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_system_persist_entry_base",
+ "compositor_support_system_persist_envelope_base",
+ "compositor_support_system_persist_path_base",
+ "compositor_support_system_storage_slot_base",
+ "uuid",
+]
+
+[[package]]
+name = "compositor_support_system_persist_store_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_persist_entry_base",
+ "compositor_support_system_persist_envelope_base",
+ "compositor_support_system_persist_write_base",
+]
+
+[[package]]
+name = "compositor_support_system_persist_store_reconcile"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_persist_envelope_base",
+]
+
+[[package]]
+name = "compositor_support_system_persist_write_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "uuid",
+]
+
+[[package]]
 name = "compositor_support_system_storage_slot_base"
 version = "0.0.1"
 dependencies = [
@@ -4454,7 +4603,9 @@ dependencies = [
  "compositor_support_system_buffer_token_base",
  "compositor_support_system_channel_router_base",
  "compositor_support_system_channel_token_base",
+ "compositor_support_system_persist_mark_base",
  "compositor_support_system_storage_slot_base",
+ "uuid",
 ]
 
 [[package]]
@@ -4467,6 +4618,8 @@ dependencies = [
  "compositor_support_system_input_bus_base",
  "compositor_support_system_input_event_base",
  "compositor_support_system_input_layer_base",
+ "compositor_support_system_persist_document_entry",
+ "compositor_support_system_persist_entry_base",
  "compositor_support_system_storage_slot_base",
  "compositor_support_system_trait_cx_base",
  "compositor_support_system_world_frame_base",
@@ -4478,8 +4631,11 @@ version = "0.0.1"
 dependencies = [
  "compositor_support_system_channel_router_base",
  "compositor_support_system_input_event_base",
+ "compositor_support_system_persist_flush_base",
+ "compositor_support_system_persist_mark_base",
  "compositor_support_system_storage_slot_base",
  "compositor_support_system_trait_system_base",
+ "uuid",
 ]
 
 [[package]]
@@ -4492,10 +4648,14 @@ version = "0.0.1"
 dependencies = [
  "compositor_support_system_channel_router_base",
  "compositor_support_system_input_event_base",
+ "compositor_support_system_persist_boot_base",
+ "compositor_support_system_persist_document_entry",
+ "compositor_support_system_persist_entry_base",
  "compositor_support_system_storage_slot_base",
  "compositor_support_system_trait_system_base",
  "compositor_support_system_world_flow_base",
  "compositor_support_system_world_frame_base",
+ "uuid",
 ]
 
 [[package]]
@@ -4700,6 +4860,7 @@ dependencies = [
  "bindgen",
  "cc",
  "compositor_developer_debug_instance_record",
+ "compositor_developer_environment_config_base",
  "pkg-config",
  "smithay",
 ]
@@ -4823,6 +4984,7 @@ dependencies = [
 name = "compositor_y5_lock_system_base"
 version = "0.0.1"
 dependencies = [
+ "compositor_orchestration_world_manager_base",
  "compositor_support_system_storage_token_base",
  "compositor_support_system_trait_system_base",
  "compositor_y5_lock_state_base",
@@ -4878,6 +5040,41 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_y5_picker_surface_view"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_iced_core_engine_base",
+ "iced_core",
+ "iced_widget",
+]
+
+[[package]]
+name = "compositor_y5_placeholder_persist_doc"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_persist_document_trait",
+ "compositor_y5_placeholder_persist_record",
+ "compositor_y5_placeholder_record_base",
+ "compositor_y5_placeholder_state_base",
+ "uuid",
+]
+
+[[package]]
+name = "compositor_y5_placeholder_persist_record"
+version = "0.0.1"
+dependencies = [
+ "compositor_introspection_extraction_window_base",
+ "compositor_introspection_extraction_window_hints_codec",
+ "compositor_introspection_extraction_window_hints_codec_register",
+ "compositor_introspection_inference_hint_base",
+ "compositor_introspection_launchplan_plan_base",
+ "compositor_introspection_launchplan_plan_preferences",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "compositor_y5_placeholder_protocol_base"
 version = "0.0.1"
 dependencies = [
@@ -4915,6 +5112,7 @@ dependencies = [
  "compositor_introspection_launchplan_plan_base",
  "compositor_introspection_restoration_state_base",
  "compositor_monitor_compositor_iced_base",
+ "compositor_support_system_storage_token_base",
  "compositor_y5_placeholder_record_base",
  "compositor_y5_placeholder_surface_base",
  "smithay",
@@ -4942,8 +5140,10 @@ dependencies = [
  "compositor_support_system_buffer_token_base",
  "compositor_support_system_channel_router_base",
  "compositor_support_system_channel_token_base",
+ "compositor_support_system_persist_document_entry",
  "compositor_support_system_storage_token_base",
  "compositor_support_system_trait_system_base",
+ "compositor_y5_placeholder_persist_doc",
  "compositor_y5_placeholder_state_base",
  "compositor_y5_surface_system_base",
  "smithay",
@@ -4999,6 +5199,7 @@ dependencies = [
  "compositor_y5_group_surface_base",
  "compositor_y5_launcher_protocol_message",
  "compositor_y5_lock_interface_surface",
+ "compositor_y5_picker_surface_view",
  "compositor_y5_placeholder_protocol_base",
  "smithay",
  "tracing",
@@ -5024,11 +5225,14 @@ dependencies = [
 name = "compositor_y5_surface_system_base"
 version = "0.0.1"
 dependencies = [
+ "compositor_developer_debug_instance_record",
  "compositor_monitor_compositor_iced_base",
  "compositor_monitor_runtime_surface_base",
+ "compositor_support_iced_core_engine_base",
  "compositor_support_system_buffer_token_base",
  "compositor_support_system_channel_router_base",
  "compositor_support_system_channel_token_base",
+ "compositor_support_system_storage_slot_base",
  "compositor_support_system_storage_token_base",
  "compositor_support_system_trait_system_base",
  "compositor_y5_surface_state_base",

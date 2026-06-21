@@ -247,21 +247,24 @@ pub fn lock(state: &mut Loop) {
     };
 
     let set_transform = state.inner.camera().transform.clone();
-    compositor_y5_navigator_state_base::state::request(
-        state.inner.focus_channels(),
-        compositor_y5_navigator_state_base::state::NavRequest::Lock(compositor_y5_navigator_lock_state::state::NavigatorLock {
-            set_transform,
-            pending_travel: Some(pending_travel),
-            transition_start: Instant::now(),
-        }),
-    );
+    // Apply directly on the focused (spawn-target) world's navigator instead of
+    // announcing on its channel. Locking immediately switches the ACTIVE world to
+    // LOCK_WORLD while the spawn-target world keeps owning this navigator, so the
+    // spawn-target world stops being dispatched — a queued NAV_REQUEST would not be
+    // drained until that world is reactivated at unlock, landing a stale Lock AFTER
+    // unlock and wedging the machine. navigator_mut() is the transitional direct path.
+    state.inner.navigator_mut().lock(compositor_y5_navigator_lock_state::state::NavigatorLock {
+        set_transform,
+        pending_travel: Some(pending_travel),
+        transition_start: Instant::now(),
+    });
 }
 /// Sets the navigator into lock mode - not accepting further state.
 
 pub fn unlock(state: &mut Loop) {
     let view_result = {
         let compositor_y5_navigator_state_base::state::State::Lock(LockState) =
-            state.inner.navigator_mut().state()
+            state.inner.navigator().state()
         else {
             return;
         };
@@ -283,12 +286,12 @@ pub fn unlock(state: &mut Loop) {
         }),
     };
 
-    let channels = state.inner.focus_channels();
-    compositor_y5_navigator_state_base::state::request(channels, compositor_y5_navigator_state_base::state::NavRequest::Unlock);
-    compositor_y5_navigator_state_base::state::request(
-        channels,
-        compositor_y5_navigator_state_base::state::NavRequest::Set(
-            compositor_y5_navigator_state_base::state::State::Travel(pending_travel),
-        ),
-    );
+    // Mirror lock(): drive the focused world's navigator directly rather than via
+    // the channel. unlock() runs the frame the spawn-target world is reactivated,
+    // before its next dispatch, so a queued NAV_REQUEST::Unlock would not be applied
+    // in time and the read above would still observe Lock. unlock() leaves Lock so
+    // the following set() (ignored while Lock) lands the travel-home transition.
+    let navigator = state.inner.navigator_mut();
+    navigator.unlock();
+    navigator.set(compositor_y5_navigator_state_base::state::State::Travel(pending_travel));
 }
