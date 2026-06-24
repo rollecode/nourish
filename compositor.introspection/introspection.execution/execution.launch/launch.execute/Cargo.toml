@@ -1,0 +1,13 @@
+[package]
+name = "compositor_introspection_execution_launch_execute"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+libc = { workspace = true }
+compositor_introspection_execution_launch_types = { workspace = true }
+compositor_introspection_execution_launch_scope = { workspace = true }
+compositor_developer_debug_instance_record = { workspace = true }
+
+[lib]
+path = "lib.rs"

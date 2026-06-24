@@ -1,7 +1,9 @@
 use smithay::wayland::xdg_activation::XdgActivationTokenData;
-use std::sync::Arc;
 use compositor_orchestration_core_state_base::Loop;
 use compositor_y5_placeholder_protocol_base::message::{PlaceholderAction, PlaceholderMessage};
+use compositor_introspection_execution_launch_build::build::request_from_plan;
+use compositor_introspection_execution_launch_policy::policy::REQUIRE_PID;
+use compositor_kernel_execution_driver_executor_base::executor::EXECUTOR;
 use compositor_y5_placeholder_record_base::placeholder::PlaceholderLaunchToken;
 
 pub fn delegate(
@@ -50,75 +52,65 @@ pub fn delegate(
             }
         }
         PlaceholderAction::Launch() => {
-            let synt = &_loop.inner.placeholder_mut().synthesizer_registry.clone();
+            let synt = _loop.inner.placeholder_mut().synthesizer_registry.clone();
 
             let mut was_launch = false;
-            // Get the handle and dispatch the message
-            let record =
-                _loop.inner.placeholder_mut()
-                    .modify_visible(&message.uuid, move |placeholder| {
-                        was_launch = placeholder.launching;
-                        placeholder.launching = true
-                    });
+            let record = _loop.inner.placeholder_mut()
+                .modify_visible(&message.uuid, move |placeholder| {
+                    was_launch = placeholder.launching;
+                    placeholder.launching = true
+                });
 
             if was_launch {
                 info!("ERR: Launch called while launching");
                 return;
             }
+            let Some((record, _handle)) = record else { return; };
+            let record = record.clone();
 
-            if record.is_none() {
+            // Mint the XDG activation token on the calloop thread (Wayland
+            // resource); it is the request's correlation token and goes in the
+            // child env. The faithful base env is injected by the Executor.
+            let app_id = record.launch.application_data.meta.meta.app_id.clone();
+            let token_data = XdgActivationTokenData { app_id, ..XdgActivationTokenData::default() };
+            let (token, _) = _loop.state.xdg_activation.xdg_activation.create_external_token(token_data);
+            let token_str = String::from(token.as_str());
+            let extra_env = [
+                ("XDG_ACTIVATION_TOKEN".to_string(), token_str.clone()),
+                ("DESKTOP_STARTUP_ID".to_string(), token_str.clone()),
+            ];
+
+            let req = match request_from_plan(&record.launch, &synt, &extra_env, token_str.clone(), Some(message.uuid)) {
+                Ok(req) => req,
+                Err(e) => {
+                    warn!("launch build failed: {e}");
+                    return;
+                }
+            };
+            // Launch via the kernel executor driver. Inline dispatch returns the
+            // outcome (incl. the PID) synchronously; off-thread returns `None`.
+            let immediate = if let Some(executor) = _loop.inner.kernel.get(&EXECUTOR).as_ref() {
+                executor.launch(req)
+            } else {
+                warn!("launch executor unavailable; launch dropped");
                 return;
-            }
-
-            // Push pending restoration
-            let mut pending_restoration: Option<PlaceholderLaunchToken> = None;
-
-            let (record, handle) = {
-                let (record, handle) = record.unwrap();
-                (record.clone(), handle.clone())
             };
 
-            if let Some(registry) = &mut _loop.inner.surface_mut().registry {
-                let app_id: Option<String> =
-                    record.launch.application_data.meta.meta.app_id.clone();
-
-                let token_data = XdgActivationTokenData {
-                    app_id,
-                    ..XdgActivationTokenData::default()
-                };
-                let (token, _) = _loop
-                    .state
-                    .xdg_activation
-                    .xdg_activation
-                    .create_external_token(token_data);
-
-                let token_str = String::from(token.as_str());
-                let extra_env: &[(String, String)] = &[
-                    ("XDG_ACTIVATION_TOKEN".to_string(), token_str.clone()),
-                    ("DESKTOP_STARTUP_ID".to_string(), token_str.clone()),
-                ];
-
-                let child = record.launch.execute_with_env(synt, extra_env);
-                if let Ok(child) = child {
-                    pending_restoration = Some(PlaceholderLaunchToken {
-                        token: token_str,
-                        child: child,
-                    });
+            // The activation token is known synchronously (we just minted it), so
+            // arm restoration NOW — even for off-thread dispatch — so a fast-mapping
+            // window still matches on the token before the Executed event arrives.
+            // The PID is folded in only if available immediately (inline); otherwise
+            // the Executed listener fills it in later by correlation (idempotent).
+            let immediate_pid = immediate.as_ref().and_then(|o| o.pid);
+            let mut restoration = Some(PlaceholderLaunchToken {
+                token: token_str,
+                child: if REQUIRE_PID { immediate_pid } else { None },
+            });
+            _loop.inner.placeholder_mut().modify_visible(&message.uuid, move |placeholder| {
+                if let Some(t) = restoration.take() {
+                    placeholder.restoration = Some(t);
                 }
-            }
-
-            // Write the restoration token back through the owning slot (the
-            // record above is a clone; the registry borrow pinned the slot).
-            if pending_restoration.is_some() {
-                let mut token = pending_restoration;
-                _loop.inner.placeholder_mut().modify_visible(&message.uuid, move |placeholder| {
-                    if let Some(token) = token.take() {
-                        placeholder.restoration = Some(token);
-                    }
-                });
-            }
-
-            // run restoration logic
+            });
             info!("Launch!");
         }
     }

@@ -2,7 +2,6 @@ use crate::listing_xdg_basic;
 use smithay::backend::renderer::gles::GlesRenderer;
 use smithay::utils::{Logical, Point, Rectangle, Size};
 use std::sync::mpsc::Sender;
-use compositor_introspection_launchplan_plan_base::exec::{sanitise_unit_name, short_random, spawn_via_systemd};
 use compositor_orchestration_core_state_base::Loop;
 use compositor_monitor_launcher_ui_base::{Application, LauncherMessage};
 use compositor_y5_surface_protocol_base::launcher;

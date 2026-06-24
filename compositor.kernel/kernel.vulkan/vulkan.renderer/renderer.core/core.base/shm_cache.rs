@@ -28,6 +28,10 @@ fn read_packed(
         let fourcc = match data.format {
             wl_shm::Format::Argb8888 => Fourcc::Argb8888,
             wl_shm::Format::Xrgb8888 => Fourcc::Xrgb8888,
+            // Must match `ImportMem::mem_formats()` — those are advertised to
+            // clients over wl_shm, so any format we list there can land here.
+            wl_shm::Format::Abgr8888 => Fourcc::Abgr8888,
+            wl_shm::Format::Xbgr8888 => Fourcc::Xbgr8888,
             other => return Err(VulkanError::Import(format!("unsupported shm format {other:?}"))),
         };
         let width = data.width.max(0) as usize;

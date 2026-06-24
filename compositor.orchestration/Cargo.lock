@@ -1941,6 +1941,55 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_introspection_execution_launch_build"
+version = "0.0.1"
+dependencies = [
+ "compositor_introspection_execution_launch_types",
+ "compositor_introspection_extraction_window_base",
+ "compositor_introspection_launchplan_plan_base",
+ "compositor_introspection_launchplan_plan_query",
+ "uuid",
+]
+
+[[package]]
+name = "compositor_introspection_execution_launch_dispatch"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_introspection_execution_launch_execute",
+ "compositor_introspection_execution_launch_types",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_introspection_execution_launch_execute"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_introspection_execution_launch_scope",
+ "compositor_introspection_execution_launch_types",
+ "libc",
+]
+
+[[package]]
+name = "compositor_introspection_execution_launch_policy"
+version = "0.0.1"
+
+[[package]]
+name = "compositor_introspection_execution_launch_scope"
+version = "0.0.1"
+dependencies = [
+ "zbus",
+]
+
+[[package]]
+name = "compositor_introspection_execution_launch_types"
+version = "0.0.1"
+dependencies = [
+ "uuid",
+]
+
+[[package]]
 name = "compositor_introspection_extraction_window_base"
 version = "0.1.0"
 dependencies = [
@@ -2290,7 +2339,6 @@ name = "compositor_introspection_extraction_window_hints_extract"
 version = "0.0.1"
 dependencies = [
  "compositor_introspection_extraction_window_hints_attributes_identity",
- "compositor_introspection_extraction_window_hints_attributes_identity_more",
  "compositor_introspection_extraction_window_hints_attributes_launch",
  "compositor_introspection_extraction_window_hints_extract_entry",
  "compositor_introspection_extraction_window_hints_inferred",
@@ -2306,6 +2354,7 @@ dependencies = [
  "compositor_introspection_extraction_window_desktop_entry",
  "compositor_introspection_extraction_window_desktop_search",
  "compositor_introspection_extraction_window_hints_attributes_identity",
+ "compositor_introspection_extraction_window_hints_attributes_identity_more",
  "compositor_introspection_extraction_window_hints_attributes_launch",
  "compositor_introspection_extraction_window_hints_inferred",
  "compositor_introspection_extraction_window_hints_source",
@@ -2421,12 +2470,18 @@ dependencies = [
  "compositor_introspection_extraction_window_base",
  "compositor_introspection_inference_hint_base",
  "compositor_introspection_launchplan_plan_core",
- "compositor_introspection_launchplan_plan_exec_opts",
- "compositor_introspection_launchplan_plan_exec_run",
- "compositor_introspection_launchplan_plan_exec_spawn",
  "compositor_introspection_launchplan_plan_exec_unit",
  "compositor_introspection_launchplan_plan_preferences",
  "compositor_introspection_launchplan_plan_synthesizers",
+]
+
+[[package]]
+name = "compositor_introspection_launchplan_plan_capture"
+version = "0.0.1"
+dependencies = [
+ "compositor_introspection_extraction_window_base",
+ "compositor_introspection_launchplan_plan_base",
+ "compositor_introspection_launchplan_plan_query",
 ]
 
 [[package]]
@@ -2437,30 +2492,6 @@ dependencies = [
  "compositor_introspection_inference_hint_base",
  "compositor_introspection_launchplan_plan_preferences",
  "compositor_introspection_launchplan_plan_query",
-]
-
-[[package]]
-name = "compositor_introspection_launchplan_plan_exec_opts"
-version = "0.0.1"
-
-[[package]]
-name = "compositor_introspection_launchplan_plan_exec_pid"
-version = "0.0.1"
-
-[[package]]
-name = "compositor_introspection_launchplan_plan_exec_run"
-version = "0.0.1"
-dependencies = [
- "compositor_introspection_launchplan_plan_exec_opts",
- "compositor_introspection_launchplan_plan_exec_pid",
-]
-
-[[package]]
-name = "compositor_introspection_launchplan_plan_exec_spawn"
-version = "0.0.1"
-dependencies = [
- "compositor_introspection_launchplan_plan_exec_opts",
- "compositor_introspection_launchplan_plan_exec_run",
 ]
 
 [[package]]
@@ -2550,6 +2581,7 @@ dependencies = [
  "compositor_introspection_extraction_window_base",
  "compositor_introspection_extraction_window_hints_codec",
  "compositor_introspection_extraction_window_hints_codec_register",
+ "compositor_introspection_launchplan_plan_capture",
  "compositor_introspection_restoration_state_matcher",
  "compositor_introspection_restoration_state_pending",
  "compositor_introspection_restoration_state_registry",
@@ -2700,6 +2732,18 @@ version = "0.0.1"
 dependencies = [
  "compositor_introspection_extraction_window_base",
  "uuid",
+]
+
+[[package]]
+name = "compositor_kernel_execution_driver_executor_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_introspection_execution_launch_dispatch",
+ "compositor_introspection_execution_launch_execute",
+ "compositor_introspection_execution_launch_policy",
+ "compositor_introspection_execution_launch_types",
+ "compositor_support_system_storage_token_base",
+ "smithay",
 ]
 
 [[package]]
@@ -3056,6 +3100,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_orchestration_launch_broadcast_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_introspection_execution_launch_types",
+ "compositor_support_system_channel_router_base",
+ "compositor_support_system_channel_token_base",
+]
+
+[[package]]
 name = "compositor_orchestration_seat_delegate_base"
 version = "0.0.1"
 dependencies = [
@@ -3236,6 +3289,7 @@ dependencies = [
  "bitflags 2.13.0",
  "compositor_remote_message_client_base",
  "compositor_support_library_input_keyboard_base",
+ "compositor_support_system_storage_token_base",
  "smithay",
  "tracing",
  "tracing-subscriber",
@@ -5724,6 +5778,7 @@ dependencies = [
  "compositor_monitor_compositor_iced_base",
  "compositor_orchestration_draw_layer_base",
  "compositor_orchestration_draw_platform_base",
+ "compositor_orchestration_storage_state_base",
  "compositor_support_smithay_dispatch_state_base",
  "compositor_support_system_buffer_token_base",
  "compositor_support_system_input_event_base",
@@ -5731,6 +5786,7 @@ dependencies = [
  "compositor_support_system_storage_slot_base",
  "compositor_support_system_storage_token_base",
  "compositor_support_system_trait_system_base",
+ "compositor_y5_camera_state_base",
  "compositor_y5_camera_transform_translate",
  "compositor_y5_canvas_input_state",
  "compositor_y5_canvas_state_base",
@@ -6017,7 +6073,9 @@ version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
  "compositor_developer_debug_instance_record",
+ "compositor_introspection_execution_launch_types",
  "compositor_introspection_launchplan_plan_base",
+ "compositor_kernel_execution_driver_executor_base",
  "compositor_orchestration_core_state_base",
  "compositor_y5_launcher_interface_base",
  "compositor_y5_launcher_protocol_message",
@@ -6706,9 +6764,13 @@ version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
  "compositor_developer_debug_instance_record",
+ "compositor_introspection_execution_launch_build",
+ "compositor_introspection_execution_launch_policy",
  "compositor_introspection_launchplan_plan_base",
+ "compositor_introspection_launchplan_plan_capture",
  "compositor_introspection_restoration_state_base",
  "compositor_introspection_sampler_window_base",
+ "compositor_kernel_execution_driver_executor_base",
  "compositor_orchestration_core_state_base",
  "compositor_orchestration_draw_layer_base",
  "compositor_orchestration_driver_introspection_base",
@@ -6811,6 +6873,7 @@ dependencies = [
  "compositor_introspection_extraction_window_base",
  "compositor_introspection_inference_hint_base",
  "compositor_introspection_launchplan_plan_base",
+ "compositor_introspection_launchplan_plan_capture",
  "compositor_support_iced_core_engine_base",
  "iced_core",
  "iced_widget",
@@ -6820,6 +6883,9 @@ dependencies = [
 name = "compositor_y5_placeholder_system_base"
 version = "0.0.1"
 dependencies = [
+ "compositor_introspection_execution_launch_policy",
+ "compositor_introspection_execution_launch_types",
+ "compositor_orchestration_launch_broadcast_base",
  "compositor_support_system_buffer_token_base",
  "compositor_support_system_channel_router_base",
  "compositor_support_system_channel_token_base",
@@ -6827,6 +6893,7 @@ dependencies = [
  "compositor_support_system_storage_token_base",
  "compositor_support_system_trait_system_base",
  "compositor_y5_placeholder_persist_doc",
+ "compositor_y5_placeholder_record_base",
  "compositor_y5_placeholder_state_base",
  "compositor_y5_surface_system_base",
  "smithay",

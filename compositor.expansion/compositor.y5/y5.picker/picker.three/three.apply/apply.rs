@@ -9,6 +9,24 @@ use compositor_y5_picker_three_state::{
     PickerSelected, PickerTransform,
 };
 
+/// Force each cell material's bind group to rebuild every frame so it picks up
+/// the world thumbnail the bridge swaps into the placeholder `GpuImage` in place
+/// (an in-place swap doesn't invalidate an already-built bind group). The
+/// deref-mut is load-bearing: `Assets::get_mut` only emits `AssetEvent::Modified`
+/// — which is what triggers the rebuild — when the returned guard is actually
+/// written through; a bare `get_mut` marks nothing. Mirrors the lock screen's
+/// `apply_to_material`.
+pub fn refresh_cell_materials(
+    cells: Query<&MeshMaterial3d<StandardMaterial>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    for handle in cells.iter() {
+        if let Some(mut m) = materials.get_mut(&handle.0) {
+            let _ = &mut *m; // deref-mut → Modified → bind-group rebuild
+        }
+    }
+}
+
 /// Static camera on +Z, looking at the origin. Distance comes from the zoom; the
 /// sphere (not the camera) carries all rotation, so screen axes stay world X/Y,
 /// which keeps the view-space trackball + click-picking aligned.

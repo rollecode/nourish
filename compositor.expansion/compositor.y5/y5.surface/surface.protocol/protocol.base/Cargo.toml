@@ -16,6 +16,7 @@ smithay = { workspace = true }
 compositor_y5_placeholder_protocol_base.workspace = true
 compositor_y5_launcher_protocol_message.workspace = true
 compositor_y5_graphic_capture_session.workspace = true
+compositor_monitor_selection_scene_base.workspace = true
 
 [lib]
 path = "lib.rs"

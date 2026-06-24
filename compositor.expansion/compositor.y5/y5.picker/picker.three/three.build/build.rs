@@ -55,6 +55,7 @@ pub fn build(
             compositor_y5_picker_three_apply::idle_camera,
             compositor_y5_picker_three_apply::apply_rotation,
             compositor_y5_picker_three_apply::apply_selection,
+            compositor_y5_picker_three_apply::refresh_cell_materials,
         ),
     );
 }

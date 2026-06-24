@@ -10,6 +10,8 @@ pub fn hooks(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Phys
     compositor_y5_placeholder_interface_base::interface::promote_restored(state, renderer);
     compositor_y5_surface_draw_hook::wgpu::hook(state, renderer, size);
     compositor_y5_graphic_capture_interface::interface::per_frame(state, renderer, size);
+    // Reconcile the align/distribute selection toolbar against the live selection.
+    compositor_y5_select_overlay_interface::interface::per_frame(state, renderer, size);
     // Per-frame screen context for systems (KernelData). Background systems read
     // physical output size from here (SCREEN) — the former background.shared
     // OUTPUT_SIZE world token is gone.

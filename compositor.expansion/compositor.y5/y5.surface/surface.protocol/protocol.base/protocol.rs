@@ -4,6 +4,17 @@ use compositor_y5_launcher_protocol_message::message::LauncherMessage;
 use compositor_y5_lock_interface_surface::message::LockMessage;
 use compositor_y5_placeholder_protocol_base::message::PlaceholderMessage;
 use compositor_y5_picker_surface_view::PickerSurfaceMessage;
+use compositor_monitor_selection_scene_base::selection::{ScaleToFitOption, SelectionAction};
+
+/// A selection-toolbar action forwarded from the iced UI's message handler to
+/// the surface pump, where it is executed in-process against the canvas.
+#[derive(Debug, Clone)]
+pub enum SelectionForward {
+    /// Apply the given align/distribute/stack actions (alt = repeat/start variant).
+    Execute(Vec<SelectionAction>, bool),
+    /// Scale the single selected window to fit the given aspect option.
+    ScaleToFit(ScaleToFitOption),
+}
 
 #[derive(Debug)]
 pub struct SurfaceMessage {
@@ -19,4 +30,5 @@ pub enum SurfaceMessageType {
     LockScreen(LockMessage),
     Capture(CaptureMessage),
     Picker(PickerSurfaceMessage),
+    Selection(SelectionForward),
 }

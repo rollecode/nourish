@@ -2004,6 +2004,62 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_introspection_execution_launch_build"
+version = "0.0.1"
+dependencies = [
+ "compositor_introspection_execution_launch_types",
+ "compositor_introspection_extraction_window_base",
+ "compositor_introspection_launchplan_plan_base",
+ "compositor_introspection_launchplan_plan_query",
+ "uuid",
+]
+
+[[package]]
+name = "compositor_introspection_execution_launch_dispatch"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_introspection_execution_launch_execute",
+ "compositor_introspection_execution_launch_types",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_introspection_execution_launch_execute"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_introspection_execution_launch_scope",
+ "compositor_introspection_execution_launch_types",
+ "libc",
+]
+
+[[package]]
+name = "compositor_introspection_execution_launch_policy"
+version = "0.0.1"
+
+[[package]]
+name = "compositor_introspection_execution_launch_reap"
+version = "0.0.1"
+dependencies = [
+ "libc",
+]
+
+[[package]]
+name = "compositor_introspection_execution_launch_scope"
+version = "0.0.1"
+dependencies = [
+ "zbus",
+]
+
+[[package]]
+name = "compositor_introspection_execution_launch_types"
+version = "0.0.1"
+dependencies = [
+ "uuid",
+]
+
+[[package]]
 name = "compositor_introspection_extraction_window_base"
 version = "0.1.0"
 dependencies = [
@@ -2484,9 +2540,6 @@ dependencies = [
  "compositor_introspection_extraction_window_base",
  "compositor_introspection_inference_hint_base",
  "compositor_introspection_launchplan_plan_core",
- "compositor_introspection_launchplan_plan_exec_opts",
- "compositor_introspection_launchplan_plan_exec_run",
- "compositor_introspection_launchplan_plan_exec_spawn",
  "compositor_introspection_launchplan_plan_exec_unit",
  "compositor_introspection_launchplan_plan_preferences",
  "compositor_introspection_launchplan_plan_synthesizers",
@@ -2509,30 +2562,6 @@ dependencies = [
  "compositor_introspection_inference_hint_base",
  "compositor_introspection_launchplan_plan_preferences",
  "compositor_introspection_launchplan_plan_query",
-]
-
-[[package]]
-name = "compositor_introspection_launchplan_plan_exec_opts"
-version = "0.0.1"
-
-[[package]]
-name = "compositor_introspection_launchplan_plan_exec_pid"
-version = "0.0.1"
-
-[[package]]
-name = "compositor_introspection_launchplan_plan_exec_run"
-version = "0.0.1"
-dependencies = [
- "compositor_introspection_launchplan_plan_exec_opts",
- "compositor_introspection_launchplan_plan_exec_pid",
-]
-
-[[package]]
-name = "compositor_introspection_launchplan_plan_exec_spawn"
-version = "0.0.1"
-dependencies = [
- "compositor_introspection_launchplan_plan_exec_opts",
- "compositor_introspection_launchplan_plan_exec_run",
 ]
 
 [[package]]
@@ -2934,6 +2963,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_kernel_execution_driver_executor_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_introspection_execution_launch_dispatch",
+ "compositor_introspection_execution_launch_execute",
+ "compositor_introspection_execution_launch_policy",
+ "compositor_introspection_execution_launch_types",
+ "compositor_support_system_storage_token_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_kernel_execution_driver_executor_install"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_introspection_execution_launch_dispatch",
+ "compositor_introspection_execution_launch_policy",
+ "compositor_introspection_execution_launch_reap",
+ "compositor_introspection_execution_launch_types",
+ "compositor_kernel_execution_driver_executor_base",
+ "compositor_orchestration_core_state_base",
+ "compositor_orchestration_environment_type_base",
+ "compositor_orchestration_launch_broadcast_base",
+ "libc",
+ "smithay",
+]
+
+[[package]]
 name = "compositor_kernel_gles_context_egl_base"
 version = "0.0.1"
 dependencies = [
@@ -3156,10 +3214,10 @@ dependencies = [
  "compositor_developer_stats_registry_base",
  "compositor_introspection_extraction_window_base",
  "compositor_introspection_sampler_window_base",
+ "compositor_kernel_execution_driver_executor_install",
  "compositor_kernel_native_wire_entry_base",
  "compositor_kernel_vulkan_renderer_core_base",
  "compositor_kernel_winit_wire_entry_base",
- "compositor_monitor_devtool_render_base",
  "compositor_monitor_runtime_surface_base",
  "compositor_orchestration_core_state_base",
  "compositor_orchestration_draw_state_lifecycle",
@@ -3194,6 +3252,7 @@ dependencies = [
  "compositor_y5_picker_world_restore",
  "compositor_y5_placeholder_system_base",
  "compositor_y5_select_interface_base",
+ "compositor_y5_select_overlay_system",
  "compositor_y5_select_system_base",
  "compositor_y5_surface_system_base",
  "compositor_y5_window_system_base",
@@ -4232,87 +4291,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "compositor_monitor_devtool_example_base"
-version = "0.1.0"
-dependencies = [
- "compositor_developer_debug_instance_record",
- "compositor_support_iced_core_engine_base",
- "iced_core",
- "iced_widget",
-]
-
-[[package]]
-name = "compositor_monitor_devtool_font_base"
-version = "0.1.0"
-dependencies = [
- "bitflags 2.13.0",
- "iced_core",
- "iced_graphics",
- "iced_runtime",
- "iced_wgpu",
- "iced_widget",
- "prost",
- "smithay",
- "tokio-stream",
- "tonic",
- "tonic-prost",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "compositor_monitor_devtool_render_base"
-version = "0.1.0"
-dependencies = [
- "bitflags 2.13.0",
- "calloop 0.13.0",
- "compositor_developer_debug_instance_record",
- "compositor_monitor_devtool_font_base",
- "compositor_monitor_devtool_scene_base",
- "compositor_monitor_server_protocol_base",
- "compositor_remote_message_client_base",
- "compositor_remote_message_server_base",
- "hyper-util",
- "iced_core",
- "iced_graphics",
- "iced_runtime",
- "iced_wgpu",
- "iced_widget",
- "pollster",
- "prost",
- "raw-window-handle",
- "smithay",
- "smithay-client-toolkit",
- "tokio",
- "tokio-stream",
- "tonic",
- "tonic-prost",
- "tower",
- "wayland-client",
- "wayland-protocols",
- "wayland-protocols-wlr",
- "wgpu",
-]
-
-[[package]]
-name = "compositor_monitor_devtool_scene_base"
-version = "0.1.0"
-dependencies = [
- "bitflags 2.13.0",
- "compositor_developer_debug_instance_record",
- "compositor_monitor_devtool_font_base",
- "iced_core",
- "iced_runtime",
- "iced_wgpu",
- "iced_widget",
- "prost",
- "smithay",
- "tokio-stream",
- "tonic",
- "tonic-prost",
-]
-
-[[package]]
 name = "compositor_monitor_launcher_ui_base"
 version = "0.1.0"
 dependencies = [
@@ -4335,16 +4313,41 @@ dependencies = [
 ]
 
 [[package]]
-name = "compositor_monitor_server_protocol_base"
+name = "compositor_monitor_selection_font_base"
 version = "0.1.0"
 dependencies = [
  "bitflags 2.13.0",
+ "iced_core",
+ "iced_graphics",
+ "iced_runtime",
+ "iced_wgpu",
+ "iced_widget",
+ "prost",
  "smithay",
+ "tokio-stream",
+ "tonic",
+ "tonic-prost",
  "tracing",
  "tracing-subscriber",
- "wayland-client",
- "wayland-scanner",
- "wayland-server",
+]
+
+[[package]]
+name = "compositor_monitor_selection_scene_base"
+version = "0.1.0"
+dependencies = [
+ "bitflags 2.13.0",
+ "compositor_developer_debug_instance_record",
+ "compositor_monitor_selection_font_base",
+ "compositor_support_iced_core_engine_base",
+ "iced_core",
+ "iced_runtime",
+ "iced_wgpu",
+ "iced_widget",
+ "prost",
+ "smithay",
+ "tokio-stream",
+ "tonic",
+ "tonic-prost",
 ]
 
 [[package]]
@@ -4370,6 +4373,7 @@ dependencies = [
  "compositor_orchestration_driver_logind_base",
  "compositor_orchestration_driver_remote_base",
  "compositor_orchestration_driver_resume_base",
+ "compositor_orchestration_driver_selection_base",
  "compositor_orchestration_environment_type_base",
  "compositor_orchestration_seat_gesture_state",
  "compositor_orchestration_seat_pointer_state",
@@ -4527,6 +4531,7 @@ dependencies = [
  "compositor_y5_navigator_state_base",
  "compositor_y5_picker_interface_capture",
  "compositor_y5_placeholder_interface_base",
+ "compositor_y5_select_overlay_interface",
  "compositor_y5_surface_draw_hook",
  "compositor_y5_surface_draw_scene",
  "compositor_y5_surface_interface_base",
@@ -4617,6 +4622,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_orchestration_driver_selection_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_monitor_compositor_iced_base",
+ "compositor_support_system_storage_token_base",
+ "smithay",
+]
+
+[[package]]
 name = "compositor_orchestration_environment_interface_lifecycle"
 version = "0.0.1"
 dependencies = [
@@ -4645,6 +4659,15 @@ dependencies = [
  "compositor_orchestration_core_state_base",
  "compositor_orchestration_draw_platform_base",
  "compositor_support_system_input_event_base",
+]
+
+[[package]]
+name = "compositor_orchestration_launch_broadcast_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_introspection_execution_launch_types",
+ "compositor_support_system_channel_router_base",
+ "compositor_support_system_channel_token_base",
 ]
 
 [[package]]
@@ -4828,6 +4851,7 @@ dependencies = [
  "bitflags 2.13.0",
  "compositor_remote_message_client_base",
  "compositor_support_library_input_keyboard_base",
+ "compositor_support_system_storage_token_base",
  "smithay",
  "tracing",
  "tracing-subscriber",
@@ -7343,6 +7367,7 @@ dependencies = [
  "compositor_monitor_compositor_iced_base",
  "compositor_orchestration_draw_layer_base",
  "compositor_orchestration_draw_platform_base",
+ "compositor_orchestration_storage_state_base",
  "compositor_support_smithay_dispatch_state_base",
  "compositor_support_system_buffer_token_base",
  "compositor_support_system_input_event_base",
@@ -7350,6 +7375,7 @@ dependencies = [
  "compositor_support_system_storage_slot_base",
  "compositor_support_system_storage_token_base",
  "compositor_support_system_trait_system_base",
+ "compositor_y5_camera_state_base",
  "compositor_y5_camera_transform_translate",
  "compositor_y5_canvas_input_state",
  "compositor_y5_canvas_state_base",
@@ -7636,7 +7662,9 @@ version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
  "compositor_developer_debug_instance_record",
+ "compositor_introspection_execution_launch_types",
  "compositor_introspection_launchplan_plan_base",
+ "compositor_kernel_execution_driver_executor_base",
  "compositor_orchestration_core_state_base",
  "compositor_y5_launcher_interface_base",
  "compositor_y5_launcher_protocol_message",
@@ -8440,6 +8468,7 @@ dependencies = [
  "compositor_y5_picker_state_base",
  "compositor_y5_picker_system_base",
  "compositor_y5_placeholder_system_base",
+ "compositor_y5_select_overlay_system",
  "compositor_y5_select_system_base",
  "compositor_y5_surface_system_base",
  "compositor_y5_window_system_base",
@@ -8478,10 +8507,13 @@ version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
  "compositor_developer_debug_instance_record",
+ "compositor_introspection_execution_launch_build",
+ "compositor_introspection_execution_launch_policy",
  "compositor_introspection_launchplan_plan_base",
  "compositor_introspection_launchplan_plan_capture",
  "compositor_introspection_restoration_state_base",
  "compositor_introspection_sampler_window_base",
+ "compositor_kernel_execution_driver_executor_base",
  "compositor_orchestration_core_state_base",
  "compositor_orchestration_draw_layer_base",
  "compositor_orchestration_driver_introspection_base",
@@ -8594,6 +8626,9 @@ dependencies = [
 name = "compositor_y5_placeholder_system_base"
 version = "0.0.1"
 dependencies = [
+ "compositor_introspection_execution_launch_policy",
+ "compositor_introspection_execution_launch_types",
+ "compositor_orchestration_launch_broadcast_base",
  "compositor_support_system_buffer_token_base",
  "compositor_support_system_channel_router_base",
  "compositor_support_system_channel_token_base",
@@ -8601,6 +8636,7 @@ dependencies = [
  "compositor_support_system_storage_token_base",
  "compositor_support_system_trait_system_base",
  "compositor_y5_placeholder_persist_doc",
+ "compositor_y5_placeholder_record_base",
  "compositor_y5_placeholder_state_base",
  "compositor_y5_surface_system_base",
  "smithay",
@@ -8637,6 +8673,37 @@ dependencies = [
  "compositor_y5_lock_system_base",
  "compositor_y5_select_state_base",
  "uuid",
+]
+
+[[package]]
+name = "compositor_y5_select_overlay_interface"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_monitor_compositor_iced_base",
+ "compositor_monitor_selection_font_base",
+ "compositor_monitor_selection_scene_base",
+ "compositor_orchestration_core_state_base",
+ "compositor_orchestration_draw_layer_base",
+ "compositor_orchestration_driver_selection_base",
+ "compositor_remote_client_handle_aspect",
+ "compositor_remote_client_handle_selection",
+ "compositor_remote_message_client_base",
+ "compositor_support_world_order_track_base",
+ "compositor_y5_surface_draw_handle",
+ "compositor_y5_surface_protocol_base",
+ "smithay",
+ "uuid",
+]
+
+[[package]]
+name = "compositor_y5_select_overlay_system"
+version = "0.0.1"
+dependencies = [
+ "compositor_orchestration_driver_selection_base",
+ "compositor_support_system_buffer_token_base",
+ "compositor_support_system_trait_system_base",
+ "compositor_y5_select_system_base",
 ]
 
 [[package]]
@@ -8687,7 +8754,6 @@ dependencies = [
  "bitflags 2.13.0",
  "compositor_developer_debug_instance_record",
  "compositor_monitor_compositor_iced_base",
- "compositor_monitor_devtool_example_base",
  "compositor_monitor_runtime_surface_base",
  "compositor_orchestration_core_state_base",
  "compositor_orchestration_draw_layer_base",
@@ -8706,7 +8772,6 @@ dependencies = [
  "bitflags 2.13.0",
  "compositor_developer_debug_instance_record",
  "compositor_monitor_compositor_iced_base",
- "compositor_monitor_devtool_example_base",
  "compositor_monitor_runtime_surface_base",
  "compositor_orchestration_core_state_base",
  "compositor_support_iced_core_engine_base",
@@ -8716,6 +8781,7 @@ dependencies = [
  "compositor_y5_lock_protocol_base",
  "compositor_y5_lock_system_base",
  "compositor_y5_placeholder_interface_base",
+ "compositor_y5_select_overlay_interface",
  "compositor_y5_surface_protocol_base",
  "compositor_y5_surface_system_base",
  "smithay",
@@ -8727,7 +8793,6 @@ version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
  "compositor_monitor_compositor_iced_base",
- "compositor_monitor_devtool_example_base",
  "compositor_monitor_runtime_surface_base",
  "compositor_orchestration_core_state_base",
  "compositor_orchestration_draw_layer_base",
@@ -8749,7 +8814,6 @@ dependencies = [
  "compositor_developer_debug_instance_record",
  "compositor_developer_environment_config_base",
  "compositor_monitor_compositor_iced_base",
- "compositor_monitor_devtool_example_base",
  "compositor_monitor_runtime_surface_base",
  "compositor_orchestration_core_state_base",
  "compositor_orchestration_draw_layer_base",
@@ -8802,6 +8866,7 @@ name = "compositor_y5_surface_protocol_base"
 version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
+ "compositor_monitor_selection_scene_base",
  "compositor_y5_graphic_capture_session",
  "compositor_y5_group_protocol_base",
  "compositor_y5_group_surface_base",
@@ -8820,7 +8885,6 @@ version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
  "compositor_monitor_compositor_iced_base",
- "compositor_monitor_devtool_example_base",
  "compositor_monitor_runtime_surface_base",
  "compositor_support_iced_core_engine_base",
  "compositor_y5_surface_protocol_base",
@@ -9650,7 +9714,7 @@ checksum = "457e789b3d1202543297a350643cf459f836cade38934e7a4cf6a39e7cde2905"
 dependencies = [
  "fontconfig-parser",
  "log",
- "memmap2 0.9.10",
+ "memmap2",
  "slotmap",
  "tinyvec",
  "ttf-parser",
@@ -10811,15 +10875,6 @@ name = "memchr"
 version = "2.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "88904434abc2901f197fe8cc55f0445e7ded921dba5911dad2e2b39b48e663c4"
-
-[[package]]
-name = "memmap2"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43a5a03cefb0d953ec0be133036f14e109412fa594edc2f77227249db66cc3ed"
-dependencies = [
- "libc",
-]
 
 [[package]]
 name = "memmap2"
@@ -12397,7 +12452,7 @@ dependencies = [
  "wayland-server",
  "wayland-sys",
  "winit",
- "xkbcommon 0.9.0",
+ "xkbcommon",
 ]
 
 [[package]]
@@ -12407,14 +12462,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3457dea1f0eb631b4034d61d4d8c32074caa6cd1ab2d59f2327bd8461e2c0016"
 dependencies = [
  "bitflags 2.13.0",
- "bytemuck",
  "calloop 0.13.0",
  "calloop-wayland-source",
  "cursor-icon",
  "libc",
  "log",
- "memmap2 0.9.10",
- "pkg-config",
+ "memmap2",
  "rustix 0.38.44",
  "thiserror 1.0.69",
  "wayland-backend",
@@ -12424,7 +12477,6 @@ dependencies = [
  "wayland-protocols",
  "wayland-protocols-wlr",
  "wayland-scanner",
- "xkbcommon 0.7.0",
  "xkeysym",
 ]
 
@@ -14005,7 +14057,7 @@ dependencies = [
  "dpi",
  "js-sys",
  "libc",
- "memmap2 0.9.10",
+ "memmap2",
  "ndk",
  "objc2 0.5.2",
  "objc2-app-kit",
@@ -14090,23 +14142,12 @@ checksum = "bec9e4a500ca8864c5b47b8b482a73d62e4237670e5b5f1d6b9e3cae50f28f2b"
 
 [[package]]
 name = "xkbcommon"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13867d259930edc7091a6c41b4ce6eee464328c6ff9659b7e4c668ca20d4c91e"
-dependencies = [
- "libc",
- "memmap2 0.8.0",
- "xkeysym",
-]
-
-[[package]]
-name = "xkbcommon"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7a974f48060a14e95705c01f24ad9c3345022f4d97441b8a36beb7ed5c4a02d"
 dependencies = [
  "libc",
- "memmap2 0.9.10",
+ "memmap2",
  "xkeysym",
 ]
 
@@ -14128,9 +14169,6 @@ name = "xkeysym"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9cc00251562a284751c9973bace760d86c0276c471b4be569fe6b068ee97a56"
-dependencies = [
- "bytemuck",
-]
 
 [[package]]
 name = "xml-rs"

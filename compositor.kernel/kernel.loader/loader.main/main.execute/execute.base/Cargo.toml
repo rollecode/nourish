@@ -20,6 +20,7 @@ compositor_support_world_kind_build_base = { workspace = true }
 compositor_support_smithay_state_space_base = { workspace = true }
 compositor_support_world_host_space_base = { workspace = true }
 compositor_y5_select_system_base = { workspace = true }
+compositor_y5_select_overlay_system = { workspace = true }
 compositor_y5_group_system_base = { workspace = true }
 compositor_y5_launcher_system_base = { workspace = true }
 compositor_y5_placeholder_system_base = { workspace = true }
@@ -57,7 +58,6 @@ compositor_support_smithay_wayland_connection_record.workspace = true
 compositor_support_library_debug_client_base.workspace = true
 compositor_remote_transport_server_base.workspace = true
 compositor_monitor_runtime_surface_base.workspace = true
-compositor_monitor_devtool_render_base.workspace = true
 compositor_introspection_sampler_window_base.workspace = true
 compositor_introspection_extraction_window_base.workspace = true
 # Developer structured logging (separate compositor.developer workspace). Direct path deps
@@ -67,6 +67,9 @@ compositor_developer_debug_instance_record = { workspace = true }
 # Central environment config — read once at the very top of main() (before logging).
 compositor_developer_environment_config_base = { workspace = true }
 compositor_y5_picker_world_restore = { workspace = true }
+# App-launch executor wiring (kernel.execution driver) — main() calls
+# block_sigchld() + install() and nothing else from the launch subsystem.
+compositor_kernel_execution_driver_executor_install = { workspace = true }
 
 [[bin]]
 name = "y5_compositor"

@@ -15,6 +15,11 @@ compositor_y5_placeholder_persist_doc = { workspace = true }
 compositor_support_system_persist_document_entry = { workspace = true }
 smithay = { workspace = true }
 uuid = { workspace = true }
+# Launch restoration: subscribe to the Executed event, stamp the token/PID.
+compositor_orchestration_launch_broadcast_base = { workspace = true }
+compositor_introspection_execution_launch_types = { workspace = true }
+compositor_introspection_execution_launch_policy = { workspace = true }
+compositor_y5_placeholder_record_base = { workspace = true }
 
 [package.metadata.lint]
 allow = ["size"]

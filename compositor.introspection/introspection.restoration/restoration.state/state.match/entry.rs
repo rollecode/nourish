@@ -12,10 +12,22 @@ use compositor_introspection_restoration_state_registry::registry::MatcherRegist
 /// Decide which pending restoration (if any) a newly-appeared window
 /// satisfies. Pure function.
 ///
-/// Iterates `pendings` in order (FIFO). For each, dispatches to the
-/// matcher registered for `pending.plan.active_handler`, falling back
-/// to the registry's generic matcher if none is registered. First
-/// [`MatchResult::Yes`] wins; the matched pending's id is returned.
+/// Runs two FIFO sweeps over `pendings`, each pass complete across *all*
+/// pendings before the next begins:
+///
+/// 1. **Explicit-launch pass.** For each pending, dispatch to the matcher
+///    registered for `pending.plan.active_handler` (falling back to the
+///    registry's generic matcher) and bind the first
+///    [`MatchResult::Yes`].
+/// 2. **Transient-capture pass.** Only if no explicit-launch signal claimed
+///    the window: bind the first pending whose capture-armed attributes
+///    equal the window's values.
+///
+/// The passes are kept fully separate — not interleaved per pending — so an
+/// explicit-launch signal on *any* placeholder always outranks a transient
+/// capture on an earlier one in the list. Interleaving would let a
+/// capture-armed placeholder near the front of the FIFO adopt a window that
+/// an explicit launch elsewhere should have claimed.
 ///
 /// Inputs:
 /// - `pendings`: in-flight launches the compositor is waiting on.
@@ -33,6 +45,9 @@ pub fn match_window(
     candidate_token: Option<&str>,
     matchers: &MatcherRegistry,
 ) -> Option<Uuid> {
+    // PASS 1 (explicit launch): activation token / PID tree take precedence
+    // across the whole list — a handler matcher claim on any pending beats a
+    // transient capture on an earlier one.
     for pending in pendings {
         let matcher = pending
             .plan
@@ -40,21 +55,22 @@ pub fn match_window(
             .and_then(|id| matchers.get(id))
             .or_else(|| matchers.fallback());
 
-        // Explicit-launch signals (activation token / PID tree) take
-        // precedence: if the per-handler matcher claims the window, bind it.
         if let Some(matcher) = matcher {
             if matcher.matches(pending, candidate, candidate_hints, candidate_token) == MatchResult::Yes {
                 return Some(pending.id);
             }
         }
+    }
 
-        // Otherwise fall through to transient capture: a placeholder with
-        // capture-armed attributes adopts a window whose values match, even
-        // though no Launch spawned it.
+    // PASS 2 (transient capture): only once no explicit launch claimed the
+    // window does a placeholder with capture-armed attributes adopt a window
+    // whose values match, even though no Launch spawned it.
+    for pending in pendings {
         if capture_matches(pending, candidate_hints) {
             return Some(pending.id);
         }
     }
+
     None
 }
 

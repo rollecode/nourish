@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Nourish — a calmer way to use your computer</title>
 <meta name="description" content="Nourish is a free, open-source Linux desktop where every window lives on one endless, zoomable canvas. Spread your work out, zoom in to focus, zoom out to see everything. A Snowies project.">
-<!-- Open Graph: replace assets/og.png with a real screenshot before launch
-     (the end frame of Shot 1 in SHOT_LIST.md doubles as the OG image). -->
+<!-- Open Graph: using the sphere hero for now; swap to the M0 end frame (assets/og.png)
+     before launch — see SHOT_LIST.md. -->
 <meta property="og:title" content="Nourish — a calmer way to use your computer">
 <meta property="og:description" content="A free, open-source Linux desktop where your whole workspace lives on one endless canvas.">
-<meta property="og:image" content="assets/og.png">
+<meta property="og:image" content="assets/hero-sphere.png">
 <meta property="og:url" content="https://nourish.snowies.com/">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
@@ -26,12 +26,11 @@
   <a class="nav-brand" href="index.html">
     <span class="nav-mark" aria-hidden="true">✻</span>
     <span class="nav-name">Nourish</span>
-    <span class="nav-by">by Snowies</span>
   </a>
   <nav class="nav-links" aria-label="Main">
     <a href="index.html" aria-current="page">Home</a>
     <a href="guide.html">Guide</a>
-    <a class="btn btn-ghost" href="https://discord.gg/snowies" rel="noopener">
+    <a class="btn btn-ghost" href="https://discord.gg/kasec5bYb" rel="noopener">
       <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="currentColor"><path d="M20.32 4.37a19.8 19.8 0 0 0-4.93-1.51 13.78 13.78 0 0 0-.64 1.28 18.27 18.27 0 0 0-5.5 0 12.64 12.64 0 0 0-.64-1.28c-1.71.29-3.37.8-4.93 1.51A20.26 20.26 0 0 0 .1 18.06a19.9 19.9 0 0 0 6.07 3.03c.49-.66.92-1.37 1.3-2.1a12.94 12.94 0 0 1-2.05-.98c.17-.12.34-.25.5-.38a14.2 14.2 0 0 0 12.16 0c.17.13.33.26.5.38-.65.39-1.34.71-2.05.98.37.73.81 1.44 1.3 2.1a19.84 19.84 0 0 0 6.07-3.03 20.2 20.2 0 0 0-2.58-13.69ZM8.02 15.33c-1.18 0-2.16-1.08-2.16-2.42 0-1.33.95-2.42 2.16-2.42 1.21 0 2.18 1.1 2.16 2.42 0 1.34-.95 2.42-2.16 2.42Zm7.96 0c-1.18 0-2.16-1.08-2.16-2.42 0-1.33.95-2.42 2.16-2.42 1.21 0 2.18 1.1 2.16 2.42 0 1.34-.95 2.42-2.16 2.42Z"/></svg>
       Discord
     </a>
@@ -45,125 +44,90 @@
 <main id="main">
 
 <!-- ========== HERO ========== -->
-<section class="hero">
+<section class="hero" id="hero">
+  <!-- HERO — Shot M0. Full-viewport video; it scrolls completely past before the intro. -->
+  <video class="hero-media-fill" autoplay muted loop playsinline preload="auto"
+         poster="assets/hero-sphere.png">
+    <source src="assets/hero-av1.webm" type="video/webm; codecs=av01.0.05M.08">
+    <source src="assets/hero-vp9.webm" type="video/webm; codecs=vp9">
+    <source src="assets/hero.mp4" type="video/mp4">
+  </video>
+</section>
+
+<!-- ========== INTRO (Nourish + description + globe, over the space backdrop) ========== -->
+<section class="intro" id="intro">
   <div class="sky" aria-hidden="true">
     <div class="aurora"></div>
     <div class="stars" id="stars"></div>
   </div>
-
-  <div class="hero-inner reveal">
-    <p class="eyebrow">Free &amp; open source · a Snowies project</p>
-    <h1>Your desktop,<br>without the walls.</h1>
-    <p class="lede">Nourish is a Linux desktop where your screen is a window
-    onto one endless canvas. Spread your work out, zoom in to focus, zoom out
-    to see everything — nothing gets buried, nothing gets lost. And it
-    remembers: close the lid, come back tomorrow, find it just as you left it.</p>
-    <div class="hero-actions">
-      <a class="btn btn-primary" href="#highlights">See it in action</a>
-      <a class="btn btn-ghost" href="guide.html#install">Get Nourish</a>
-    </div>
-    <p class="hero-note">Runs on Fedora 44 today · one-command install · v0.0.1, early but real</p>
-  </div>
-
-  <!-- HERO VIDEO PLACEHOLDER (Shot 1 in SHOT_LIST.md)
-       Replace this whole .video-ph block with:
-       <video class="hero-video" autoplay muted loop playsinline
-              poster="assets/hero-poster.png">
-         <source src="assets/hero.webm" type="video/webm">
-         <source src="assets/hero.mp4" type="video/mp4">
-       </video> -->
-  <div class="hero-video video-ph reveal" role="img" aria-label="Placeholder for the Nourish demo video">
-    <span class="ph-play" aria-hidden="true"></span>
-    <span class="ph-label">Hero video placeholder</span>
+  <!-- GSAP ScrollTrigger (main.js) pins this section and rises/scales the title,
+       description and globe in as you scroll. Static centred fallback without JS /
+       reduced motion. -->
+  <div class="intro-inner">
+    <h1 class="hero-title">Nourish</h1>
+    <p class="hero-desc lede">A simple next-gen desktop for work.</p>
+    <img class="hero-globe" src="assets/hero-sphere.png" alt="" aria-hidden="true">
+    <a class="btn btn-primary hero-cta" href="#highlights">See it in action</a>
   </div>
 </section>
 
-<!-- ========== WHAT IS THIS ========== -->
-<section class="what reveal">
-  <h2>What is Nourish?</h2>
-  <p>Ordinary desktops stack windows on top of each other until you're
-  digging for the one you need. Nourish takes the walls away: all your
-  windows live side by side on one huge canvas, and your screen simply
-  glides and zooms across it. Things stay where you put them — sharp at
-  any zoom — so finding your work feels like glancing across a desk, not
-  searching a pile. Need a clean slate? Flick to a whole separate canvas
-  with one key. It runs on Linux, it's completely free, and anyone can
-  read exactly how it's made.</p>
-</section>
-
-<!-- ========== 3 FEATURE HIGHLIGHTS ========== -->
+<!-- ========== FEATURE HIGHLIGHTS ========== -->
 <div id="highlights">
 
 <section class="highlight reveal">
   <div class="highlight-media">
-    <!-- VIDEO PLACEHOLDER: replace with looping <video> like the hero (Shot 2) -->
-    <div class="video-ph" role="img" aria-label="Placeholder: aligning and grouping windows">
+    <!-- VIDEO PLACEHOLDER: one looping <video> (Shot M4 — groups + placeholders) -->
+    <div class="video-ph" role="img" aria-label="Placeholder: grouping windows and restoring a closed app in place">
       <span class="ph-play" aria-hidden="true"></span>
-      <span class="ph-label">Looping video placeholder — Shot 2</span>
+      <span class="ph-label">Looping video placeholder — Organization (M4)</span>
     </div>
   </div>
   <div class="highlight-text">
     <p class="eyebrow">Highlight</p>
-    <h2>Gather windows into groups</h2>
-    <p>Select a handful of windows, line them up — left, centre, evenly
-    spaced — with one move, and give the bunch a name. A window can go
-    fullscreen <em>within</em> its group, and the whole group can collapse
-    down to just its name: out of the way, never lost.</p>
-    <a class="text-link" href="guide.html#groups">How groups work →</a>
+    <h2>Keep everything in order</h2>
+    <p>Gather a handful of windows into a named group — line them up, space
+    them evenly, fullscreen one <em>within</em> the group, or collapse the
+    whole bunch down to its name. And nothing gets lost: when an app closes
+    or crashes, Nourish leaves a placeholder right where it was, and one tap
+    brings it back — same spot, same size. Your whole layout is saved to
+    disk, so it survives a reboot too.</p>
+    <a class="text-link" href="guide.html#groups">How organizing works →</a>
   </div>
 </section>
 
 <section class="highlight reveal">
   <div class="highlight-media">
-    <div class="video-ph" role="img" aria-label="Placeholder: a closed app being restored in place">
+    <!-- VIDEO PLACEHOLDER: a looping <video> (Shot M6 — worlds) -->
+    <div class="video-ph" role="img" aria-label="Placeholder: the 3D world picker">
       <span class="ph-play" aria-hidden="true"></span>
-      <span class="ph-label">Looping video placeholder — Shot 3</span>
+      <span class="ph-label">Looping video placeholder — World picker (M6)</span>
     </div>
   </div>
   <div class="highlight-text">
     <p class="eyebrow">Highlight</p>
-    <h2>A desktop that heals itself</h2>
-    <p>When an app closes — or crashes — Nourish leaves a quiet outline
-    exactly where it was. One tap brings it back: same spot, same size.
-    And because your layout is saved to disk, it survives a full reboot
-    too. Log back in tomorrow and your canvas is waiting, windows and all.</p>
-    <a class="text-link" href="guide.html#placeholders">How restoring works →</a>
-  </div>
-</section>
-
-<section class="highlight reveal">
-  <div class="highlight-media">
-    <div class="video-ph" role="img" aria-label="Placeholder: switching between canvases with the worlds picker">
-      <span class="ph-play" aria-hidden="true"></span>
-      <span class="ph-label">Looping video placeholder — Worlds picker</span>
-    </div>
-  </div>
-  <div class="highlight-text">
-    <p class="eyebrow">Highlight</p>
-    <h2>Many canvases, one keystroke</h2>
-    <p>One endless canvas is plenty — but sometimes you want a clean one.
-    Press a key and a gentle 3D picker rises up, every canvas a tile you
-    can fly into. Keep "work" and "play" on separate surfaces; each one
-    keeps its own windows and remembers itself between sessions.</p>
+    <h2>The world picker</h2>
+    <p>Keep separate canvases for separate jobs. A keyboard shortcut raises a
+    gentle 3D picker with every world shown as a tile — fly into any one, and
+    each keeps its own windows and remembers itself between sessions.</p>
     <a class="text-link" href="guide.html#worlds">How worlds work →</a>
   </div>
 </section>
 
 <section class="highlight reveal">
   <div class="highlight-media">
-    <div class="video-ph" role="img" aria-label="Placeholder: jumping between zones on the canvas">
+    <!-- VIDEO PLACEHOLDER: a looping <video> (Shot M8 — capture) -->
+    <div class="video-ph" role="img" aria-label="Placeholder: the capture overlay recording a region">
       <span class="ph-play" aria-hidden="true"></span>
-      <span class="ph-label">Looping video placeholder — Shot 5</span>
+      <span class="ph-label">Looping video placeholder — Capture (M8)</span>
     </div>
   </div>
   <div class="highlight-text">
     <p class="eyebrow">Highlight</p>
-    <h2>Zones: your favorite places</h2>
-    <p>Mark any spot on the canvas as a zone — your writing corner, your
-    project table — and jump straight to it with one keystroke. Six zones
-    are a Save and a Recall away, so the places you visit most are always
-    a single key from wherever you are.</p>
-    <a class="text-link" href="guide.html#zones">How zones work →</a>
+    <h2>Capture anything</h2>
+    <p>Screenshot or record a window, a region of the canvas that follows your
+    pan and zoom, or the whole screen. Save a crisp PNG or a hardware-encoded
+    H.264 video — even with a transparent background for clean overlays.</p>
+    <a class="text-link" href="guide.html#capture">How capture works →</a>
   </div>
 </section>
 
@@ -177,182 +141,87 @@
   </div>
 
   <div class="feature-grid">
-    <!-- Each card: icon placeholder + looping video placeholder + link to its guide.
-         To replace a video placeholder, swap .video-ph for a muted looping <video>.
-         To replace an icon placeholder, put an inline SVG inside .icon-ph. -->
+    <!-- Each card: icon + heading + link to its guide. (No media on the small cards.) -->
 
     <a class="feature-card reveal" href="guide.html#canvas">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <div class="video-ph video-ph--mini" role="img" aria-label="Video placeholder">
-        <span class="ph-play" aria-hidden="true"></span>
-      </div>
-      <h3>One endless canvas</h3>
+      <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>One endless canvas</h3>
       <p>Glide across all your work instead of digging through stacks.</p>
     </a>
 
     <a class="feature-card reveal" href="guide.html#zoom">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <div class="video-ph video-ph--mini" role="img" aria-label="Video placeholder">
-        <span class="ph-play" aria-hidden="true"></span>
-      </div>
-      <h3>Pin-sharp zoom</h3>
+      <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Pin-sharp zoom</h3>
       <p>Zoom into any window — video stays crisp, text stays readable.</p>
     </a>
 
     <a class="feature-card reveal" href="guide.html#navigation">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <div class="video-ph video-ph--mini" role="img" aria-label="Video placeholder">
-        <span class="ph-play" aria-hidden="true"></span>
-      </div>
-      <h3>Fly between windows</h3>
-      <p>Hop to the window beside you with a keystroke. Hands stay put.</p>
+      <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Fly between windows</h3>
+      <p>Hop to the window beside you with a keyboard shortcut. Hands stay put.</p>
     </a>
 
     <a class="feature-card reveal" href="guide.html#worlds">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <div class="video-ph video-ph--mini" role="img" aria-label="Video placeholder">
-        <span class="ph-play" aria-hidden="true"></span>
-      </div>
-      <h3>Many worlds</h3>
+      <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Many worlds</h3>
       <p>Keep separate canvases for separate jobs. Switch with one key.</p>
     </a>
 
     <a class="feature-card reveal" href="guide.html#placeholders">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <div class="video-ph video-ph--mini" role="img" aria-label="Video placeholder">
-        <span class="ph-play" aria-hidden="true"></span>
-      </div>
-      <h3>Picks up where you left off</h3>
+      <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Picks up where you left off</h3>
       <p>Your layout is saved to disk — it survives crashes and reboots.</p>
     </a>
 
     <a class="feature-card reveal" href="guide.html#capture">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <div class="video-ph video-ph--mini" role="img" aria-label="Video placeholder">
-        <span class="ph-play" aria-hidden="true"></span>
-      </div>
-      <h3>Capture anything</h3>
+      <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Capture anything</h3>
       <p>Screenshot or record your screen, a window, or any framing — even see-through.</p>
     </a>
 
     <a class="feature-card reveal" href="guide.html#backdrop">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <div class="video-ph video-ph--mini" role="img" aria-label="Video placeholder">
-        <span class="ph-play" aria-hidden="true"></span>
-      </div>
-      <h3>A living backdrop</h3>
+      <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>A living backdrop</h3>
       <p>A gentle parallax scene drifts behind your work as you move.</p>
     </a>
 
     <a class="feature-card reveal" href="guide.html#launcher">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <div class="video-ph video-ph--mini" role="img" aria-label="Video placeholder">
-        <span class="ph-play" aria-hidden="true"></span>
-      </div>
-      <h3>Open anything fast</h3>
+      <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Open anything fast</h3>
       <p>A built-in launcher finds and starts your apps from the keyboard.</p>
     </a>
 
-    <a class="feature-card reveal" href="guide.html#personalize">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <div class="video-ph video-ph--mini" role="img" aria-label="Video placeholder">
-        <span class="ph-play" aria-hidden="true"></span>
-      </div>
-      <h3>Make it yours</h3>
-      <p>Renderer, colour depth, refresh — set it all in one tidy file.</p>
-    </a>
-
     <a class="feature-card reveal" href="guide.html#lockscreen">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <div class="video-ph video-ph--mini" role="img" aria-label="Video placeholder">
-        <span class="ph-play" aria-hidden="true"></span>
-      </div>
-      <h3>A lock screen with a secret</h3>
-      <p>Lock your screen and see for yourself. We're not spoiling it.</p>
+      <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>A beautiful lock screen</h3>
+      <p>A clean, beautiful lock screen with a real password prompt behind it.</p>
     </a>
 
     <a class="feature-card reveal" href="guide.html#mxmaster">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <div class="video-ph video-ph--mini" role="img" aria-label="Video placeholder">
-        <span class="ph-play" aria-hidden="true"></span>
-      </div>
-      <h3>MX Master gestures</h3>
+      <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>MX Master gestures</h3>
       <p>Hold the gesture button, flick in any direction, and fly across the canvas.</p>
     </a>
 
     <a class="feature-card reveal" href="guide.html#shortcuts">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <div class="video-ph video-ph--mini" role="img" aria-label="Video placeholder">
-        <span class="ph-play" aria-hidden="true"></span>
-      </div>
-      <h3>Shortcuts that just work</h3>
+      <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Shortcuts that just work</h3>
       <p>A small set of keys covers everything, comfortably — no setup needed.</p>
     </a>
 
     <a class="feature-card reveal" href="guide.html#install">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <div class="video-ph video-ph--mini" role="img" aria-label="Video placeholder">
-        <span class="ph-play" aria-hidden="true"></span>
-      </div>
-      <h3>One-command install</h3>
+      <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>One-command install</h3>
       <p>A single line on Fedora 44 and you're in. The guide holds your hand.</p>
     </a>
 
     <a class="feature-card reveal" href="guide.html#graphics">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <div class="video-ph video-ph--mini" role="img" aria-label="Video placeholder">
-        <span class="ph-play" aria-hidden="true"></span>
-      </div>
-      <h3>Any graphics card</h3>
+      <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Any graphics card</h3>
       <p>NVIDIA, Intel, or AMD — Nourish speaks to all of them.</p>
     </a>
 
+    <a class="feature-card reveal" href="guide.html#renderer">
+      <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Stable Vulkan renderer</h3>
+      <p>Drawn on Vulkan, today's GPU standard — with a GLES fallback for older hardware.</p>
+    </a>
+
     <a class="feature-card reveal" href="guide.html#wayland">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <div class="video-ph video-ph--mini" role="img" aria-label="Video placeholder">
-        <span class="ph-play" aria-hidden="true"></span>
-      </div>
-      <h3>Modern to the core</h3>
-      <p>Built natively on Wayland, today's display standard, with deep support for it.</p>
+      <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Modern to the core</h3>
+      <p>Built natively on Wayland, today's display standard — and older X11 apps run too.</p>
     </a>
 
     <a class="feature-card reveal" href="guide.html#opensource">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <div class="video-ph video-ph--mini" role="img" aria-label="Video placeholder">
-        <span class="ph-play" aria-hidden="true"></span>
-      </div>
-      <h3>Free, forever</h3>
+      <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Free, forever</h3>
       <p>Open source under MIT / Apache-2.0. No account, no ads, no strings.</p>
     </a>
-
-    <!-- Honest roadmap — things that aren't wired up yet. -->
-    <div class="feature-card feature-card--soon reveal">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <span class="badge-soon">Coming soon</span>
-      <h3>Multiple screens</h3>
-      <p>Today Nourish drives a single monitor; multi-display is on the way.</p>
-    </div>
-
-    <div class="feature-card feature-card--soon reveal">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <span class="badge-soon">Coming soon</span>
-      <h3>Older (X11) apps</h3>
-      <p>Wayland apps run today; a compatibility layer for X11-only apps is planned.</p>
-    </div>
-
-    <div class="feature-card feature-card--soon reveal">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <span class="badge-soon">Coming soon</span>
-      <h3>Screen sharing</h3>
-      <p>Nourish records beautifully; sharing <em>into</em> Zoom &amp; the browser is next.</p>
-    </div>
-
-    <div class="feature-card feature-card--soon reveal">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>
-      <span class="badge-soon">Coming soon</span>
-      <h3>Game support</h3>
-      <p>Play seriously, right on the canvas.</p>
-    </div>
   </div>
 </section>
 
@@ -371,18 +240,19 @@
 </main>
 
 <footer class="footer">
-  <p><span class="nav-mark" aria-hidden="true">✻</span> Nourish is
-  a <a href="https://snowies.com">Snowies</a> project.</p>
+  <p><span class="nav-mark" aria-hidden="true">✻</span> <a href="https://snowies.com">snowies.nourish</a></p>
   <nav aria-label="Footer">
     <a href="index.html">Home</a>
     <a href="guide.html">Guide</a>
     <a href="https://github.com/y5-snowies/nourish" rel="noopener">GitHub</a>
-    <a href="https://discord.gg/snowies" rel="noopener">Discord</a>
+    <a href="https://discord.gg/kasec5bYb" rel="noopener">Discord</a>
     <a href="guide.html#opensource">Free forever</a>
     <a href="guide.html#opensource">MIT / Apache-2.0</a>
   </nav>
 </footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
 <script src="main.js"></script>
 </body>
 </html>

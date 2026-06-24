@@ -6,8 +6,6 @@ pub struct SurfaceState {
     // per-world. This world owns only its registry, built lazily from it.
     pub registry: Option<IcedRegistry>,
 
-    pub example: Vec<IcedHandle<compositor_monitor_devtool_example_base::CounterUi>>,
-
     pub test_dmabuf_done: bool,
     pub test_example_done: bool,
 
@@ -21,7 +19,6 @@ impl SurfaceState {
         return Self {
             surface_message_buffer: vec!(),
             surface_message_buffer_channel: mpsc::channel(),
-            example: vec![],
             registry: None,
             test_dmabuf_done: false,
             test_example_done: false,

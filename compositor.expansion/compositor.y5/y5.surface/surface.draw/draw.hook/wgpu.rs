@@ -53,6 +53,9 @@ fn load_incoming_buffer(state: &mut Loop, x: &mut GlesRenderer, size: Size<i32, 
             SurfaceMessageType::Capture(capture_message) => {
                 compositor_y5_graphic_capture_interface::interface::handle(state, x, capture_message)
             }
+            SurfaceMessageType::Selection(selection_forward) => {
+                compositor_y5_select_overlay_interface::interface::handle(state, x, selection_forward)
+            }
             _ => {} // SurfaceMessageType::LockScreen(lockscreen_message) => {
                     //     compositor_y5_lock_protocol_base::base::handle(state, x, size, lockscreen_message)
                     // }

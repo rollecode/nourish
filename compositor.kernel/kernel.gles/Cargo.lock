@@ -238,12 +238,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-recursion"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3b43422f69d8ff38f95f1b2bb76517c91589a924d1559a0e935d7c8ce0274c11"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "async-task"
 version = "4.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b75356056920673b02621b35afd0f7dda9306d03c79a30f5c56c44cf256e3de"
 dependencies = [
  "portable-atomic",
+]
+
+[[package]]
+name = "async-trait"
+version = "0.1.89"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9035ad2d096bed7955a320ee7e2230574d28fd3c3a0f186cbea1ff3c7eed5dbb"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]
@@ -309,6 +331,66 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_animation"
+version = "0.19.0-dev"
+dependencies = [
+ "bevy_animation_macros",
+ "bevy_app",
+ "bevy_asset",
+ "bevy_color",
+ "bevy_derive",
+ "bevy_ecs",
+ "bevy_math",
+ "bevy_mesh",
+ "bevy_platform",
+ "bevy_reflect",
+ "bevy_time",
+ "bevy_transform",
+ "bevy_utils",
+ "blake3",
+ "derive_more",
+ "downcast-rs 2.0.2",
+ "either",
+ "petgraph",
+ "ron",
+ "serde",
+ "smallvec",
+ "thiserror 2.0.18",
+ "thread_local",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "bevy_animation_macros"
+version = "0.19.0-dev"
+dependencies = [
+ "bevy_macro_utils",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "bevy_anti_alias"
+version = "0.19.0-dev"
+dependencies = [
+ "bevy_app",
+ "bevy_asset",
+ "bevy_camera",
+ "bevy_core_pipeline",
+ "bevy_derive",
+ "bevy_diagnostic",
+ "bevy_ecs",
+ "bevy_image",
+ "bevy_math",
+ "bevy_reflect",
+ "bevy_render",
+ "bevy_shader",
+ "bevy_utils",
+ "tracing",
+]
+
+[[package]]
 name = "bevy_app"
 version = "0.19.0-dev"
 dependencies = [
@@ -358,6 +440,7 @@ dependencies = [
  "futures-lite",
  "futures-util",
  "js-sys",
+ "notify-debouncer-full",
  "ron",
  "serde",
  "stackfuture",
@@ -580,6 +663,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_gltf"
+version = "0.19.0-dev"
+dependencies = [
+ "async-lock",
+ "base64",
+ "bevy_animation",
+ "bevy_app",
+ "bevy_asset",
+ "bevy_camera",
+ "bevy_color",
+ "bevy_ecs",
+ "bevy_image",
+ "bevy_light",
+ "bevy_material",
+ "bevy_math",
+ "bevy_mesh",
+ "bevy_platform",
+ "bevy_reflect",
+ "bevy_tasks",
+ "bevy_transform",
+ "bevy_world_serialization",
+ "fixedbitset",
+ "gltf",
+ "itertools 0.14.0",
+ "percent-encoding",
+ "serde",
+ "serde_json",
+ "smallvec",
+ "thiserror 2.0.18",
+ "tracing",
+ "wgpu-types",
+]
+
+[[package]]
 name = "bevy_image"
 version = "0.19.0-dev"
 dependencies = [
@@ -597,7 +714,9 @@ dependencies = [
  "guillotiere",
  "half",
  "image",
+ "ktx2",
  "rectangle-pack",
+ "ruzstd",
  "serde",
  "thiserror 2.0.18",
  "tracing",
@@ -639,6 +758,8 @@ version = "0.19.0-dev"
 dependencies = [
  "bevy_a11y",
  "bevy_android",
+ "bevy_animation",
+ "bevy_anti_alias",
  "bevy_app",
  "bevy_asset",
  "bevy_camera",
@@ -649,6 +770,7 @@ dependencies = [
  "bevy_ecs",
  "bevy_gizmos",
  "bevy_gizmos_render",
+ "bevy_gltf",
  "bevy_image",
  "bevy_input",
  "bevy_input_focus",
@@ -659,6 +781,7 @@ dependencies = [
  "bevy_mesh",
  "bevy_pbr",
  "bevy_platform",
+ "bevy_post_process",
  "bevy_ptr",
  "bevy_reflect",
  "bevy_render",
@@ -670,6 +793,7 @@ dependencies = [
  "bevy_transform",
  "bevy_utils",
  "bevy_window",
+ "bevy_world_serialization",
 ]
 
 [[package]]
@@ -759,7 +883,7 @@ dependencies = [
  "bevy_reflect",
  "derive_more",
  "glam 0.32.1",
- "itertools",
+ "itertools 0.14.0",
  "libm",
  "rand 0.10.1",
  "rand_distr",
@@ -813,6 +937,7 @@ dependencies = [
  "bevy_derive",
  "bevy_diagnostic",
  "bevy_ecs",
+ "bevy_gltf",
  "bevy_image",
  "bevy_light",
  "bevy_log",
@@ -861,6 +986,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_post_process"
+version = "0.19.0-dev"
+dependencies = [
+ "bevy_app",
+ "bevy_asset",
+ "bevy_camera",
+ "bevy_color",
+ "bevy_core_pipeline",
+ "bevy_derive",
+ "bevy_ecs",
+ "bevy_image",
+ "bevy_math",
+ "bevy_platform",
+ "bevy_reflect",
+ "bevy_render",
+ "bevy_shader",
+ "bevy_utils",
+ "smallvec",
+ "thiserror 2.0.18",
+ "tracing",
+]
+
+[[package]]
 name = "bevy_ptr"
 version = "0.19.0-dev"
 
@@ -881,6 +1029,7 @@ dependencies = [
  "glam 0.32.1",
  "indexmap",
  "inventory",
+ "petgraph",
  "serde",
  "smallvec",
  "smol_str 0.2.2",
@@ -938,7 +1087,7 @@ dependencies = [
  "glam 0.32.1",
  "image",
  "indexmap",
- "itertools",
+ "itertools 0.14.0",
  "js-sys",
  "naga",
  "nonmax",
@@ -1102,6 +1251,46 @@ dependencies = [
  "log",
  "raw-window-handle",
  "serde",
+]
+
+[[package]]
+name = "bevy_world_serialization"
+version = "0.19.0-dev"
+dependencies = [
+ "bevy_app",
+ "bevy_asset",
+ "bevy_camera",
+ "bevy_derive",
+ "bevy_ecs",
+ "bevy_platform",
+ "bevy_reflect",
+ "bevy_transform",
+ "bevy_utils",
+ "derive_more",
+ "ron",
+ "serde",
+ "thiserror 2.0.18",
+ "uuid",
+]
+
+[[package]]
+name = "bindgen"
+version = "0.71.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5f58bf3d7db68cfbac37cfc485a8d711e87e064c3d0fe0435b92f7a407f9d6b3"
+dependencies = [
+ "bitflags 2.13.0",
+ "cexpr",
+ "clang-sys",
+ "itertools 0.13.0",
+ "log",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "rustc-hash 2.1.2",
+ "shlex 1.3.0",
+ "syn",
 ]
 
 [[package]]
@@ -1281,7 +1470,16 @@ dependencies = [
  "find-msvc-tools",
  "jobserver",
  "libc",
- "shlex",
+ "shlex 2.0.1",
+]
+
+[[package]]
+name = "cexpr"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fac387a98bb7c37292057cffc56d62ecb629900026402633ae9160df93a8766"
+dependencies = [
+ "nom",
 ]
 
 [[package]]
@@ -1304,6 +1502,17 @@ checksum = "1a98d30140e3296250832bbaaff83b27dcd6fa3cc70fb6f1f3e5c9c0023b5317"
 dependencies = [
  "approx 0.4.0",
  "num-traits",
+]
+
+[[package]]
+name = "clang-sys"
+version = "1.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b023947811758c97c59bf9d1c188fd619ad4718dcaa767947df1cadb14f39f4"
+dependencies = [
+ "glob",
+ "libc",
+ "libloading",
 ]
 
 [[package]]
@@ -1345,306 +1554,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "compositor_background_three_bevy_alloc"
-version = "0.0.1"
-dependencies = [
- "compositor_background_three_bevy_fault",
- "compositor_developer_debug_instance_record",
- "gbm",
- "smithay",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_boot"
-version = "0.0.1"
-dependencies = [
- "bevy",
- "compositor_background_three_bevy_bridge",
- "compositor_background_three_bevy_install",
- "compositor_background_three_bevy_placeholder",
- "compositor_background_three_bevy_scene",
- "compositor_background_three_bevy_shared",
- "wgpu",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_bridge"
-version = "0.0.1"
-dependencies = [
- "bevy",
- "compositor_developer_debug_instance_record",
- "wgpu",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_compositor"
-version = "0.1.0"
-dependencies = [
- "compositor_background_three_bevy_element",
- "compositor_background_three_bevy_engine",
- "compositor_background_three_bevy_error",
- "compositor_background_three_bevy_handle",
- "compositor_background_three_bevy_instance",
- "compositor_background_three_bevy_item",
- "compositor_background_three_bevy_registry",
- "compositor_background_three_bevy_runtime",
- "compositor_background_three_bevy_space",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_context"
-version = "0.0.1"
-dependencies = [
- "compositor_background_three_bevy_fault",
- "compositor_developer_debug_instance_record",
- "pollster",
- "wgpu",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_element"
-version = "0.0.1"
-dependencies = [
- "compositor_background_three_bevy_space",
- "compositor_orchestration_draw_dispatch_frame",
- "smithay",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_engine"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "compositor_background_three_bevy_bridge",
- "compositor_background_three_bevy_host",
- "compositor_background_three_bevy_install",
- "compositor_background_three_bevy_placeholder",
- "compositor_background_three_bevy_scene",
- "compositor_background_three_bevy_shared",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_error"
-version = "0.0.1"
-dependencies = [
- "compositor_background_three_bevy_fault",
- "compositor_background_three_bevy_handle",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_fault"
-version = "0.0.1"
-dependencies = [
- "gbm",
- "smithay",
- "thiserror 2.0.18",
- "wgpu",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_frame"
-version = "0.0.1"
-dependencies = [
- "compositor_background_three_bevy_context",
- "compositor_background_three_bevy_element",
- "compositor_background_three_bevy_error",
- "compositor_background_three_bevy_handle",
- "compositor_background_three_bevy_item",
- "compositor_background_three_bevy_space",
- "compositor_developer_debug_instance_record",
- "smithay",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_gles"
-version = "0.0.1"
-dependencies = [
- "compositor_background_three_bevy_fault",
- "compositor_developer_debug_instance_record",
- "smithay",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_handle"
-version = "0.0.1"
-dependencies = [
- "compositor_background_three_bevy_scene",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_host"
-version = "0.0.1"
-dependencies = [
- "bevy",
- "compositor_background_three_bevy_boot",
- "compositor_background_three_bevy_scene",
- "compositor_background_three_bevy_shared",
- "wgpu",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_import"
-version = "0.0.1"
-dependencies = [
- "compositor_background_three_bevy_context",
- "compositor_background_three_bevy_fault",
- "compositor_developer_debug_instance_record",
- "smithay",
- "wgpu",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_install"
-version = "0.0.1"
-dependencies = [
- "bevy",
- "compositor_background_three_bevy_bridge",
- "compositor_developer_debug_instance_record",
- "wgpu",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_instance"
-version = "0.0.1"
-dependencies = [
- "compositor_background_three_bevy_context",
- "compositor_background_three_bevy_fault",
- "compositor_background_three_bevy_handle",
- "compositor_background_three_bevy_host",
- "compositor_background_three_bevy_scene",
- "compositor_background_three_bevy_surface",
- "compositor_developer_debug_instance_record",
- "smithay",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_item"
-version = "0.0.1"
-dependencies = [
- "compositor_background_three_bevy_context",
- "compositor_background_three_bevy_element",
- "compositor_background_three_bevy_fault",
- "compositor_background_three_bevy_handle",
- "compositor_background_three_bevy_instance",
- "compositor_background_three_bevy_scene",
- "compositor_background_three_bevy_space",
- "smithay",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_lifecycle"
-version = "0.0.1"
-dependencies = [
- "compositor_background_three_bevy_context",
- "compositor_background_three_bevy_error",
- "compositor_background_three_bevy_handle",
- "compositor_background_three_bevy_host",
- "compositor_background_three_bevy_instance",
- "compositor_background_three_bevy_item",
- "compositor_background_three_bevy_scene",
- "compositor_background_three_bevy_shared",
- "compositor_background_three_bevy_space",
- "compositor_background_three_bevy_surface",
- "compositor_developer_debug_instance_record",
- "smithay",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_mutate"
-version = "0.0.1"
-dependencies = [
- "compositor_background_three_bevy_error",
- "compositor_background_three_bevy_handle",
- "compositor_background_three_bevy_item",
- "compositor_background_three_bevy_scene",
- "smithay",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_order"
-version = "0.0.1"
-dependencies = [
- "compositor_background_three_bevy_handle",
- "compositor_background_three_bevy_item",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_placeholder"
-version = "0.0.1"
-dependencies = [
- "bevy",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_registry"
-version = "0.0.1"
-dependencies = [
- "compositor_background_three_bevy_context",
- "compositor_background_three_bevy_element",
- "compositor_background_three_bevy_error",
- "compositor_background_three_bevy_frame",
- "compositor_background_three_bevy_handle",
- "compositor_background_three_bevy_instance",
- "compositor_background_three_bevy_item",
- "compositor_background_three_bevy_lifecycle",
- "compositor_background_three_bevy_mutate",
- "compositor_background_three_bevy_order",
- "compositor_background_three_bevy_scene",
- "compositor_background_three_bevy_shared",
- "compositor_background_three_bevy_space",
- "smithay",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_runtime"
-version = "0.1.0"
-dependencies = [
- "compositor_background_three_bevy_alloc",
- "compositor_background_three_bevy_context",
- "compositor_background_three_bevy_fault",
- "compositor_background_three_bevy_gles",
- "compositor_background_three_bevy_import",
- "compositor_background_three_bevy_surface",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_scene"
-version = "0.0.1"
-dependencies = [
- "bevy",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_shared"
-version = "0.0.1"
-dependencies = [
- "wgpu",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_space"
-version = "0.0.1"
-dependencies = [
- "smithay",
-]
-
-[[package]]
-name = "compositor_background_three_bevy_surface"
-version = "0.0.1"
-dependencies = [
- "compositor_background_three_bevy_alloc",
- "compositor_background_three_bevy_context",
- "compositor_background_three_bevy_fault",
- "compositor_background_three_bevy_gles",
- "compositor_background_three_bevy_import",
- "compositor_developer_debug_instance_record",
- "smithay",
- "wgpu",
-]
-
-[[package]]
 name = "compositor_background_two_draw_element"
 version = "0.0.1"
 dependencies = [
@@ -1665,6 +1574,7 @@ version = "0.0.1"
 dependencies = [
  "compositor_background_two_draw_motion",
  "compositor_background_two_draw_program",
+ "compositor_background_two_draw_vulkan",
  "compositor_developer_stats_registry_base",
  "compositor_orchestration_draw_dispatch_frame",
  "smithay",
@@ -1676,6 +1586,15 @@ version = "0.0.1"
 dependencies = [
  "compositor_developer_debug_instance_record",
  "smithay",
+]
+
+[[package]]
+name = "compositor_background_two_draw_vulkan"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_stats_registry_base",
+ "compositor_orchestration_draw_dispatch_frame",
+ "naga",
 ]
 
 [[package]]
@@ -1699,6 +1618,14 @@ version = "0.0.1"
 dependencies = [
  "compositor_developer_debug_instance_channel",
  "compositor_developer_debug_instance_level",
+]
+
+[[package]]
+name = "compositor_developer_environment_config_base"
+version = "0.0.1"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1806,26 +1733,11 @@ name = "compositor_monitor_compositor_iced_base"
 version = "0.1.0"
 dependencies = [
  "compositor_developer_debug_instance_record",
- "compositor_monitor_engine_iced_base",
  "compositor_monitor_runtime_surface_base",
  "compositor_orchestration_draw_dispatch_frame",
+ "compositor_support_iced_core_engine_base",
  "iced_core",
  "smithay",
- "thiserror 2.0.18",
- "wgpu",
-]
-
-[[package]]
-name = "compositor_monitor_engine_iced_base"
-version = "0.1.0"
-dependencies = [
- "bitflags 2.13.0",
- "compositor_developer_debug_instance_record",
- "iced_core",
- "iced_graphics",
- "iced_runtime",
- "iced_wgpu",
- "iced_widget",
  "thiserror 2.0.18",
  "wgpu",
 ]
@@ -1848,6 +1760,14 @@ name = "compositor_orchestration_draw_dispatch_frame"
 version = "0.0.1"
 dependencies = [
  "compositor_developer_debug_instance_record",
+ "compositor_orchestration_draw_dispatch_uniforms",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_orchestration_draw_dispatch_uniforms"
+version = "0.0.1"
+dependencies = [
  "smithay",
 ]
 
@@ -1856,16 +1776,33 @@ name = "compositor_orchestration_draw_scene_element"
 version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
- "compositor_background_three_bevy_compositor",
  "compositor_background_two_draw_element",
  "compositor_monitor_compositor_iced_base",
- "compositor_monitor_engine_iced_base",
  "compositor_orchestration_draw_dispatch_frame",
+ "compositor_orchestration_draw_scene_preimported",
  "compositor_orchestration_seat_pointer_element",
+ "compositor_support_bevy_core_compositor_base",
+ "compositor_support_iced_core_engine_base",
  "compositor_y5_canvas_draw_element",
  "smithay",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "compositor_orchestration_draw_scene_preimported"
+version = "0.0.1"
+dependencies = [
+ "smithay",
+]
+
+[[package]]
+name = "compositor_orchestration_driver_capture_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_storage_token_base",
+ "compositor_y5_graphic_capture_registry",
+ "compositor_y5_graphic_capture_session",
 ]
 
 [[package]]
@@ -1892,6 +1829,325 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_support_bevy_core_alloc_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_bevy_core_fault_base",
+ "gbm",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_boot_base"
+version = "0.0.1"
+dependencies = [
+ "bevy",
+ "compositor_support_bevy_core_bridge_base",
+ "compositor_support_bevy_core_install_base",
+ "compositor_support_bevy_core_placeholder_base",
+ "compositor_support_bevy_core_scene_base",
+ "compositor_support_bevy_core_shared_base",
+ "wgpu",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_bridge_base"
+version = "0.0.1"
+dependencies = [
+ "bevy",
+ "compositor_developer_debug_instance_record",
+ "wgpu",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_compositor_base"
+version = "0.1.0"
+dependencies = [
+ "compositor_support_bevy_core_element_base",
+ "compositor_support_bevy_core_engine_base",
+ "compositor_support_bevy_core_error_base",
+ "compositor_support_bevy_core_handle_base",
+ "compositor_support_bevy_core_instance_base",
+ "compositor_support_bevy_core_item_base",
+ "compositor_support_bevy_core_registry_base",
+ "compositor_support_bevy_core_runtime_base",
+ "compositor_support_bevy_core_space_base",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_context_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_bevy_core_fault_base",
+ "pollster",
+ "wgpu",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_element_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_orchestration_draw_dispatch_frame",
+ "compositor_support_bevy_core_space_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_engine_base"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "compositor_support_bevy_core_bridge_base",
+ "compositor_support_bevy_core_host_base",
+ "compositor_support_bevy_core_install_base",
+ "compositor_support_bevy_core_placeholder_base",
+ "compositor_support_bevy_core_scene_base",
+ "compositor_support_bevy_core_shared_base",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_error_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_bevy_core_fault_base",
+ "compositor_support_bevy_core_handle_base",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_fault_base"
+version = "0.0.1"
+dependencies = [
+ "gbm",
+ "smithay",
+ "thiserror 2.0.18",
+ "wgpu",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_frame_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_bevy_core_context_base",
+ "compositor_support_bevy_core_element_base",
+ "compositor_support_bevy_core_error_base",
+ "compositor_support_bevy_core_handle_base",
+ "compositor_support_bevy_core_item_base",
+ "compositor_support_bevy_core_space_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_gles_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_bevy_core_fault_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_handle_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_bevy_core_scene_base",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_host_base"
+version = "0.0.1"
+dependencies = [
+ "bevy",
+ "compositor_support_bevy_core_boot_base",
+ "compositor_support_bevy_core_scene_base",
+ "compositor_support_bevy_core_shared_base",
+ "wgpu",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_import_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_bevy_core_context_base",
+ "compositor_support_bevy_core_fault_base",
+ "smithay",
+ "wgpu",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_install_base"
+version = "0.0.1"
+dependencies = [
+ "bevy",
+ "compositor_developer_debug_instance_record",
+ "compositor_support_bevy_core_bridge_base",
+ "wgpu",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_instance_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_bevy_core_context_base",
+ "compositor_support_bevy_core_fault_base",
+ "compositor_support_bevy_core_handle_base",
+ "compositor_support_bevy_core_host_base",
+ "compositor_support_bevy_core_scene_base",
+ "compositor_support_bevy_core_surface_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_item_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_bevy_core_context_base",
+ "compositor_support_bevy_core_element_base",
+ "compositor_support_bevy_core_fault_base",
+ "compositor_support_bevy_core_handle_base",
+ "compositor_support_bevy_core_instance_base",
+ "compositor_support_bevy_core_scene_base",
+ "compositor_support_bevy_core_space_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_lifecycle_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_bevy_core_context_base",
+ "compositor_support_bevy_core_error_base",
+ "compositor_support_bevy_core_handle_base",
+ "compositor_support_bevy_core_host_base",
+ "compositor_support_bevy_core_instance_base",
+ "compositor_support_bevy_core_item_base",
+ "compositor_support_bevy_core_scene_base",
+ "compositor_support_bevy_core_shared_base",
+ "compositor_support_bevy_core_space_base",
+ "compositor_support_bevy_core_surface_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_mutate_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_bevy_core_error_base",
+ "compositor_support_bevy_core_handle_base",
+ "compositor_support_bevy_core_item_base",
+ "compositor_support_bevy_core_scene_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_order_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_bevy_core_handle_base",
+ "compositor_support_bevy_core_item_base",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_placeholder_base"
+version = "0.0.1"
+dependencies = [
+ "bevy",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_registry_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_bevy_core_context_base",
+ "compositor_support_bevy_core_element_base",
+ "compositor_support_bevy_core_error_base",
+ "compositor_support_bevy_core_frame_base",
+ "compositor_support_bevy_core_handle_base",
+ "compositor_support_bevy_core_instance_base",
+ "compositor_support_bevy_core_item_base",
+ "compositor_support_bevy_core_lifecycle_base",
+ "compositor_support_bevy_core_mutate_base",
+ "compositor_support_bevy_core_order_base",
+ "compositor_support_bevy_core_scene_base",
+ "compositor_support_bevy_core_shared_base",
+ "compositor_support_bevy_core_space_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_runtime_base"
+version = "0.1.0"
+dependencies = [
+ "compositor_support_bevy_core_alloc_base",
+ "compositor_support_bevy_core_context_base",
+ "compositor_support_bevy_core_fault_base",
+ "compositor_support_bevy_core_gles_base",
+ "compositor_support_bevy_core_import_base",
+ "compositor_support_bevy_core_surface_base",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_scene_base"
+version = "0.0.1"
+dependencies = [
+ "bevy",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_shared_base"
+version = "0.0.1"
+dependencies = [
+ "wgpu",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_space_base"
+version = "0.0.1"
+dependencies = [
+ "smithay",
+]
+
+[[package]]
+name = "compositor_support_bevy_core_surface_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_bevy_core_alloc_base",
+ "compositor_support_bevy_core_context_base",
+ "compositor_support_bevy_core_fault_base",
+ "compositor_support_bevy_core_gles_base",
+ "compositor_support_bevy_core_import_base",
+ "smithay",
+ "wgpu",
+]
+
+[[package]]
+name = "compositor_support_iced_core_engine_base"
+version = "0.1.0"
+dependencies = [
+ "bitflags 2.13.0",
+ "compositor_developer_debug_instance_record",
+ "iced_core",
+ "iced_graphics",
+ "iced_runtime",
+ "iced_wgpu",
+ "iced_widget",
+ "thiserror 2.0.18",
+ "wgpu",
+]
+
+[[package]]
+name = "compositor_support_system_storage_token_base"
+version = "0.0.1"
+
+[[package]]
 name = "compositor_y5_canvas_draw_element"
 version = "0.0.1"
 dependencies = [
@@ -1900,6 +2156,54 @@ dependencies = [
  "smithay",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "compositor_y5_graphic_capture_encode"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_bevy_core_runtime_base",
+ "image",
+ "wgpu",
+ "zbus",
+]
+
+[[package]]
+name = "compositor_y5_graphic_capture_registry"
+version = "0.1.0"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_bevy_core_runtime_base",
+ "smithay",
+ "thiserror 2.0.18",
+ "tracing",
+ "wgpu",
+]
+
+[[package]]
+name = "compositor_y5_graphic_capture_session"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_monitor_compositor_iced_base",
+ "compositor_y5_graphic_capture_encode",
+ "compositor_y5_graphic_capture_registry",
+ "compositor_y5_graphic_capture_vaapi",
+ "smithay",
+ "uuid",
+]
+
+[[package]]
+name = "compositor_y5_graphic_capture_vaapi"
+version = "0.0.1"
+dependencies = [
+ "bindgen",
+ "cc",
+ "compositor_developer_debug_instance_record",
+ "compositor_developer_environment_config_base",
+ "pkg-config",
+ "smithay",
 ]
 
 [[package]]
@@ -1917,12 +2221,12 @@ name = "compositor_y5_lock_scene_element"
 version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
- "compositor_background_three_bevy_compositor",
  "compositor_background_two_draw_element",
  "compositor_monitor_compositor_iced_base",
  "compositor_orchestration_draw_dispatch_frame",
  "compositor_orchestration_draw_scene_element",
  "compositor_orchestration_seat_pointer_element",
+ "compositor_support_bevy_core_compositor_base",
  "smithay",
  "tracing",
  "tracing-subscriber",
@@ -1933,6 +2237,7 @@ name = "compositor_y5_window_draw_element"
 version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
+ "compositor_orchestration_driver_capture_base",
  "smithay",
  "tracing",
  "tracing-subscriber",
@@ -2360,6 +2665,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "endi"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "66b7e2430c6dff6a955451e2cfc438f09cea1965a9d6f87f7e3b90decc014099"
+
+[[package]]
+name = "enumflags2"
+version = "0.7.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1027f7680c853e056ebcec683615fb6fbbc07dbaa13b4d5d9442b146ded4ecef"
+dependencies = [
+ "enumflags2_derive",
+ "serde",
+]
+
+[[package]]
+name = "enumflags2_derive"
+version = "0.7.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67c78a4d8fdf9953a5c9d458f9efe940fd97a0cab0941c075a813ac594733827"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2439,6 +2771,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e6853b52649d4ac5c0bd02320cddc5ba956bdb407c4b75a2c6b75bf51500f8c"
 dependencies = [
  "simd-adler32",
+]
+
+[[package]]
+name = "file-id"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1fc6a637b6dc58414714eddd9170ff187ecb0933d4c7024d1abbd23a3cc26e9"
+dependencies = [
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -2539,6 +2880,15 @@ name = "foreign-types-shared"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aa9a19cbb55df58761df49b23516a86d432839add4af60fc256da840f66ed35b"
+
+[[package]]
+name = "fsevent-sys"
+version = "4.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76ee7a02da4d231650c7cea31349b889be2f45ddb3ef3032d2ec8185f6313fd2"
+dependencies = [
+ "libc",
+]
 
 [[package]]
 name = "futures"
@@ -2751,6 +3101,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "glob"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
+
+[[package]]
 name = "glow"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2760,6 +3116,42 @@ dependencies = [
  "slotmap",
  "wasm-bindgen",
  "web-sys",
+]
+
+[[package]]
+name = "gltf"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3ce1918195723ce6ac74e80542c5a96a40c2b26162c1957a5cd70799b8cacf7"
+dependencies = [
+ "byteorder",
+ "gltf-json",
+ "lazy_static",
+ "serde_json",
+]
+
+[[package]]
+name = "gltf-derive"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14070e711538afba5d6c807edb74bcb84e5dbb9211a3bf5dea0dfab5b24f4c51"
+dependencies = [
+ "inflections",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "gltf-json"
+version = "1.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e6176f9d60a7eab0a877e8e96548605dedbde9190a7ae1e80bbcc1c9af03ab14"
+dependencies = [
+ "gltf-derive",
+ "serde",
+ "serde_derive",
+ "serde_json",
 ]
 
 [[package]]
@@ -2886,6 +3278,12 @@ name = "hermit-abi"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc0fef456e4baa96da950455cd02c081ca953b141298e41db3fc7e36b1da849c"
+
+[[package]]
+name = "hex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "hexasphere"
@@ -3071,6 +3469,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "inflections"
+version = "1.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a257582fdcde896fd96463bf2d40eefea0580021c0712a0e2b028b60b47a837a"
+
+[[package]]
+name = "inotify"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "533e68a5842e734946fe159fb03fc9bbbb254f590dd0d8ad321ae5ff7beca2c1"
+dependencies = [
+ "bitflags 2.13.0",
+ "inotify-sys",
+ "libc",
+]
+
+[[package]]
+name = "inotify-sys"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e05c02b5e89bff3b946cedeca278abc628fe811e604f027c45a8aa3cf793d0eb"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "input"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3106,6 +3530,15 @@ dependencies = [
  "hermit-abi 0.3.9",
  "libc",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "itertools"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
+dependencies = [
+ "either",
 ]
 
 [[package]]
@@ -3227,6 +3660,35 @@ name = "khronos_api"
 version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
+
+[[package]]
+name = "kqueue"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "273c0752728918e0ac4976f2b275b6fefb9ecd400585dec929419f3844cd87b5"
+dependencies = [
+ "kqueue-sys",
+ "libc",
+]
+
+[[package]]
+name = "kqueue-sys"
+version = "1.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07293a4e297ac234359b510362495713f75ea345d5307140414f20c69ffeb087"
+dependencies = [
+ "bitflags 2.13.0",
+ "libc",
+]
+
+[[package]]
+name = "ktx2"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d50be8a24c37debdf3170be6ca396d5b5b165f37f94837891adac735ca416b8"
+dependencies = [
+ "bitflags 2.13.0",
+]
 
 [[package]]
 name = "kurbo"
@@ -3419,6 +3881,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "minimal-lexical"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
+
+[[package]]
 name = "miniz_oxide"
 version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3426,6 +3894,18 @@ checksum = "1fa76a2c86f704bdb222d66965fb3d63269ce38518b83cb0575fca855ebb6316"
 dependencies = [
  "adler2",
  "simd-adler32",
+]
+
+[[package]]
+name = "mio"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02bd0af71c67b473010cbbc60715ee815645a4dc942899111f494b4b737d6fda"
+dependencies = [
+ "libc",
+ "log",
+ "wasi",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3526,10 +4006,60 @@ dependencies = [
 ]
 
 [[package]]
+name = "nom"
+version = "7.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
+dependencies = [
+ "memchr",
+ "minimal-lexical",
+]
+
+[[package]]
 name = "nonmax"
 version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "610a5acd306ec67f907abe5567859a3c693fb9886eb1f012ab8f2a47bef3db51"
+
+[[package]]
+name = "notify"
+version = "8.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d3d07927151ff8575b7087f245456e549fea62edf0ec4e565a5ee50c8402bc3"
+dependencies = [
+ "bitflags 2.13.0",
+ "fsevent-sys",
+ "inotify",
+ "kqueue",
+ "libc",
+ "log",
+ "mio",
+ "notify-types",
+ "walkdir",
+ "windows-sys 0.60.2",
+]
+
+[[package]]
+name = "notify-debouncer-full"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c02b49179cfebc9932238d04d6079912d26de0379328872846118a0fa0dbb302"
+dependencies = [
+ "file-id",
+ "log",
+ "notify",
+ "notify-types",
+ "walkdir",
+]
+
+[[package]]
+name = "notify-types"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42b8cfee0e339a0337359f3c88165702ac6e600dc01c0cc9579a92d62b08477a"
+dependencies = [
+ "bitflags 2.13.0",
+]
 
 [[package]]
 name = "nu-ansi-term"
@@ -3891,6 +4421,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ordered-stream"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9aa2b01e1d916879f73a53d01d1d6cee68adbb31d6d9177a8cfce093cced1d50"
+dependencies = [
+ "futures-core",
+ "pin-project-lite",
+]
+
+[[package]]
 name = "parking"
 version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3930,6 +4470,19 @@ name = "percent-encoding"
 version = "2.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
+
+[[package]]
+name = "petgraph"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8701b58ea97060d5e5b155d383a69952a60943f0e6dfe30b04c287beb0b27455"
+dependencies = [
+ "fixedbitset",
+ "hashbrown 0.15.5",
+ "indexmap",
+ "serde",
+ "serde_derive",
+]
 
 [[package]]
 name = "pico-args"
@@ -4476,6 +5029,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ruzstd"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7c1c839d570d835527c9a5e4db7cb2198683a988cb9d7293fc8674e6bd58fc8"
+dependencies = [
+ "twox-hash",
+]
+
+[[package]]
 name = "same-file"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4558,6 +5120,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_repr"
+version = "0.1.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "175ee3e80ae9982737ca543e96133087cbd9a485eecc3bc4de9c1a37b47ea59c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "sha2"
 version = "0.10.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4579,9 +5152,25 @@ dependencies = [
 
 [[package]]
 name = "shlex"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
+
+[[package]]
+name = "shlex"
 version = "2.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
+
+[[package]]
+name = "signal-hook-registry"
+version = "1.4.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c4db69cba1110affc0e9f7bcd48bbf87b3f4fc7c61fc9155afd4c469eb3d6c1b"
+dependencies = [
+ "errno",
+ "libc",
+]
 
 [[package]]
 name = "simd-adler32"
@@ -4750,6 +5339,16 @@ name = "smol_str"
 version = "0.3.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4aaa7368fcf4852a4c2dd92df0cace6a71f2091ca0a23391ce7f3a31833f1523"
+
+[[package]]
+name = "socket2"
+version = "0.6.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "52d1cfed4120b4d927bf7c0f86d2087a4a7d6027c906d9f9d525a80573b9be51"
+dependencies = [
+ "libc",
+ "windows-sys 0.61.2",
+]
 
 [[package]]
 name = "softbuffer"
@@ -4981,6 +5580,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
+name = "tokio"
+version = "1.52.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8fc7f01b389ac15039e4dc9531aa973a135d7a4135281b12d7c1bc79fd57fffe"
+dependencies = [
+ "bytes",
+ "libc",
+ "mio",
+ "pin-project-lite",
+ "signal-hook-registry",
+ "socket2",
+ "tracing",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "toml_datetime"
 version = "1.1.1+spec-1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5105,6 +5720,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "twox-hash"
+version = "2.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ea3136b675547379c4bd395ca6b938e5ad3c3d20fad76e7fe85f9e0d011419c"
+
+[[package]]
 name = "typeid"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5132,6 +5753,17 @@ dependencies = [
  "libc",
  "libudev-sys",
  "pkg-config",
+]
+
+[[package]]
+name = "uds_windows"
+version = "1.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2f6fb2847f6742cd76af783a2a2c49e9375d0a111c7bef6f71cd9e738c72d6e"
+dependencies = [
+ "memoffset",
+ "tempfile",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5271,6 +5903,12 @@ dependencies = [
  "same-file",
  "winapi-util",
 ]
+
+[[package]]
+name = "wasi"
+version = "0.11.1+wasi-snapshot-preview1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
 
 [[package]]
 name = "wasip2"
@@ -5878,6 +6516,15 @@ dependencies = [
 
 [[package]]
 name = "windows-sys"
+version = "0.60.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2f500e4d28234f72040990ec9d39e3a6b950f9f22d3dba18416c35882612bcb"
+dependencies = [
+ "windows-targets 0.53.5",
+]
+
+[[package]]
+name = "windows-sys"
 version = "0.61.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ae137229bcbd6cdf0f7b80a31df61766145077ddf49416a728b02cb3921ff3fc"
@@ -5909,11 +6556,28 @@ dependencies = [
  "windows_aarch64_gnullvm 0.52.6",
  "windows_aarch64_msvc 0.52.6",
  "windows_i686_gnu 0.52.6",
- "windows_i686_gnullvm",
+ "windows_i686_gnullvm 0.52.6",
  "windows_i686_msvc 0.52.6",
  "windows_x86_64_gnu 0.52.6",
  "windows_x86_64_gnullvm 0.52.6",
  "windows_x86_64_msvc 0.52.6",
+]
+
+[[package]]
+name = "windows-targets"
+version = "0.53.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4945f9f551b88e0d65f3db0bc25c33b8acea4d9e41163edf90dcd0b19f9069f3"
+dependencies = [
+ "windows-link",
+ "windows_aarch64_gnullvm 0.53.1",
+ "windows_aarch64_msvc 0.53.1",
+ "windows_i686_gnu 0.53.1",
+ "windows_i686_gnullvm 0.53.1",
+ "windows_i686_msvc 0.53.1",
+ "windows_x86_64_gnu 0.53.1",
+ "windows_x86_64_gnullvm 0.53.1",
+ "windows_x86_64_msvc 0.53.1",
 ]
 
 [[package]]
@@ -5938,6 +6602,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32a4622180e7a0ec044bb555404c800bc9fd9ec262ec147edd5989ccd0c02cd3"
 
 [[package]]
+name = "windows_aarch64_gnullvm"
+version = "0.53.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9d8416fa8b42f5c947f8482c43e7d89e73a173cead56d044f6a56104a6d1b53"
+
+[[package]]
 name = "windows_aarch64_msvc"
 version = "0.48.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5948,6 +6618,12 @@ name = "windows_aarch64_msvc"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09ec2a7bb152e2252b53fa7803150007879548bc709c039df7627cabbd05d469"
+
+[[package]]
+name = "windows_aarch64_msvc"
+version = "0.53.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b9d782e804c2f632e395708e99a94275910eb9100b2114651e04744e9b125006"
 
 [[package]]
 name = "windows_i686_gnu"
@@ -5962,10 +6638,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e9b5ad5ab802e97eb8e295ac6720e509ee4c243f69d781394014ebfe8bbfa0b"
 
 [[package]]
+name = "windows_i686_gnu"
+version = "0.53.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "960e6da069d81e09becb0ca57a65220ddff016ff2d6af6a223cf372a506593a3"
+
+[[package]]
 name = "windows_i686_gnullvm"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0eee52d38c090b3caa76c563b86c3a4bd71ef1a819287c19d586d7334ae8ed66"
+
+[[package]]
+name = "windows_i686_gnullvm"
+version = "0.53.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa7359d10048f68ab8b09fa71c3daccfb0e9b559aed648a8f95469c27057180c"
 
 [[package]]
 name = "windows_i686_msvc"
@@ -5980,6 +6668,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "240948bc05c5e7c6dabba28bf89d89ffce3e303022809e73deaefe4f6ec56c66"
 
 [[package]]
+name = "windows_i686_msvc"
+version = "0.53.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e7ac75179f18232fe9c285163565a57ef8d3c89254a30685b57d83a38d326c2"
+
+[[package]]
 name = "windows_x86_64_gnu"
 version = "0.48.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5990,6 +6684,12 @@ name = "windows_x86_64_gnu"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "147a5c80aabfbf0c7d901cb5895d1de30ef2907eb21fbbab29ca94c5b08b1a78"
+
+[[package]]
+name = "windows_x86_64_gnu"
+version = "0.53.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c3842cdd74a865a8066ab39c8a7a473c0778a3f29370b5fd6b4b9aa7df4a499"
 
 [[package]]
 name = "windows_x86_64_gnullvm"
@@ -6004,6 +6704,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24d5b23dc417412679681396f2b49f3de8c1473deb516bd34410872eff51ed0d"
 
 [[package]]
+name = "windows_x86_64_gnullvm"
+version = "0.53.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ffa179e2d07eee8ad8f57493436566c7cc30ac536a3379fdf008f47f6bb7ae1"
+
+[[package]]
 name = "windows_x86_64_msvc"
 version = "0.48.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6014,6 +6720,12 @@ name = "windows_x86_64_msvc"
 version = "0.52.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "589f6da84c646204747d1270a2a5661ea66ed1cced2631d546fdfb155959f9ec"
+
+[[package]]
+name = "windows_x86_64_msvc"
+version = "0.53.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6bbff5f0aada427a1e5a6da5f1f98158182f26556f345ac9e04d36d0ebed650"
 
 [[package]]
 name = "winit"
@@ -6256,6 +6968,62 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e01738255b5a16e78bbb83e7fbba0a1e7dd506905cfc53f4622d89015a03fbb5"
 
 [[package]]
+name = "zbus"
+version = "5.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eee682d202a77e4a9f3b2c2bdf48a7b28af5c08c34ddf66f98c93e5e39464285"
+dependencies = [
+ "async-broadcast",
+ "async-recursion",
+ "async-trait",
+ "enumflags2",
+ "event-listener",
+ "futures-core",
+ "futures-lite",
+ "hex",
+ "libc",
+ "ordered-stream",
+ "rustix 1.1.4",
+ "serde",
+ "serde_repr",
+ "tokio",
+ "tracing",
+ "uds_windows",
+ "uuid",
+ "windows-sys 0.61.2",
+ "winnow",
+ "zbus_macros",
+ "zbus_names",
+ "zvariant",
+]
+
+[[package]]
+name = "zbus_macros"
+version = "5.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "adf1bd45a81a103745b1757754762a26e8cd01e4532e4d6c8ec431624b80d1d6"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "zbus_names",
+ "zvariant",
+ "zvariant_utils",
+]
+
+[[package]]
+name = "zbus_names"
+version = "4.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7074f3e50b894eac91750142016d30d0a89be8e67dbfd9704fb875825760e52d"
+dependencies = [
+ "serde",
+ "winnow",
+ "zvariant",
+]
+
+[[package]]
 name = "zeno"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6300,6 +7068,46 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "29ce2c8a9384ad323cf564b67da86e21d3cfdff87908bc1223ed5c99bc792713"
 dependencies = [
  "zune-core",
+]
+
+[[package]]
+name = "zvariant"
+version = "5.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a192a0bde63360d77a7523c833d4b4ce6070a927e2c53246e4c540b1a3e27be0"
+dependencies = [
+ "endi",
+ "enumflags2",
+ "serde",
+ "winnow",
+ "zvariant_derive",
+ "zvariant_utils",
+]
+
+[[package]]
+name = "zvariant_derive"
+version = "5.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90bc6cde9c01c511074be97f7ccb6c19d0da89e3f8662e812e999dcfd4638737"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "zvariant_utils",
+]
+
+[[package]]
+name = "zvariant_utils"
+version = "3.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1e8535915cfa75547e559d8c68e8139909a4aeee076831e4ef7fc59d8172c4d6"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "serde",
+ "syn",
+ "winnow",
 ]
 
 [[patch.unused]]

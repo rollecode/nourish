@@ -94,6 +94,9 @@
  "compositor.expansion/compositor.y5/y5.window/window.draw/draw.frame": [
   "size"
  ],
+ "compositor.expansion/compositor.y5/y5.select/select.overlay/overlay.interface": [
+  "size"
+ ],
  "compositor.expansion/compositor.y5/y5.window/window.interface/interface.draw": [
   "size"
  ],
@@ -104,19 +107,11 @@
   "flat",
   "size"
  ],
- "compositor.extension/compositor.monitor/monitor.devtool/devtool.example/example.base": [
+ "compositor.extension/compositor.monitor/monitor.selection/selection.font/font.base": [
   "flat",
   "size"
  ],
- "compositor.extension/compositor.monitor/monitor.devtool/devtool.font/font.base": [
-  "flat",
-  "size"
- ],
- "compositor.extension/compositor.monitor/monitor.devtool/devtool.render/render.base": [
-  "flat",
-  "size"
- ],
- "compositor.extension/compositor.monitor/monitor.devtool/devtool.scene/scene.base": [
+ "compositor.extension/compositor.monitor/monitor.selection/selection.scene/scene.base": [
   "flat",
   "size"
  ],
@@ -237,6 +232,9 @@
   "size"
  ],
  "compositor.orchestration/orchestration.seat/seat.pointer/pointer.texture": [
+  "size"
+ ],
+ "compositor.introspection/introspection.restoration/restoration.state/state.match": [
   "size"
  ]
 }

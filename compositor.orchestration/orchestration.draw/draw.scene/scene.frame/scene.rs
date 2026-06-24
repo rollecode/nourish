@@ -57,7 +57,7 @@ pub fn prepare(
     // active world's draw pass, then bridge its `Background2D` node back into the
     // GLES prepare slot. The continuous-redraw cadence the parallax needs is a
     // driver concern, applied here while a node is live.
-    let background_two = {
+    let mut background_two = {
         let mut frame = compositor_support_system_world_frame_base::base::FramePlan::new();
         let mut platform = unsafe {
             compositor_orchestration_draw_platform_base::platform::Platform::new(
@@ -74,6 +74,13 @@ pub fn prepare(
                 .map(|b| *b)
         })
     };
+    // An overlay world (e.g. lock) carries no parallax of its own, so the active
+    // world's draw yields none — fall back to the focused session world's
+    // (spawn_target). This keeps the real desktop background in the frame that the
+    // lock capture blits, so the lock screenshot shows windows AND background.
+    if background_two.is_none() {
+        background_two = compositor_background_two_draw_scene::scene::scene(state);
+    }
     if background_two.is_some() {
         state.schedule_redraw_post_vblank();
     }

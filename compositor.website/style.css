@@ -21,7 +21,7 @@
 }
 
 *{ box-sizing:border-box; }
-html{ scroll-behavior:smooth; }
+html{ scroll-behavior:smooth; scroll-padding-top:var(--header-h,64px); }
 body{
   margin:0;
   background:var(--night);
@@ -61,7 +61,7 @@ a:hover{ text-decoration:underline; }
 
 /* ---------- Nav ---------- */
 .nav{
-  position:sticky; top:0; z-index:50;
+  position:fixed; top:0; left:0; right:0; z-index:50;
   display:flex; align-items:center; justify-content:space-between;
   padding:.8rem clamp(1rem,4vw,2.5rem);
   background:rgba(7,11,20,.72);
@@ -71,7 +71,10 @@ a:hover{ text-decoration:underline; }
 .nav-brand{ display:flex; align-items:baseline; gap:.5rem; color:var(--snow); }
 .nav-brand:hover{ text-decoration:none; }
 .nav-mark{ color:var(--ice); font-size:1.1em; }
-.nav-name{ font-family:var(--display); font-weight:700; font-size:1.15rem; }
+.nav-name{
+  font-family:ui-monospace,"Cascadia Mono",Menlo,Consolas,monospace;
+  font-weight:700; font-size:1.1rem; letter-spacing:-.02em;
+}
 .nav-by{ font-size:.75rem; color:var(--mist); letter-spacing:.05em; }
 .nav-links{ display:flex; align-items:center; gap:clamp(.8rem,2.5vw,1.6rem); }
 .nav-links a{ color:var(--snow); font-size:.95rem; }
@@ -98,8 +101,7 @@ a:hover{ text-decoration:underline; }
 /* ---------- Hero & the aurora signature ---------- */
 .hero{
   position:relative;
-  padding:clamp(4rem,10vh,7rem) clamp(1rem,4vw,2.5rem) 4rem;
-  text-align:center;
+  height:100svh;             /* full viewport; the fixed header floats over the top */
   overflow:hidden;
 }
 .sky{ position:absolute; inset:0; pointer-events:none; }
@@ -131,14 +133,46 @@ a:hover{ text-decoration:underline; }
 .hero-actions{
   display:flex; gap:.9rem; justify-content:center; flex-wrap:wrap; margin-top:1.6rem;
 }
-.hero-video{
-  position:relative;
-  width:min(960px,100%);
-  margin:3.5rem auto 0;
-  aspect-ratio:16/9;
-  border-radius:var(--radius);
-  box-shadow:0 24px 80px rgba(0,0,0,.55), 0 0 0 1px var(--line);
+/* Hero (Shot M0) = a plain full-viewport video that scrolls completely past. The
+   "Nourish" title, description and globe live in the .intro section below. */
+.hero-media-fill{
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  object-fit:cover;
+  background:var(--night-2);
 }
+
+/* Intro — the "space" backdrop section that carries the title, description and
+   globe. Full viewport, centred; GSAP rises/scales the pieces in on scroll so the
+   video has completely scrolled past before any of this text appears. */
+.intro{
+  position:relative;
+  height:100svh;
+  overflow:hidden;
+  display:flex; align-items:center; justify-content:center;
+  text-align:center;
+}
+.intro-inner{
+  position:relative; z-index:1;
+  display:flex; flex-direction:column; align-items:center; gap:1.6rem;
+  padding:2rem clamp(1rem,4vw,2.5rem);
+}
+.hero-title{
+  margin:0; font-family:var(--display); font-weight:700; color:var(--snow);
+  font-size:clamp(2.8rem,8vw,5.2rem); letter-spacing:-.015em; line-height:1;
+  text-shadow:0 2px 24px rgba(0,0,0,.5);
+}
+.hero-desc{ margin:0; color:var(--mist); }
+.hero-globe{
+  width:clamp(170px,24vw,300px); height:auto; display:block;
+  /* soft bluish glow — matches the original hero sphere */
+  filter:drop-shadow(0 30px 90px rgba(0,0,0,.5))
+         drop-shadow(0 0 72px color-mix(in srgb, var(--aurora-b) 34%, transparent))
+         drop-shadow(0 0 32px color-mix(in srgb, var(--ice) 22%, transparent));
+}
+/* Hide the intro pieces until GSAP places them (no flash before the first frame).
+   Absent without GSAP / under reduced motion, so they stay visible there. */
+.gsap-ready .intro-inner > *{ visibility:hidden; }
 
 /* ---------- Video & icon placeholders ---------- */
 .video-ph{
@@ -254,7 +288,7 @@ a:hover{ text-decoration:underline; }
 .footer a:hover{ color:var(--ice); }
 
 /* ---------- Guide page ---------- */
-.guide{ max-width:760px; margin:0 auto; padding:3rem clamp(1rem,4vw,2rem) 4rem; }
+.guide{ max-width:760px; margin:0 auto; padding:calc(2.5rem + var(--header-h,60px)) clamp(1rem,4vw,2rem) 4rem; }
 .guide-hero{ margin-bottom:2.5rem; }
 .toc{ display:flex; flex-wrap:wrap; gap:.6rem; margin-top:1.4rem; }
 .toc a{

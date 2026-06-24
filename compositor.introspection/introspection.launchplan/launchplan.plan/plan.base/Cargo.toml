@@ -7,9 +7,6 @@ edition = "2021"
 compositor_introspection_extraction_window_base.workspace = true
 compositor_introspection_inference_hint_base.workspace = true
 compositor_introspection_launchplan_plan_core = { workspace = true }
-compositor_introspection_launchplan_plan_exec_opts = { workspace = true }
-compositor_introspection_launchplan_plan_exec_run = { workspace = true }
-compositor_introspection_launchplan_plan_exec_spawn = { workspace = true }
 compositor_introspection_launchplan_plan_exec_unit = { workspace = true }
 compositor_introspection_launchplan_plan_preferences = { workspace = true }
 compositor_introspection_launchplan_plan_synthesizers = { workspace = true }

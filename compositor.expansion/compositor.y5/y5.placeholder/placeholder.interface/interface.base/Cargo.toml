@@ -32,5 +32,10 @@ compositor_y5_placeholder_protocol_base.workspace = true
 compositor_y5_surface_protocol_base.workspace = true
 compositor_introspection_restoration_state_base.workspace = true
 compositor_introspection_sampler_window_base.workspace = true
+# Launch/execution subsystem: build the request, launch via the kernel executor,
+# and arm restoration from the synchronously-available outcome (REQUIRE_PID).
+compositor_introspection_execution_launch_build.workspace = true
+compositor_introspection_execution_launch_policy.workspace = true
+compositor_kernel_execution_driver_executor_base.workspace = true
 [lib]
 path = "lib.rs"

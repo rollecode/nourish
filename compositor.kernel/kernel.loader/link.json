@@ -12,6 +12,7 @@
   "../../compositor.support/support.smithay",
   "../../compositor.support/support.system",
   "../kernel.drm",
+  "../kernel.execution",
   "../kernel.gles",
   "../kernel.gpu",
   "../kernel.input",

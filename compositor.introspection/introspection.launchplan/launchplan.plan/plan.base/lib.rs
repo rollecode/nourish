@@ -17,9 +17,8 @@ pub mod synthesizers {
     pub use compositor_introspection_launchplan_plan_synthesizers::synthesizers::*;
 }
 pub mod exec {
-    pub use compositor_introspection_launchplan_plan_exec_opts::exec::*;
-    pub use compositor_introspection_launchplan_plan_exec_run::exec::*;
-    pub use compositor_introspection_launchplan_plan_exec_spawn::exec::*;
+    // Unit-name helpers (sanitise_unit_name / short_random) only; the old
+    // systemd-run launch machinery moved to the introspection.execution subsystem.
     pub use compositor_introspection_launchplan_plan_exec_unit::exec::*;
 }
 

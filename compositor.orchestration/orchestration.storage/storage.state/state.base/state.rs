@@ -1,4 +1,10 @@
 use std::collections::HashMap;
+use compositor_support_system_storage_token_base::base::Token;
+
+/// KernelData token mirroring [`Storage::nested`], so input/draw SYSTEMS (which see
+/// only `cx.kernel`, not the Orchestrator) can read whether the backend is nested
+/// winit. Inserted once at init by the Orchestrator.
+pub static NESTED: Token<bool> = Token::new();
 
 pub struct Storage {
     pub nested: bool,

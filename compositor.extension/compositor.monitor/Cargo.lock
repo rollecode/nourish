@@ -422,9 +422,9 @@ name = "compositor_monitor_compositor_iced_base"
 version = "0.1.0"
 dependencies = [
  "compositor_developer_debug_instance_record",
- "compositor_monitor_engine_iced_base",
  "compositor_monitor_runtime_surface_base",
  "compositor_orchestration_draw_dispatch_frame",
+ "compositor_support_iced_core_engine_base",
  "iced_core",
  "smithay",
  "thiserror 2.0.18",
@@ -432,17 +432,29 @@ dependencies = [
 ]
 
 [[package]]
-name = "compositor_monitor_devtool_example_base"
+name = "compositor_monitor_launcher_ui_base"
 version = "0.1.0"
 dependencies = [
- "compositor_developer_debug_instance_record",
- "compositor_monitor_engine_iced_base",
+ "compositor_support_iced_core_engine_base",
  "iced_core",
  "iced_widget",
 ]
 
 [[package]]
-name = "compositor_monitor_devtool_font_base"
+name = "compositor_monitor_runtime_surface_base"
+version = "0.1.0"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_y5_graphic_card_constant",
+ "gbm",
+ "pollster",
+ "smithay",
+ "thiserror 2.0.18",
+ "wgpu",
+]
+
+[[package]]
+name = "compositor_monitor_selection_font_base"
 version = "0.1.0"
 dependencies = [
  "bitflags 2.11.1",
@@ -461,46 +473,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "compositor_monitor_devtool_render_base"
-version = "0.1.0"
-dependencies = [
- "bitflags 2.11.1",
- "calloop 0.13.0",
- "compositor_developer_debug_instance_record",
- "compositor_monitor_devtool_font_base",
- "compositor_monitor_devtool_scene_base",
- "compositor_monitor_server_protocol_base",
- "compositor_remote_message_client_base",
- "compositor_remote_message_server_base",
- "hyper-util",
- "iced_core",
- "iced_graphics",
- "iced_runtime",
- "iced_wgpu",
- "iced_widget",
- "pollster",
- "prost",
- "raw-window-handle",
- "smithay",
- "smithay-client-toolkit",
- "tokio",
- "tokio-stream",
- "tonic",
- "tonic-prost",
- "tower",
- "wayland-client",
- "wayland-protocols",
- "wayland-protocols-wlr",
- "wgpu",
-]
-
-[[package]]
-name = "compositor_monitor_devtool_scene_base"
+name = "compositor_monitor_selection_scene_base"
 version = "0.1.0"
 dependencies = [
  "bitflags 2.11.1",
  "compositor_developer_debug_instance_record",
- "compositor_monitor_devtool_font_base",
+ "compositor_monitor_selection_font_base",
+ "compositor_support_iced_core_engine_base",
  "iced_core",
  "iced_runtime",
  "iced_wgpu",
@@ -510,43 +489,6 @@ dependencies = [
  "tokio-stream",
  "tonic",
  "tonic-prost",
-]
-
-[[package]]
-name = "compositor_monitor_engine_iced_base"
-version = "0.1.0"
-dependencies = [
- "bitflags 2.11.1",
- "compositor_developer_debug_instance_record",
- "iced_core",
- "iced_graphics",
- "iced_runtime",
- "iced_wgpu",
- "iced_widget",
- "thiserror 2.0.18",
- "wgpu",
-]
-
-[[package]]
-name = "compositor_monitor_launcher_ui_base"
-version = "0.1.0"
-dependencies = [
- "compositor_monitor_engine_iced_base",
- "iced_core",
- "iced_widget",
-]
-
-[[package]]
-name = "compositor_monitor_runtime_surface_base"
-version = "0.1.0"
-dependencies = [
- "compositor_developer_debug_instance_record",
- "compositor_y5_graphic_card_constant",
- "gbm",
- "pollster",
- "smithay",
- "thiserror 2.0.18",
- "wgpu",
 ]
 
 [[package]]
@@ -579,53 +521,18 @@ dependencies = [
 ]
 
 [[package]]
-name = "compositor_remote_message_client_base"
+name = "compositor_support_iced_core_engine_base"
 version = "0.1.0"
 dependencies = [
  "bitflags 2.11.1",
- "compositor_remote_message_macro_base",
- "prost",
- "smithay",
- "tokio",
- "tokio-stream",
- "tonic",
- "tonic-prost",
- "tonic-prost-build",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "compositor_remote_message_macro_base"
-version = "0.1.0"
-dependencies = [
- "compositor_remote_message_macro_broadcast",
- "compositor_remote_message_macro_define",
-]
-
-[[package]]
-name = "compositor_remote_message_macro_broadcast"
-version = "0.0.1"
-
-[[package]]
-name = "compositor_remote_message_macro_define"
-version = "0.0.1"
-
-[[package]]
-name = "compositor_remote_message_server_base"
-version = "0.1.0"
-dependencies = [
- "bitflags 2.11.1",
- "compositor_remote_message_macro_base",
- "prost",
- "smithay",
- "tokio",
- "tokio-stream",
- "tonic",
- "tonic-prost",
- "tonic-prost-build",
- "tracing",
- "tracing-subscriber",
+ "compositor_developer_debug_instance_record",
+ "iced_core",
+ "iced_graphics",
+ "iced_runtime",
+ "iced_wgpu",
+ "iced_widget",
+ "thiserror 2.0.18",
+ "wgpu",
 ]
 
 [[package]]
@@ -951,12 +858,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5baebc0774151f905a1a2cc41989300b1e6fbb29aff0ceffa1064fdd3088d582"
 
 [[package]]
-name = "fixedbitset"
-version = "0.5.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d674e81391d1e1ab681a28d99df07927c6d4aa5b027d7da16ba32d1d21ecd99"
-
-[[package]]
 name = "flate2"
 version = "1.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1016,7 +917,7 @@ checksum = "457e789b3d1202543297a350643cf459f836cade38934e7a4cf6a39e7cde2905"
 dependencies = [
  "fontconfig-parser",
  "log",
- "memmap2 0.9.10",
+ "memmap2",
  "slotmap",
  "tinyvec",
  "ttf-parser",
@@ -1967,15 +1868,6 @@ checksum = "6b947ae49db0d222b1dbc6b113ce7248a3fc3a6ca21b696717bfc000ba4484d8"
 
 [[package]]
 name = "memmap2"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43a5a03cefb0d953ec0be133036f14e109412fa594edc2f77227249db66cc3ed"
-dependencies = [
- "libc",
-]
-
-[[package]]
-name = "memmap2"
 version = "0.9.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "714098028fe011992e1c3962653c96b2d578c4b4bce9036e15ff220319b1e0e3"
@@ -2028,12 +1920,6 @@ dependencies = [
  "num-traits",
  "pxfm",
 ]
-
-[[package]]
-name = "multimap"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1d87ecb2933e8aeadb3e3a02b828fed80a7528047e68b4f424523a0981a3a084"
 
 [[package]]
 name = "mutate_once"
@@ -2479,17 +2365,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
-name = "petgraph"
-version = "0.8.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8701b58ea97060d5e5b155d383a69952a60943f0e6dfe30b04c287beb0b27455"
-dependencies = [
- "fixedbitset",
- "hashbrown 0.15.5",
- "indexmap",
-]
-
-[[package]]
 name = "pico-args"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2678,27 +2553,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "prost-build"
-version = "0.14.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "343d3bd7056eda839b03204e68deff7d1b13aba7af2b2fd16890697274262ee7"
-dependencies = [
- "heck",
- "itertools",
- "log",
- "multimap",
- "petgraph",
- "prettyplease",
- "prost",
- "prost-types",
- "pulldown-cmark",
- "pulldown-cmark-to-cmark",
- "regex",
- "syn",
- "tempfile",
-]
-
-[[package]]
 name = "prost-derive"
 version = "0.14.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2709,35 +2563,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "prost-types"
-version = "0.14.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8991c4cbdb8bc5b11f0b074ffe286c30e523de90fee5ba8132f1399f23cb3dd7"
-dependencies = [
- "prost",
-]
-
-[[package]]
-name = "pulldown-cmark"
-version = "0.13.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e9f068eba8e7071c5f9511831b44f32c740d5adf574e990f946ddb53db2f314e"
-dependencies = [
- "bitflags 2.11.1",
- "memchr",
- "unicase",
-]
-
-[[package]]
-name = "pulldown-cmark-to-cmark"
-version = "22.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "50793def1b900256624a709439404384204a5dc3a6ec580281bfaac35e882e90"
-dependencies = [
- "pulldown-cmark",
 ]
 
 [[package]]
@@ -2877,18 +2702,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c7591fa2c6b601dfcfe5f043f65a1c39fcdf50efefcd7f1572e538c1f4b398d"
 dependencies = [
  "bitflags 2.11.1",
-]
-
-[[package]]
-name = "regex"
-version = "1.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e10754a14b9137dd7b1e3e5b0493cc9171fdd105e0ab477f51b72e7f3ac0e276"
-dependencies = [
- "aho-corasick",
- "memchr",
- "regex-automata",
- "regex-syntax",
 ]
 
 [[package]]
@@ -3234,7 +3047,7 @@ dependencies = [
  "wayland-server",
  "wayland-sys",
  "winit",
- "xkbcommon 0.9.0",
+ "xkbcommon",
 ]
 
 [[package]]
@@ -3244,14 +3057,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3457dea1f0eb631b4034d61d4d8c32074caa6cd1ab2d59f2327bd8461e2c0016"
 dependencies = [
  "bitflags 2.11.1",
- "bytemuck",
  "calloop 0.13.0",
  "calloop-wayland-source",
  "cursor-icon",
  "libc",
  "log",
- "memmap2 0.9.10",
- "pkg-config",
+ "memmap2",
  "rustix 0.38.44",
  "thiserror 1.0.69",
  "wayland-backend",
@@ -3261,7 +3072,6 @@ dependencies = [
  "wayland-protocols",
  "wayland-protocols-wlr",
  "wayland-scanner",
- "xkbcommon 0.7.0",
  "xkeysym",
 ]
 
@@ -3611,18 +3421,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tonic-build"
-version = "0.14.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c68f61875ac5293cf72e6c8cf0158086428c82c37229e98c840878f1706b0322"
-dependencies = [
- "prettyplease",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "tonic-prost"
 version = "0.14.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3631,22 +3429,6 @@ dependencies = [
  "bytes",
  "prost",
  "tonic",
-]
-
-[[package]]
-name = "tonic-prost-build"
-version = "0.14.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "654e5643eff75d7f8c99197ce1440ed19a3474eada74c12bbac488b2cafdae27"
-dependencies = [
- "prettyplease",
- "proc-macro2",
- "prost-build",
- "prost-types",
- "quote",
- "syn",
- "tempfile",
- "tonic-build",
 ]
 
 [[package]]
@@ -3774,12 +3556,6 @@ dependencies = [
  "libudev-sys",
  "pkg-config",
 ]
-
-[[package]]
-name = "unicase"
-version = "2.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dbc4bc3a9f746d862c45cb89d705aa10f187bb96c76001afab07a0d35ce60142"
 
 [[package]]
 name = "unicode-bidi"
@@ -4656,7 +4432,7 @@ dependencies = [
  "dpi",
  "js-sys",
  "libc",
- "memmap2 0.9.10",
+ "memmap2",
  "ndk",
  "objc2 0.5.2",
  "objc2-app-kit",
@@ -4829,23 +4605,12 @@ checksum = "bec9e4a500ca8864c5b47b8b482a73d62e4237670e5b5f1d6b9e3cae50f28f2b"
 
 [[package]]
 name = "xkbcommon"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "13867d259930edc7091a6c41b4ce6eee464328c6ff9659b7e4c668ca20d4c91e"
-dependencies = [
- "libc",
- "memmap2 0.8.0",
- "xkeysym",
-]
-
-[[package]]
-name = "xkbcommon"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7a974f48060a14e95705c01f24ad9c3345022f4d97441b8a36beb7ed5c4a02d"
 dependencies = [
  "libc",
- "memmap2 0.9.10",
+ "memmap2",
  "xkeysym",
 ]
 
@@ -4867,9 +4632,6 @@ name = "xkeysym"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9cc00251562a284751c9973bace760d86c0276c471b4be569fe6b068ee97a56"
-dependencies = [
- "bytemuck",
-]
 
 [[package]]
 name = "xml-rs"

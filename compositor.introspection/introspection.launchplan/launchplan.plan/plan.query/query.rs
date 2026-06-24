@@ -72,24 +72,5 @@ pub fn generic_command(
     Ok(cmd)
 }
 
-/// Apply working dir + env to `cmd`, inherit stdio, spawn, return the PID.
-pub fn run_command(
-    mut cmd: Command,
-    working_dir: Option<<WorkingDirectory as HintAttribute>::Value>,
-    env_pairs: Option<<EnvOverlay as HintAttribute>::Value>,
-    extra_env: &[(String, String)],
-) -> Result<Option<u32>, io::Error> {
-    if let Some(wd) = working_dir {
-        cmd.current_dir(wd);
-    }
-    for pair in env_pairs.unwrap_or_default() {
-        cmd.env(pair.key, pair.value);
-    }
-    for (k, v) in extra_env {
-        cmd.env(k, v);
-    }
-    cmd.stdin(Stdio::inherit());
-    cmd.stdout(Stdio::inherit());
-    cmd.stderr(Stdio::inherit());
-    cmd.spawn().map(|w| Some(w.id()))
-}
+// `run_command` (spawn the plan) moved to the introspection.execution subsystem;
+// `generic_command` above is still used to synthesize the bare Command.

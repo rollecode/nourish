@@ -10,7 +10,7 @@
 //! All FFI; freed in `Drop`. Untestable without a GPU — designed to fail soft
 //! (returns `None`/logs) rather than panic.
 
-use std::ffi::{CString, c_int, c_void};
+use std::ffi::{CStr, CString, c_int, c_void};
 use std::os::unix::io::AsRawFd;
 use std::path::{Path, PathBuf};
 use std::ptr;
@@ -23,6 +23,24 @@ use crate::ffi;
 
 const RENDER_NODE: &str = "/dev/dri/renderD128";
 const MAX_PLANES: usize = 4;
+
+// --- Encoder tuning knobs (VAAPI). All compile-time constants; see CAPTURE.md. ---
+// Kept conservative: VAAPI drivers vary, and unsupported options fail soft
+// (av_opt_set is ignored), but rejected B-frames/profiles can fail encoder open.
+/// Target bitrate (bits/s). Sized for up to 4K@60.
+const VAAPI_BITRATE: i64 = 40_000_000;
+/// VBR ceiling bitrate (bits/s).
+const VAAPI_MAXRATE: i64 = 60_000_000;
+/// Rate-control buffer (bits) — ~2s of MAXRATE.
+const VAAPI_BUFSIZE: c_int = 120_000_000;
+/// Keyframe (IDR) interval, in seconds (`gop_size = fps * GOP_SECONDS`).
+const GOP_SECONDS: u32 = 2;
+/// Consecutive B-frames. 0 = safest across VAAPI drivers (many reject B-frames).
+const VAAPI_BFRAMES: c_int = 0;
+/// Rate control mode (`CQP` | `VBR` | `CBR`), set as the `rc_mode` priv option.
+const VAAPI_RC_MODE: &CStr = c"VBR";
+/// H.264 profile.
+const VAAPI_PROFILE: &CStr = c"high";
 
 /// A live VAAPI encode session writing to a temp mp4.
 pub struct VaapiEncoder {
@@ -311,6 +329,17 @@ impl VaapiEncoder {
             return Err("buffersink has no hw_frames_ctx".into());
         }
         c.hw_frames_ctx = ffi::av_buffer_ref(sink_frames);
+
+        // Rate control + GOP (generic AVCodecContext fields).
+        c.bit_rate = VAAPI_BITRATE;
+        c.rc_max_rate = VAAPI_MAXRATE;
+        c.rc_buffer_size = VAAPI_BUFSIZE;
+        c.gop_size = (self.fps * GOP_SECONDS) as c_int;
+        c.max_b_frames = VAAPI_BFRAMES;
+        // h264_vaapi-private options (rc mode + profile); ignored if unsupported.
+        let p = c.priv_data;
+        ffi::av_opt_set(p, c"rc_mode".as_ptr(), VAAPI_RC_MODE.as_ptr(), 0);
+        ffi::av_opt_set(p, c"profile".as_ptr(), VAAPI_PROFILE.as_ptr(), 0);
 
         let r = ffi::avcodec_open2(self.codec_ctx, codec, ptr::null_mut());
         if r < 0 {

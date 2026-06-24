@@ -14,8 +14,9 @@ use compositor_support_system_storage_slot_base::base::Storage;
 use compositor_support_system_trait_system_base::base::SystemCx;
 use compositor_support_smithay_dispatch_state_base::state::Dispatch;
 use compositor_y5_canvas_input_state::state::{
-    ActiveOption, ActiveTransformCandidate, Anchor, CanvasGrab, TargetOption,
+    ActiveOption, ActiveTransformCandidate, Anchor, CanvasGrab, SnapMap, SnapSource, TargetOption,
 };
+use compositor_y5_camera_state_base::state::CAMERA;
 use compositor_y5_group_state_base::state::{Group, GroupVisibility, GROUP};
 use compositor_y5_placeholder_system_base::base::PLACEHOLDER;
 use compositor_y5_select_state_base::request::{announce_selection, SelectionCmd};
@@ -28,12 +29,14 @@ use smithay::backend::input::{ButtonState, KeyState};
 use smithay::desktop::Window;
 use smithay::input::keyboard::Keycode;
 use smithay::input::pointer::ButtonEvent;
+use smithay::output::Output;
 use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
 use smithay::utils::{Logical, Point, Rectangle, Size, SERIAL_COUNTER};
 use std::collections::HashSet;
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 use crate::base::{CanvasCmd, CANVAS, CANVAS_BUF};
+use crate::snap;
 
 /// A pressable content target (mirrors the rim's `PressCandidate`).
 enum PressCandidate {
@@ -66,7 +69,13 @@ pub(crate) fn press(cx: &mut SystemCx, button: u32, x: f64, y: f64) -> InputFlow
         }
         true
     });
-    let over_ice = matches!(&over_surface, Some(hit) if hit.ice().is_some());
+    // "Over ice" = over any iced surface (registry `Iced` hits, or a layer-shell
+    // surface flagged ice). Registry `Iced` hits must count here too, otherwise a
+    // click on a world-space iced UI (e.g. the selection toolbar) falls through to
+    // the canvas press and clears the selection — destroying a selection-driven
+    // overlay before its button can act.
+    let over_ice =
+        matches!(&over_surface, Some(hit) if hit.ice().is_some() || hit.is_iced());
 
     let mut temporary_passthrough = false;
     if let Some(ice_layer) = over_surface.as_ref().and_then(|w| w.iced_layer()) {
@@ -290,16 +299,38 @@ fn trigger_grab(cx: &mut SystemCx, candidate: &PressCandidate, cursor: Point<f64
 
     let Some((candidates, horizontal, vertical)) = built else { return };
     let anchor = Anchor { Horizontal: horizontal, Vertical: vertical };
+
+    // Capture the snap targets ONCE, now that the grab is committing: the edges of
+    // every other window + visible placeholder plus the screen edges, excluding the
+    // ones being transformed (a source must not snap to its own start edges). The
+    // map is frozen for the grab's lifetime; motion only reads it.
+    let mut exclude: HashSet<Uuid> = HashSet::new();
+    match &candidates {
+        ActiveTransformCandidate::Window(list) => {
+            for (window, _) in list {
+                if let Some(uuid) = window.uuid() {
+                    exclude.insert(uuid);
+                }
+            }
+        }
+        ActiveTransformCandidate::Placeholder(uuid, _) => {
+            exclude.insert(*uuid);
+        }
+    }
+    let snap = build_snap_map(cx, &exclude);
+
     let grab = match kind {
         Kind::Scale => CanvasGrab::Active(ActiveOption::Scaling {
             candidates,
             start_cursor: cursor,
             Anchor: anchor,
+            snap,
         }),
         Kind::Move => CanvasGrab::Active(ActiveOption::Moving {
             candidates,
             start_cursor: cursor,
             Anchor: anchor,
+            snap,
         }),
         Kind::Select => unreachable!(),
     };
@@ -322,6 +353,134 @@ fn anchor_flags(rect: Rectangle<i32, Logical>, cursor: Point<f64, Logical>) -> (
     let center_x = rect.loc.x as f64 + (rect.size.w as f64 / 2.0);
     let center_y = rect.loc.y as f64 + (rect.size.h as f64 / 2.0);
     (cursor.x >= center_x, cursor.y >= center_y)
+}
+
+/// Build the snap map for a grab. `sources` get the rects of every window + every
+/// active visible placeholder NOT in `exclude`; the screen edges go into the
+/// always-on `vertical`/`horizontal` lines. All in storage/world space — the same
+/// space the grab geometry math runs in. Window rects use `element_location` +
+/// `geometry().size`, matching the start-geo snapshot in `trigger_candidates` so
+/// the lines line up with the moving edges.
+///
+/// When [`snap::SNAP_VISIBLE_ONLY`] is set, sources are culled to those
+/// intersecting the current viewport (camera transform + screen size, the same
+/// bbox the renderer culls with), inflated by the zoom-scaled
+/// [`snap::SNAP_VISIBLE_ONLY_EXTEND_RANGE`] so nearby offscreen windows still count.
+fn build_snap_map(cx: &mut SystemCx, exclude: &HashSet<Uuid>) -> SnapMap {
+    let mut map = SnapMap::default();
+
+    // Read camera + placeholders from storage BEFORE borrowing `cx.platform`.
+    let (camera_pos, camera_zoom) = {
+        let camera = cx.storage.get(&CAMERA);
+        (camera.transform.position, camera.transform.zoom)
+    };
+    let placeholders: Vec<(Uuid, Rectangle<i32, Logical>)> = cx
+        .storage
+        .get(&PLACEHOLDER)
+        .visible
+        .iter()
+        .filter(|(ph, _)| ph.restoration.is_none() && !ph.launching)
+        .map(|(ph, _)| {
+            (
+                ph.uuid,
+                Rectangle {
+                    loc: Point::from((ph.position.0, ph.position.1)),
+                    size: Size::from((ph.size.0, ph.size.1)),
+                },
+            )
+        })
+        .collect();
+
+    let Some(platform) = cx
+        .platform
+        .as_deref_mut()
+        .and_then(|p| p.downcast_mut::<compositor_orchestration_draw_platform_base::platform::Platform>())
+    else {
+        return map;
+    };
+    let space = platform.space();
+
+    // The exact camera viewport sets each source's `visible` flag (whether it is
+    // currently on-screen). The CULL viewport (the exact one inflated by the
+    // zoom-scaled visible-only extend margin) decides which sources are kept when
+    // SNAP_VISIBLE_ONLY is set. `None` cull = keep everything (visible-only off, no
+    // output, or an infinite extend range).
+    let base_viewport: Option<Rectangle<i32, Logical>> = camera_viewport(space, camera_pos, camera_zoom);
+    let cull_viewport: Option<Rectangle<i32, Logical>> = if snap::SNAP_VISIBLE_ONLY {
+        match (base_viewport, snap::visible_extend(camera_zoom)) {
+            (Some(vp), Some(margin)) => Some(inflate(vp, margin)),
+            _ => None,
+        }
+    } else {
+        None
+    };
+    let keep = |rect: Rectangle<i32, Logical>| -> bool {
+        cull_viewport.map(|cv| rect.overlaps(cv)).unwrap_or(true)
+    };
+    let is_visible = |rect: Rectangle<i32, Logical>| -> bool {
+        base_viewport.map(|vp| rect.overlaps(vp)).unwrap_or(true)
+    };
+
+    let windows: Vec<Window> = space.elements().cloned().collect();
+    for window in &windows {
+        if window.uuid().map(|u| exclude.contains(&u)).unwrap_or(false) {
+            continue;
+        }
+        let loc = space.element_location(window).unwrap_or_default();
+        let rect = Rectangle { loc, size: window.geometry().size };
+        if keep(rect) {
+            map.sources.push(SnapSource { rect, visible: is_visible(rect) });
+        }
+    }
+
+    for (uuid, rect) in placeholders {
+        if exclude.contains(&uuid) {
+            continue;
+        }
+        if keep(rect) {
+            map.sources.push(SnapSource { rect, visible: is_visible(rect) });
+        }
+    }
+
+    let outputs: Vec<Output> = space.outputs().cloned().collect();
+    for output in &outputs {
+        if let Some(geo) = space.output_geometry(output) {
+            map.vertical.push(geo.loc.x as f64);
+            map.vertical.push((geo.loc.x + geo.size.w) as f64);
+            map.horizontal.push(geo.loc.y as f64);
+            map.horizontal.push((geo.loc.y + geo.size.h) as f64);
+        }
+    }
+
+    map
+}
+
+/// The exact camera viewport in world space: camera-centered, `screen_physical /
+/// zoom` (the same bbox the renderer culls with — see `draw.viewport`). `None` when
+/// there is no output to size it from.
+fn camera_viewport(
+    space: &smithay::desktop::Space<Window>,
+    camera_pos: Point<f64, Logical>,
+    camera_zoom: f64,
+) -> Option<Rectangle<i32, Logical>> {
+    let mode = space.outputs().next().and_then(|o| o.current_mode())?;
+    let logical_w = mode.size.w as f64 / camera_zoom;
+    let logical_h = mode.size.h as f64 / camera_zoom;
+    Some(Rectangle {
+        loc: Point::from(
+            ((camera_pos.x - logical_w / 2.0).floor() as i32, (camera_pos.y - logical_h / 2.0).floor() as i32),
+        ),
+        size: Size::from((logical_w.ceil() as i32, logical_h.ceil() as i32)),
+    })
+}
+
+/// Inflate a rect outward by `margin` (world units) on every side.
+fn inflate(rect: Rectangle<i32, Logical>, margin: f64) -> Rectangle<i32, Logical> {
+    let m = margin.ceil() as i32;
+    Rectangle {
+        loc: Point::from((rect.loc.x - m, rect.loc.y - m)),
+        size: Size::from((rect.size.w + 2 * m, rect.size.h + 2 * m)),
+    }
 }
 
 /// A single window's storage-space rect (`element_location` + `geometry`).

@@ -29,13 +29,8 @@ impl LaunchPlan {
         if let Some(id) = handler { self.handler_preferences.entry(id).or_default(); }
         self.active_handler = handler;
     }
-    pub fn execute_with_env(&self, synthesizers: &SynthesizerRegistry, extra_env: &[(String, String)]) -> Result<Option<u32>, io::Error> {
-        let from_synth = self.active_handler.and_then(|id| synthesizers.get(id)).and_then(|s| s.synthesize(self));
-        let cmd = match from_synth { Some(c) => c, None => self.synthesize_generic()? };
-        query::run_command(cmd, self.current::<WorkingDirectory>(), self.current::<EnvOverlay>(), extra_env)
-    }
-    pub fn execute(&self, synthesizers: &SynthesizerRegistry) -> Result<Option<u32>, io::Error> { self.execute_with_env(synthesizers, &[]) }
-    fn synthesize_generic(&self) -> Result<Command, io::Error> { query::generic_command(self.current::<ExecProgram>(), self.current::<ExecArgs>()) }
+    // Launch execution moved to the introspection.execution subsystem; the plan
+    // now only exposes the data (program/args/env/cwd) it builds the command from.
     // ── Dynamic (string-keyed) accessors, for descriptor-driven UIs ──
     pub fn current_raw(&self, descriptor: &AttributeDescriptor) -> Option<Arc<dyn Any + Send + Sync>> {
         let prefs = self.prefs_for(&descriptor.category)?;

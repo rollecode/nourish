@@ -13,7 +13,6 @@ bitflags = { workspace = true }
 smithay = { workspace = true }
 compositor_orchestration_core_state_base.workspace = true
 compositor_monitor_runtime_surface_base.workspace = true
-compositor_monitor_devtool_example_base.workspace = true
 compositor_support_iced_core_engine_base.workspace = true
 compositor_monitor_compositor_iced_base.workspace = true
 compositor_support_world_order_track_base.workspace = true

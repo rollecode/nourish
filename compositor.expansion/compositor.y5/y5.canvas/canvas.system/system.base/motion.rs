@@ -20,11 +20,13 @@ use compositor_support_smithay_dispatch_state_base::state::Dispatch;
 use compositor_y5_canvas_input_state::state::{
     ActiveOption, ActiveTransformCandidate, CanvasGrab,
 };
+use compositor_y5_camera_state_base::state::CAMERA;
+use compositor_orchestration_storage_state_base::state::NESTED;
 use compositor_y5_camera_transform_translate::slot;
 use smithay::desktop::Window;
 use smithay::input::pointer::MotionEvent;
 use smithay::reexports::wayland_protocols::xdg::shell::server::xdg_toplevel;
-use smithay::utils::{Logical, Point, Size, SERIAL_COUNTER};
+use smithay::utils::{Logical, Point, Rectangle, Size, SERIAL_COUNTER};
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::collections::HashSet;
 use uuid::Uuid;
@@ -34,6 +36,7 @@ use compositor_y5_surface_system_base::base::SURFACE;
 use compositor_y5_surface_protocol_base::protocol::{SurfaceMessage, SurfaceMessageType};
 use compositor_y5_window_interface_record::window::LoopWindow;
 use crate::base::{CanvasCmd, CANVAS, CANVAS_BUF};
+use crate::snap;
 
 /// A pending window/placeholder geometry change (mirrors the rim `TransformUpdate`).
 #[derive(Clone, Copy)]
@@ -64,48 +67,90 @@ pub(crate) fn motion(cx: &mut SystemCx, x: f64, y: f64, _screen_x: f64, _screen_
         return InputFlow::Pass;
     }
 
+    // Snapping inputs, read before the grab borrow: the camera zoom (scales the
+    // snap radius + ranges) and whether CTRL is held — CTRL forces the raw
+    // UNREALIZED geom (snapping off) for this frame.
+    let zoom = cx.storage.get(&CAMERA).transform.zoom;
+    // Under nested winit the host swallows CTRL, so snapping is always on there;
+    // only on udev does CTRL toggle it off (forcing the raw unrealized geom).
+    let nested = cx.kernel.try_get(&NESTED).copied().unwrap_or(false);
+    let snapping = nested || !ctrl_held(cx);
+
     let mut window_updates: Vec<(Window, Update)> = vec![];
     let mut placeholder_updates: Vec<(Uuid, Update)> = vec![];
     let mut select_box_cursor: Option<Point<f64, Logical>> = None;
 
     match &cx.storage.get(&CANVAS).Grab {
-        CanvasGrab::Active(ActiveOption::Moving { candidates, start_cursor, .. }) => {
+        CanvasGrab::Active(ActiveOption::Moving { candidates, start_cursor, snap, .. }) => {
+            // UNREALIZED delta: the plain unsnapped drag (historical behavior).
             let total_dx = cursor.x - start_cursor.x;
             let total_dy = cursor.y - start_cursor.y;
             match candidates {
                 ActiveTransformCandidate::Window(list) => {
+                    // Snap the moving set's bounding box (left/right + top/bottom all
+                    // eligible), then apply the resulting REALIZED delta to every
+                    // window so their relative offsets are preserved.
+                    let (sdx, sdy) = match (snapping, bbox_of(list)) {
+                        (true, Some(b)) => {
+                            let c = snap::move_correction(snap, b.to_f64(), total_dx, total_dy, zoom);
+                            (c.dx, c.dy)
+                        }
+                        _ => (0.0, 0.0),
+                    };
+                    let rdx = total_dx + sdx;
+                    let rdy = total_dy + sdy;
                     for (window, start_geo) in list {
                         let mut loc = start_geo.loc;
-                        loc.x = (start_geo.loc.x as f64 + total_dx).floor() as i32;
-                        loc.y = (start_geo.loc.y as f64 + total_dy).floor() as i32;
+                        loc.x = (start_geo.loc.x as f64 + rdx).floor() as i32;
+                        loc.y = (start_geo.loc.y as f64 + rdy).floor() as i32;
                         window_updates.push((window.clone(), Update { position: Some(loc), size: None }));
                     }
                 }
                 ActiveTransformCandidate::Placeholder(uuid, start_geo) => {
+                    let (sdx, sdy) = if snapping {
+                        let c = snap::move_correction(snap, start_geo.to_f64(), total_dx, total_dy, zoom);
+                        (c.dx, c.dy)
+                    } else {
+                        (0.0, 0.0)
+                    };
+                    let rdx = total_dx + sdx;
+                    let rdy = total_dy + sdy;
                     let mut loc = start_geo.loc;
-                    loc.x = (start_geo.loc.x as f64 + total_dx).floor() as i32;
-                    loc.y = (start_geo.loc.y as f64 + total_dy).floor() as i32;
+                    loc.x = (start_geo.loc.x as f64 + rdx).floor() as i32;
+                    loc.y = (start_geo.loc.y as f64 + rdy).floor() as i32;
                     placeholder_updates.push((*uuid, Update { position: Some(loc), size: None }));
                 }
             }
         }
-        CanvasGrab::Active(ActiveOption::Scaling { candidates, start_cursor, Anchor, .. }) => {
+        CanvasGrab::Active(ActiveOption::Scaling { candidates, start_cursor, Anchor, snap, .. }) => {
+            // UNREALIZED delta: the plain unsnapped resize (historical behavior).
             let dx = cursor.x.round() - start_cursor.x.round();
             let dy = cursor.y.round() - start_cursor.y.round();
             let horizontal = Anchor.Horizontal;
             let vertical = Anchor.Vertical;
             match candidates {
                 ActiveTransformCandidate::Window(list) => {
+                    // Snap only the moving edges (the anchor fixes the opposite ones),
+                    // taken on the moving set's bbox; apply the REALIZED delta uniformly.
+                    let (sdx, sdy) = match (snapping, bbox_of(list)) {
+                        (true, Some(b)) => {
+                            let c = snap::scale_correction(snap, b.to_f64(), dx, dy, horizontal, vertical, zoom);
+                            (c.dx, c.dy)
+                        }
+                        _ => (0.0, 0.0),
+                    };
+                    let rdx = dx + sdx;
+                    let rdy = dy + sdy;
                     for (window, start_geo) in list {
                         let mut new_geo = *start_geo;
                         // --- X-AXIS ---
                         if horizontal {
-                            let new_w = (start_geo.size.w as f64 + dx).round() as i32;
+                            let new_w = (start_geo.size.w as f64 + rdx).round() as i32;
                             new_geo.size.w = new_w.max(300);
                         } else {
                             let start_left = start_geo.loc.x as f64;
                             let start_right = start_geo.loc.x as f64 + start_geo.size.w as f64;
-                            let new_left_f = start_left + dx;
+                            let new_left_f = start_left + rdx;
                             let min_left = start_right - 300.0;
                             let new_left = new_left_f.min(min_left).round() as i32;
                             let right_i = start_right.round() as i32;
@@ -114,12 +159,12 @@ pub(crate) fn motion(cx: &mut SystemCx, x: f64, y: f64, _screen_x: f64, _screen_
                         }
                         // --- Y-AXIS ---
                         if vertical {
-                            let new_h = (start_geo.size.h as f64 + dy).round() as i32;
+                            let new_h = (start_geo.size.h as f64 + rdy).round() as i32;
                             new_geo.size.h = new_h.max(300);
                         } else {
                             let start_top = start_geo.loc.y as f64;
                             let start_bottom = start_geo.loc.y as f64 + start_geo.size.h as f64;
-                            let new_top_f = start_top + dy;
+                            let new_top_f = start_top + rdy;
                             let min_top = start_bottom - 300.0;
                             let new_top = new_top_f.min(min_top).round() as i32;
                             let bottom_i = start_bottom.round() as i32;
@@ -134,24 +179,32 @@ pub(crate) fn motion(cx: &mut SystemCx, x: f64, y: f64, _screen_x: f64, _screen_
                     }
                 }
                 ActiveTransformCandidate::Placeholder(uuid, start_geo) => {
+                    let (sdx, sdy) = if snapping {
+                        let c = snap::scale_correction(snap, start_geo.to_f64(), dx, dy, horizontal, vertical, zoom);
+                        (c.dx, c.dy)
+                    } else {
+                        (0.0, 0.0)
+                    };
+                    let rdx = dx + sdx;
+                    let rdy = dy + sdy;
                     let mut new_geo = *start_geo;
                     // --- X-AXIS ---
                     if horizontal {
-                        let new_w = (start_geo.size.w as f64 + dx).floor() as i32;
+                        let new_w = (start_geo.size.w as f64 + rdx).floor() as i32;
                         new_geo.size.w = new_w.max(1);
                     } else {
                         let max_negative_dx = -(start_geo.size.w as f64) + 1.0;
-                        let bounded_dx = dx.max(max_negative_dx);
+                        let bounded_dx = rdx.max(max_negative_dx);
                         new_geo.size.w = (start_geo.size.w as f64 - bounded_dx).floor() as i32;
                         new_geo.loc.x = (start_geo.loc.x as f64 + bounded_dx).floor() as i32;
                     }
                     // --- Y-AXIS ---
                     if vertical {
-                        let new_h = (start_geo.size.h as f64 + dy).floor() as i32;
+                        let new_h = (start_geo.size.h as f64 + rdy).floor() as i32;
                         new_geo.size.h = new_h.max(1);
                     } else {
                         let max_negative_dy = -(start_geo.size.h as f64) + 1.0;
-                        let bounded_dy = dy.max(max_negative_dy);
+                        let bounded_dy = rdy.max(max_negative_dy);
                         new_geo.size.h = (start_geo.size.h as f64 - bounded_dy).floor() as i32;
                         new_geo.loc.y = (start_geo.loc.y as f64 + bounded_dy).floor() as i32;
                     }
@@ -193,6 +246,12 @@ pub(crate) fn motion(cx: &mut SystemCx, x: f64, y: f64, _screen_x: f64, _screen_
             .collect()
     };
 
+    // The output fractional scale: the placeholder system needs it to convert the
+    // world-space drag geometry into the storage-physical space its iced surface
+    // lives in (world × scale). Read once here — channel receivers (the placeholder
+    // system) have no `cx.platform`, so the input layer must capture it.
+    let scale = output_scale(cx);
+
     // Apply window reforms (force = interactive drag) reading `cx.platform.space()`.
     // Each window owns a live `map` placeholder keyed by its UUID; keep its geometry
     // in sync with the drag (rim `_reform` did this via `placeholder.interface::set`)
@@ -202,7 +261,7 @@ pub(crate) fn motion(cx: &mut SystemCx, x: f64, y: f64, _screen_x: f64, _screen_
             let position = update.position.map(|p| (p.x, p.y));
             let size = update.size.map(|s| (s.w, s.h));
             compositor_y5_placeholder_system_base::base::announce_placeholder_geometry(
-                cx.channels, uuid, position, size,
+                cx.channels, uuid, position, size, scale,
             );
         }
         reform_force(cx, window, update);
@@ -228,7 +287,7 @@ pub(crate) fn motion(cx: &mut SystemCx, x: f64, y: f64, _screen_x: f64, _screen_
         let position = update.position.map(|p| (p.x, p.y));
         let size = update.size.map(|s| (s.w, s.h));
         compositor_y5_placeholder_system_base::base::announce_placeholder_geometry(
-            cx.channels, uuid, position, size,
+            cx.channels, uuid, position, size, scale,
         );
     }
 
@@ -294,6 +353,44 @@ fn reform_force(cx: &mut SystemCx, window: Window, update: Update) {
             toplevel.send_configure();
         }
     }
+}
+
+/// The current output's fractional scale (`1.0` when there is no output, an
+/// identity transform). The placeholder iced surface is spawned in
+/// storage-physical space (world × scale, see `Transform::into_storage_rect_physical`),
+/// so a world-space drag must be scaled by this before the placeholder system
+/// forwards it to the iced registry — otherwise it jumps on the first drag frame
+/// whenever scale != 1 (fractional-scale winit; native runs at 1.0 and never saw it).
+fn output_scale(cx: &mut SystemCx) -> f64 {
+    cx.platform
+        .as_deref_mut()
+        .and_then(|p| p.downcast_mut::<compositor_orchestration_draw_platform_base::platform::Platform>())
+        .and_then(|p| p.space().outputs().next().map(|o| o.current_scale().fractional_scale()))
+        .unwrap_or(1.0)
+}
+
+/// Union of the candidate windows' start geometries (the moving set's bbox),
+/// `None` for an empty list.
+fn bbox_of(list: &[(Window, Rectangle<i32, Logical>)]) -> Option<Rectangle<i32, Logical>> {
+    let mut acc: Option<Rectangle<i32, Logical>> = None;
+    for (_, geo) in list {
+        acc = Some(match acc {
+            Some(a) => a.merge(*geo),
+            None => *geo,
+        });
+    }
+    acc
+}
+
+/// Whether CTRL is currently held (reads the keyboard modifier state via the
+/// seat). CTRL suppresses snapping so the raw unrealized geom is applied.
+fn ctrl_held(cx: &mut SystemCx) -> bool {
+    cx.seat
+        .as_deref_mut()
+        .and_then(|s| s.downcast_mut::<Dispatch>())
+        .and_then(|d| d.seat.seat.get_keyboard())
+        .map(|k| k.modifier_state().ctrl)
+        .unwrap_or(false)
 }
 
 fn now_msec() -> u32 {

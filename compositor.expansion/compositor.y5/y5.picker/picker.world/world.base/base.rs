@@ -24,6 +24,7 @@ pub fn create_world_with_id(state: &mut Loop, id: uuid::Uuid) -> uuid::Uuid {
         Box::new(compositor_y5_placeholder_system_base::base::PlaceholderSystem),
         Box::new(compositor_y5_launcher_system_base::base::LauncherSystem),
         Box::new(compositor_y5_select_system_base::base::SelectSystem),
+        Box::new(compositor_y5_select_overlay_system::base::SelectionOverlaySystem),
         Box::new(compositor_y5_group_system_base::base::GroupSystem),
     ];
     let world = compositor_support_world_kind_build_base::base::spatial(id, "world", systems, &state.inner.kernel);

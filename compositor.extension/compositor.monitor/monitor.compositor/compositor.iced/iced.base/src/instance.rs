@@ -115,7 +115,11 @@ impl<U: IcedUi> IcedInstanceAny for IcedInstance<U> {
         self.surface.size
     }
     fn set_location(&mut self, p: Point<i32, Physical>) {
-        self.location = p;
+        if self.location != p {
+            self.location = p;
+            // Mark changed so the move is picked up (damage), not rendered stale.
+            self.commit.increment();
+        }
     }
     fn queue_event(&mut self, event: IcedEvent) {
         self.runtime.queue_event(event);

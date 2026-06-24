@@ -269,21 +269,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "compositor_graphic_preference_gpu_rank"
-version = "0.0.1"
-dependencies = [
- "bitflags 2.13.0",
- "compositor_developer_debug_instance_record",
- "smithay",
-]
-
-[[package]]
 name = "compositor_kernel_gpu_preference_select_base"
 version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
  "compositor_developer_debug_instance_record",
- "compositor_graphic_preference_gpu_rank",
+ "compositor_kernel_graphic_preference_gpu_rank",
  "smithay",
 ]
 
@@ -307,6 +298,15 @@ dependencies = [
 
 [[package]]
 name = "compositor_kernel_gpu_topology_route_base"
+version = "0.0.1"
+dependencies = [
+ "bitflags 2.13.0",
+ "compositor_developer_debug_instance_record",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_kernel_graphic_preference_gpu_rank"
 version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",

@@ -25,6 +25,9 @@ impl DrawLayer {
     pub const CONTENT: DrawLayer = DrawLayer(0);
     /// Group frames sit beneath the windows they contain.
     pub const GROUP: DrawLayer = DrawLayer(-100);
+    /// World-space overlays that sit ABOVE all windows (e.g. the selection
+    /// toolbar in its world-at-cursor placement).
+    pub const OVERLAY: DrawLayer = DrawLayer(100);
 }
 
 /// The spatial world's NON-DESTRUCTIVE draw-order registry: it stores only

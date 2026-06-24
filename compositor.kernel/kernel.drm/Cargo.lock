@@ -269,15 +269,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "compositor_graphic_preference_output_profile"
-version = "0.0.1"
-dependencies = [
- "bitflags 2.13.0",
- "compositor_developer_debug_instance_record",
- "smithay",
-]
-
-[[package]]
 name = "compositor_kernel_drm_connector_diff_base"
 version = "0.0.1"
 dependencies = [
@@ -310,7 +301,7 @@ version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
  "compositor_developer_debug_instance_record",
- "compositor_graphic_preference_output_profile",
+ "compositor_kernel_graphic_preference_output_profile",
  "smithay",
 ]
 
@@ -393,7 +384,7 @@ version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
  "compositor_developer_debug_instance_record",
- "compositor_graphic_preference_output_profile",
+ "compositor_kernel_graphic_preference_output_profile",
  "smithay",
 ]
 
@@ -428,6 +419,15 @@ dependencies = [
 
 [[package]]
 name = "compositor_kernel_drm_syncobj_timeline_base"
+version = "0.0.1"
+dependencies = [
+ "bitflags 2.13.0",
+ "compositor_developer_debug_instance_record",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_kernel_graphic_preference_output_profile"
 version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",

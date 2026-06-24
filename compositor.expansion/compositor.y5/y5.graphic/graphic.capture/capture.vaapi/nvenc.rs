@@ -7,12 +7,34 @@
 //! the GPU→CPU readback the caller performs. (A future zero-copy path would
 //! import the dmabuf into CUDA.)
 
-use std::ffi::{c_int, c_void};
+use std::ffi::{CStr, c_int, c_void};
 use std::path::PathBuf;
 use std::ptr;
 
 use crate::common::{Muxer, averr};
 use crate::ffi;
+
+// --- Encoder tuning knobs (NVENC). All compile-time constants; see CAPTURE.md. ---
+/// Preset `p1`(fastest)…`p7`(best quality). Recording, not live → favour quality.
+const NVENC_PRESET: &CStr = c"p7";
+/// Rate-control tune: `hq` | `ll` | `ull` | `lossless`. `hq` = high quality.
+const NVENC_TUNE: &CStr = c"hq";
+/// Rate control mode: `vbr` | `cbr` | `constqp`.
+const NVENC_RC: &CStr = c"vbr";
+/// VBR target quality 0..51 (lower = better; ~19 is visually near-lossless).
+const NVENC_CQ: &CStr = c"19";
+/// H.264 profile (`baseline` | `main` | `high` | `high444p`).
+const NVENC_PROFILE: &CStr = c"high";
+/// Target bitrate (bits/s). Sized for up to 4K@60.
+const NVENC_BITRATE: i64 = 40_000_000;
+/// VBR ceiling bitrate (bits/s).
+const NVENC_MAXRATE: i64 = 60_000_000;
+/// Rate-control buffer (bits) — ~2s of MAXRATE.
+const NVENC_BUFSIZE: c_int = 120_000_000;
+/// Keyframe (IDR) interval, in seconds (`gop_size = fps * GOP_SECONDS`).
+const GOP_SECONDS: u32 = 2;
+/// Consecutive B-frames (0 disables; B-frames improve compression).
+const NVENC_BFRAMES: c_int = 2;
 
 pub struct NvencEncoder {
     codec_ctx: *mut ffi::AVCodecContext,
@@ -85,13 +107,19 @@ impl NvencEncoder {
             };
             // BGRA from the readback → NVENC ingests BGR0 and converts to NV12.
             c.pix_fmt = ffi::AV_PIX_FMT_BGR0;
-            // Reasonable defaults: p4 preset, low-latency-ish.
-            ffi::av_opt_set(
-                c.priv_data,
-                c"preset".as_ptr(),
-                c"p4".as_ptr(),
-                0,
-            );
+            // Rate control + GOP (generic AVCodecContext fields).
+            c.bit_rate = NVENC_BITRATE;
+            c.rc_max_rate = NVENC_MAXRATE;
+            c.rc_buffer_size = NVENC_BUFSIZE;
+            c.gop_size = (fps * GOP_SECONDS) as c_int;
+            c.max_b_frames = NVENC_BFRAMES;
+            // NVENC-private options (preset/tune/rc/cq/profile).
+            let p = c.priv_data;
+            ffi::av_opt_set(p, c"preset".as_ptr(), NVENC_PRESET.as_ptr(), 0);
+            ffi::av_opt_set(p, c"tune".as_ptr(), NVENC_TUNE.as_ptr(), 0);
+            ffi::av_opt_set(p, c"rc".as_ptr(), NVENC_RC.as_ptr(), 0);
+            ffi::av_opt_set(p, c"cq".as_ptr(), NVENC_CQ.as_ptr(), 0);
+            ffi::av_opt_set(p, c"profile".as_ptr(), NVENC_PROFILE.as_ptr(), 0);
         }
         let r = ffi::avcodec_open2(codec_ctx, codec, ptr::null_mut());
         if r < 0 {

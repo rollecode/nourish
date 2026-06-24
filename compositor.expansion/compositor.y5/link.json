@@ -1,5 +1,6 @@
 [
   "../../compositor.introspection",
+  "../../compositor.kernel/kernel.execution",
   "../../compositor.developer",
   "../../compositor.expansion/compositor.background",
   "../../compositor.expansion/compositor.remote",

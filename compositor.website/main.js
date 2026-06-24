@@ -8,6 +8,47 @@
 
   var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  /* ---------- Header height -> CSS var (offsets the pinned hero) ---------- */
+  var header = document.querySelector(".nav");
+  var setHeaderH = function () {
+    if (header) {
+      document.documentElement.style.setProperty("--header-h", header.offsetHeight + "px");
+    }
+  };
+  setHeaderH();
+  window.addEventListener("resize", setHeaderH, { passive: true });
+
+  /* ---------- Intro scroll-parallax via GSAP ScrollTrigger ----------
+     The hero video scrolls past normally; this pins the full-viewport intro and
+     rises + scales the title, description and globe in (staggered = parallax depth)
+     so the video has completely cleared before any text shows. Degrades to the
+     static centred layout if GSAP is unavailable or under reduced motion. */
+  var introEl = document.getElementById("intro");
+  if (introEl && window.gsap && window.ScrollTrigger && !reduceMotion) {
+    gsap.registerPlugin(ScrollTrigger);
+    document.documentElement.classList.add("gsap-ready");
+    var tl = gsap.timeline({
+      defaults: { ease: "power2.out" },
+      scrollTrigger: {
+        trigger: introEl,
+        start: "top top",
+        end: "+=110%",
+        scrub: 0.6,
+        pin: true,
+        anticipatePin: 1,
+        invalidateOnRefresh: true
+      }
+    });
+    tl.fromTo(".intro .hero-title", { autoAlpha: 0, yPercent: 60, scale: 0.72 },
+                                    { autoAlpha: 1, yPercent: 0, scale: 1 }, 0)
+      .fromTo(".intro .hero-desc",  { autoAlpha: 0, yPercent: 80 },
+                                    { autoAlpha: 1, yPercent: 0 }, 0.12)
+      .fromTo(".intro .hero-globe", { autoAlpha: 0, yPercent: 90, scale: 0.6 },
+                                    { autoAlpha: 1, yPercent: 0, scale: 1 }, 0.2)
+      .fromTo(".intro .hero-cta",   { autoAlpha: 0, yPercent: 80 },
+                                    { autoAlpha: 1, yPercent: 0 }, 0.32);
+  }
+
   /* ---------- Starfield with 3 parallax depths (hero only) ---------- */
   var sky = document.getElementById("stars");
   if (sky) {

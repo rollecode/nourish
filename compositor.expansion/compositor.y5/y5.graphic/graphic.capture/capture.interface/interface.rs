@@ -50,7 +50,9 @@ const KEEPALIVE: Duration = Duration::from_secs(300);
 /// Grace window to click Continue before the capture auto-stops.
 const GRACE: Duration = Duration::from_secs(30);
 /// Target video frame rate (frames are throttled to this in the per-frame hook).
-const VIDEO_FPS: u32 = 30;
+/// 60 fps for smooth motion; drop to 30 if the render thread can't keep pace.
+/// Tunable. See CAPTURE.md ("Tuning").
+const VIDEO_FPS: u32 = 60;
 
 /// Max width/height (px) of a render-based capture entry. Bounds the dmabuf
 /// within GPU / wgpu (`maxTextureDimension2D` 8192) / NVENC H.264 (4096) limits;

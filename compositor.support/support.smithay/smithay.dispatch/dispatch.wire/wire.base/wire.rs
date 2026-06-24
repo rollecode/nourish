@@ -219,6 +219,15 @@ impl<A: WireTrait + 'static> Wire<A> {
                 };
                 let client_state = wire.state.client_compositor_state(&client);
                 client_state.blocker_cleared(&mut wire.state, &dh);
+                // `blocker_cleared` re-applies the held commit (CompositorHandler::
+                // commit pushes the surface into `committed`), but only
+                // `drain_protocol` turns a commit into its world effects (initial
+                // placement → InitialMap → map). The wayland source isn't firing
+                // here — the client was blocked on its own render fence and has sent
+                // nothing more — so we must drain now, or an explicit-sync client's
+                // first buffer (e.g. GTK4 / gnome-calculator) stays unmapped until
+                // some unrelated dispatch happens to drain it.
+                wire.drain_protocol();
                 wire.state.schedule_redraw();
                 Ok(())
             });
