@@ -188,31 +188,35 @@ pub(crate) fn motion(cx: &mut SystemCx, x: f64, y: f64, _screen_x: f64, _screen_
                     let rdx = dx + sdx;
                     let rdy = dy + sdy;
                     let mut new_geo = *start_geo;
-                    // --- X-AXIS ---
+                    // --- X-AXIS --- (mirrors the window arm above: anchor the
+                    // fixed edge, clamp the moving edge so width never drops below
+                    // 300, with NO upper bound on growth and NO position drift.)
                     if horizontal {
-                        let new_w = (start_geo.size.w as f64 + rdx).floor() as i32;
-                        new_geo.size.w = new_w.max(1);
+                        let new_w = (start_geo.size.w as f64 + rdx).round() as i32;
+                        new_geo.size.w = new_w.max(300);
                     } else {
-                        let max_negative_dx = -(start_geo.size.w as f64) + 1.0;
-                        let bounded_dx = rdx.max(max_negative_dx);
-                        new_geo.size.w = (start_geo.size.w as f64 - bounded_dx).floor() as i32;
-                        new_geo.loc.x = (start_geo.loc.x as f64 + bounded_dx).floor() as i32;
+                        let start_left = start_geo.loc.x as f64;
+                        let start_right = start_geo.loc.x as f64 + start_geo.size.w as f64;
+                        let new_left_f = start_left + rdx;
+                        let min_left = start_right - 300.0;
+                        let new_left = new_left_f.min(min_left).round() as i32;
+                        let right_i = start_right.round() as i32;
+                        new_geo.loc.x = new_left;
+                        new_geo.size.w = right_i - new_left;
                     }
                     // --- Y-AXIS ---
                     if vertical {
-                        let new_h = (start_geo.size.h as f64 + rdy).floor() as i32;
-                        new_geo.size.h = new_h.max(1);
+                        let new_h = (start_geo.size.h as f64 + rdy).round() as i32;
+                        new_geo.size.h = new_h.max(300);
                     } else {
-                        let max_negative_dy = -(start_geo.size.h as f64) + 1.0;
-                        let bounded_dy = rdy.max(max_negative_dy);
-                        new_geo.size.h = (start_geo.size.h as f64 - bounded_dy).floor() as i32;
-                        new_geo.loc.y = (start_geo.loc.y as f64 + bounded_dy).floor() as i32;
-                    }
-                    if new_geo.size.w < 300 {
-                        new_geo.size.w = 300;
-                    }
-                    if new_geo.size.h < 300 {
-                        new_geo.size.h = 300;
+                        let start_top = start_geo.loc.y as f64;
+                        let start_bottom = start_geo.loc.y as f64 + start_geo.size.h as f64;
+                        let new_top_f = start_top + rdy;
+                        let min_top = start_bottom - 300.0;
+                        let new_top = new_top_f.min(min_top).round() as i32;
+                        let bottom_i = start_bottom.round() as i32;
+                        new_geo.loc.y = new_top;
+                        new_geo.size.h = bottom_i - new_top;
                     }
                     let mut update = Update { position: None, size: Some(new_geo.size) };
                     if !horizontal || !vertical {

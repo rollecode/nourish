@@ -8,6 +8,11 @@ pub struct CanvasState {
     /// canvas motion gates camera panning on it. Lives here (with the grab) not
     /// in the camera, so the canvas owner can flip it synchronously.
     pub position_updating: bool,
+    /// Momentary FINGER-only hand tool: true while Super is held alone. Touchpad
+    /// pan/pinch own the canvas while set, without disturbing the mouse Move tool
+    /// that shares the Super modifier. Tracked here — separate from `Grab` — so the
+    /// two never entangle; the keyboard handler flips it, the camera reads it.
+    pub finger_pan: bool,
 }
 
 impl CanvasState {
@@ -15,6 +20,7 @@ impl CanvasState {
         Self {
             Grab: CanvasGrab::None,
             position_updating: false,
+            finger_pan: false,
         }
     }
 }

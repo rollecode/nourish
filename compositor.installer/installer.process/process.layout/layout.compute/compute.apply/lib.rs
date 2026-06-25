@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use compositor_installer_process_layout_compute_stage::{Action, Source};
+use compositor_installer_process_layout_compute_stage::{Action, Source, is_root};
 
 /// Execute (or, for `dry_run`, print) the plan. Returns Err on the first failure.
 pub fn apply(actions: &[Action], dry_run: bool) -> Result<(), String> {
@@ -70,16 +70,6 @@ fn run(cmd: &str, args: &[String], needs_root: bool, am_root: bool, dry_run: boo
     } else {
         Err(format!("{cmd} exited with {status}"))
     }
-}
-
-fn is_root() -> bool {
-    // No libc dep: ask `id -u`.
-    std::process::Command::new("id")
-        .arg("-u")
-        .output()
-        .ok()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim() == "0")
-        .unwrap_or(false)
 }
 
 fn svec(s: &[&str]) -> Vec<String> {

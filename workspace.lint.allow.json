@@ -1,240 +1,225 @@
 {
- "compositor.expansion/compositor.y5/y5.audio/audio.controller/controller.interface": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.camera/camera.transform/transform.translate": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.canvas/canvas.input/input.keyboard": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.graphic/graphic.capture/capture.encode": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.graphic/graphic.capture/capture.interface": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.graphic/graphic.capture/capture.registry": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.graphic/graphic.capture/capture.session": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.graphic/graphic.capture/capture.vaapi": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.group/group.interface/interface.base": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.group/group.state/state.base": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.group/group.surface/surface.base": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.launcher/launcher.interface/interface.base": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.lock/lock.interface/interface.base": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.lock/lock.interface/interface.surface": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.lock/lock.scene/scene.frame": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.lock/lock.seat/seat.input": [
-  "flat",
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.navigator/navigator.interface/interface.base": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.navigator/navigator.travel/travel.machine": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.overlay/overlay.interface/interface.keyboard": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.placeholder/placeholder.interface/interface.base": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.placeholder/placeholder.state/state.base": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.placeholder/placeholder.surface/surface.base": [
-  "flat",
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.select/select.box/box.base": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.select/select.state/state.base": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.surface/surface.draw/draw.capture": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.surface/surface.draw/draw.hook": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.surface/surface.interface/interface.base": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.surface/surface.interface/interface.core": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.window/window.decoration/decoration.element": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.window/window.draw/draw.element": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.window/window.draw/draw.frame": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.select/select.overlay/overlay.interface": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.window/window.interface/interface.draw": [
-  "size"
- ],
- "compositor.expansion/compositor.y5/y5.window/window.lifecycle/lifecycle.interface": [
-  "size"
- ],
- "compositor.extension/compositor.monitor/monitor.compositor/compositor.iced/iced.base": [
-  "flat",
-  "size"
- ],
- "compositor.extension/compositor.monitor/monitor.selection/selection.font/font.base": [
-  "flat",
-  "size"
- ],
- "compositor.extension/compositor.monitor/monitor.selection/selection.scene/scene.base": [
-  "flat",
-  "size"
- ],
- "compositor.support/support.iced/iced.core/core.engine/engine.base": [
-  "flat",
-  "size"
- ],
- "compositor.extension/compositor.monitor/monitor.launcher/launcher.ui/ui.base": [
-  "flat",
-  "size"
- ],
- "compositor.extension/compositor.monitor/monitor.runtime/runtime.surface/surface.base": [
-  "flat",
-  "size"
- ],
- "compositor.installer/installer.process/process.packages/packages.enumerate/enumerate.groups": [
-  "size"
- ],
- "compositor.kernel/kernel.drm/drm.edid/edid.parse/parse.base": [
-  "size"
- ],
- "compositor.kernel/kernel.drm/drm.mode/mode.synthesize/synthesize.base": [
-  "size"
- ],
- "compositor.kernel/kernel.gles/gles.element/element.combined/combined.base": [
-  "size"
- ],
- "compositor.kernel/kernel.gles/gles.element/element.wrap/wrap.base": [
-  "size"
- ],
- "compositor.kernel/kernel.loader/loader.main/main.execute/execute.base": [
-  "size"
- ],
- "compositor.kernel/kernel.native/native.assemble/assemble.display/display.base": [
-  "size"
- ],
- "compositor.kernel/kernel.native/native.assemble/assemble.renderer/renderer.base": [
-  "size"
- ],
- "compositor.kernel/kernel.native/native.plugin/plugin.route/route.base": [
-  "size"
- ],
- "compositor.kernel/kernel.native/native.render/render.execute/execute.base": [
-  "size"
- ],
- "compositor.kernel/kernel.native/native.wire/wire.entry/entry.base": [
-  "size"
- ],
- "compositor.kernel/kernel.native/native.wire/wire.frame/frame.base": [
-  "size"
- ],
- "compositor.kernel/kernel.native/native.wire/wire.session/session.base": [
-  "size"
- ],
- "compositor.kernel/kernel.scanout/scanout.commit/commit.build/build.base": [
-  "size"
- ],
- "compositor.kernel/kernel.scanout/scanout.surface/surface.output/output.base": [
-  "size"
- ],
- "compositor.kernel/kernel.vulkan/vulkan.capture/capture.blit/blit.base": [
-  "size"
- ],
- "compositor.kernel/kernel.vulkan/vulkan.memory/memory.export/export.base": [
-  "size"
- ],
- "compositor.kernel/kernel.vulkan/vulkan.memory/memory.import/import.base": [
-  "size"
- ],
- "compositor.kernel/kernel.vulkan/vulkan.memory/memory.target/target.base": [
-  "size"
- ],
- "compositor.kernel/kernel.vulkan/vulkan.memory/memory.upload/upload.base": [
-  "size"
- ],
- "compositor.expansion/compositor.background/background.two/two.draw/draw.vulkan": [
-  "size"
- ],
- "compositor.kernel/kernel.vulkan/vulkan.pipeline/pipeline.fullscreen/fullscreen.base": [
-  "size"
- ],
- "compositor.kernel/kernel.vulkan/vulkan.pipeline/pipeline.composite/composite.base": [
-  "size"
- ],
- "compositor.kernel/kernel.vulkan/vulkan.pipeline/pipeline.hdr/hdr.base": [
-  "size"
- ],
- "compositor.kernel/kernel.vulkan/vulkan.renderer/renderer.core/core.base": [
-  "flat",
-  "size"
- ],
- "compositor.kernel/kernel.winit/winit.scene/scene.compose/compose.base": [
-  "size"
- ],
- "compositor.kernel/kernel.winit/winit.wire/wire.entry/entry.base": [
-  "size"
- ],
- "compositor.orchestration/orchestration.draw/draw.node/node.base": [
-  "size"
- ],
- "compositor.orchestration/orchestration.draw/draw.scene/scene.frame": [
-  "size"
- ],
- "compositor.orchestration/orchestration.core/core.state/state.base": [
-  "size"
- ],
- "compositor.orchestration/orchestration.seat/seat.keyboard/keyboard.input": [
-  "size"
- ],
- "compositor.orchestration/orchestration.seat/seat.pointer/pointer.draw": [
-  "size"
- ],
- "compositor.orchestration/orchestration.seat/seat.pointer/pointer.element": [
-  "size"
- ],
- "compositor.orchestration/orchestration.seat/seat.pointer/pointer.input": [
-  "flat",
-  "size"
- ],
- "compositor.orchestration/orchestration.seat/seat.pointer/pointer.texture": [
-  "size"
- ],
- "compositor.introspection/introspection.restoration/restoration.state/state.match": [
-  "size"
- ]
+  "compositor.expansion/compositor.y5/y5.audio/audio.controller/controller.interface": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.camera/camera.transform/transform.translate": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.canvas/canvas.input/input.keyboard": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.graphic/graphic.capture/capture.encode": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.graphic/graphic.capture/capture.interface": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.graphic/graphic.capture/capture.registry": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.graphic/graphic.capture/capture.session": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.graphic/graphic.capture/capture.vaapi": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.group/group.interface/interface.base": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.group/group.state/state.base": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.group/group.surface/surface.base": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.launcher/launcher.interface/interface.base": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.lock/lock.interface/interface.base": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.lock/lock.interface/interface.surface": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.lock/lock.scene/scene.frame": ["size"],
+  "compositor.expansion/compositor.y5/y5.lock/lock.seat/seat.input": [
+    "flat",
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.navigator/navigator.interface/interface.base": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.navigator/navigator.travel/travel.machine": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.overlay/overlay.interface/interface.keyboard": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.placeholder/placeholder.interface/interface.base": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.placeholder/placeholder.state/state.base": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.placeholder/placeholder.surface/surface.base": [
+    "flat",
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.select/select.box/box.base": ["size"],
+  "compositor.expansion/compositor.y5/y5.select/select.state/state.base": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.surface/surface.draw/draw.capture": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.surface/surface.draw/draw.hook": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.surface/surface.interface/interface.base": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.surface/surface.interface/interface.core": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.window/window.decoration/decoration.element": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.window/window.draw/draw.element": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.window/window.draw/draw.frame": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.select/select.overlay/overlay.interface": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.window/window.interface/interface.draw": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.window/window.lifecycle/lifecycle.interface": [
+    "size"
+  ],
+  "compositor.extension/compositor.monitor/monitor.compositor/compositor.iced/iced.base": [
+    "flat",
+    "size"
+  ],
+  "compositor.extension/compositor.monitor/monitor.selection/selection.font/font.base": [
+    "flat",
+    "size"
+  ],
+  "compositor.extension/compositor.monitor/monitor.selection/selection.scene/scene.base": [
+    "flat",
+    "size"
+  ],
+  "compositor.support/support.iced/iced.core/core.engine/engine.base": [
+    "flat",
+    "size"
+  ],
+  "compositor.extension/compositor.monitor/monitor.launcher/launcher.ui/ui.base": [
+    "flat",
+    "size"
+  ],
+  "compositor.extension/compositor.monitor/monitor.runtime/runtime.surface/surface.base": [
+    "flat",
+    "size"
+  ],
+  "compositor.installer/installer.process/process.packages/packages.enumerate/enumerate.groups": [
+    "size"
+  ],
+  "compositor.kernel/kernel.drm/drm.edid/edid.parse/parse.base": ["size"],
+  "compositor.kernel/kernel.drm/drm.mode/mode.synthesize/synthesize.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.gles/gles.element/element.combined/combined.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.gles/gles.element/element.wrap/wrap.base": ["size"],
+  "compositor.kernel/kernel.loader/loader.main/main.execute/execute.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.native/native.assemble/assemble.display/display.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.native/native.assemble/assemble.renderer/renderer.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.native/native.plugin/plugin.route/route.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.native/native.render/render.execute/execute.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.native/native.wire/wire.entry/entry.base": ["size"],
+  "compositor.kernel/kernel.native/native.wire/wire.frame/frame.base": ["size"],
+  "compositor.kernel/kernel.native/native.wire/wire.session/session.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.scanout/scanout.commit/commit.build/build.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.scanout/scanout.surface/surface.output/output.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.vulkan/vulkan.capture/capture.blit/blit.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.vulkan/vulkan.memory/memory.export/export.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.vulkan/vulkan.memory/memory.import/import.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.vulkan/vulkan.memory/memory.target/target.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.vulkan/vulkan.memory/memory.upload/upload.base": [
+    "size"
+  ],
+  "compositor.expansion/compositor.background/background.two/two.draw/draw.vulkan": [
+    "size"
+  ],
+  "compositor.kernel/kernel.vulkan/vulkan.pipeline/pipeline.fullscreen/fullscreen.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.vulkan/vulkan.pipeline/pipeline.composite/composite.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.vulkan/vulkan.pipeline/pipeline.hdr/hdr.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.vulkan/vulkan.renderer/renderer.core/core.base": [
+    "flat",
+    "size"
+  ],
+  "compositor.kernel/kernel.winit/winit.scene/scene.compose/compose.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.winit/winit.wire/wire.entry/entry.base": ["size"],
+  "compositor.orchestration/orchestration.draw/draw.node/node.base": ["size"],
+  "compositor.orchestration/orchestration.draw/draw.scene/scene.frame": [
+    "size"
+  ],
+  "compositor.orchestration/orchestration.core/core.state/state.base": ["size"],
+  "compositor.orchestration/orchestration.seat/seat.keyboard/keyboard.input": [
+    "size"
+  ],
+  "compositor.orchestration/orchestration.seat/seat.pointer/pointer.draw": [
+    "size"
+  ],
+  "compositor.orchestration/orchestration.seat/seat.pointer/pointer.element": [
+    "size"
+  ],
+  "compositor.orchestration/orchestration.seat/seat.pointer/pointer.input": [
+    "flat",
+    "size"
+  ],
+  "compositor.orchestration/orchestration.seat/seat.pointer/pointer.texture": [
+    "size"
+  ],
+  "compositor.introspection/introspection.restoration/restoration.state/state.match": [
+    "size"
+  ],
+  "compositor.developer/developer.environment/environment.config/config.base": [
+    "size"
+  ]
 }

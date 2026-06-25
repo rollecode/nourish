@@ -21,6 +21,10 @@ pub fn build_and_apply(stage: &layout::Stage, presets: &[cfg::Preset], dry_run: 
 
     let mut plan: Vec<layout::Action> = Vec::new();
     plan.extend(layout::binary_actions(stage, presets));
+    // Seed settings.json from the prompted config (the wrappers no longer write it).
+    if let Some(p) = presets.first() {
+        plan.push(layout::settings_action(p));
+    }
     for p in presets {
         plan.extend(layout::preset_actions(p));
     }
@@ -44,7 +48,18 @@ pub fn build_and_apply(stage: &layout::Stage, presets: &[cfg::Preset], dry_run: 
 
     println!("\n-- Applying {} actions --", plan.len());
     match layout::apply(&plan, dry_run) {
-        Ok(()) => println!("\nDone.{}", if dry_run { " (dry-run)" } else { "" }),
+        Ok(()) => {
+            println!("\nDone.{}", if dry_run { " (dry-run)" } else { "" });
+            if !dry_run {
+                println!(
+                    "\nThe \"Y5 Compositor\" session is installed — log out and pick it in your \
+                     display manager.\n\n  \
+                     • Run this installer again (or just `y5.compositor.settings`) anytime to \
+                     reconfigure or reinstall.\n  \
+                     • To update, visit https://nourish.snowies.com to fetch the latest installer."
+                );
+            }
+        }
         Err(e) => {
             eprintln!("\nInstall failed: {e}");
             std::process::exit(1);

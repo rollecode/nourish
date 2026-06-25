@@ -28,6 +28,16 @@ fn main() {
         return;
     }
 
+    // Must run as the normal user, NOT root/sudo: per-action sudo handles the steps that
+    // need privilege, and $HOME must be the user's so settings.json + the user systemd
+    // units land in their ~/.config rather than /root.
+    if layout::is_root() {
+        eprintln!("y5-install: do not run as root or with sudo.");
+        eprintln!("Run it as your normal user — it invokes sudo itself only for the steps that");
+        eprintln!("need root, so your configuration lands in $HOME/.config, not /root.");
+        std::process::exit(1);
+    }
+
     println!("=== y5 compositor installer ===");
     if dry_run {
         println!("(dry-run: no changes will be made)\n");
@@ -37,7 +47,12 @@ fn main() {
     println!("Artifact staging dir: {}", stage.root.display());
 
     // 1) Packages / drivers.
-    packages::select_and_install(dry_run);
+    // A real install failure aborts here rather than pressing on and leaving a
+    // half-installed system.
+    if let Err(e) = packages::select_and_install(dry_run) {
+        eprintln!("\nInstallation aborted: {e}");
+        std::process::exit(1);
+    }
 
     // 2-3) Default Y5 Desktop configuration + presets (incl. optional Custom).
     let presets = configure::gather();

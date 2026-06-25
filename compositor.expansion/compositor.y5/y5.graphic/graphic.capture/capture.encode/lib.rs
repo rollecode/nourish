@@ -13,10 +13,15 @@ extern crate compositor_developer_debug_instance_record;
 pub mod frame;
 pub mod portal;
 pub mod readback;
+pub mod reencode;
 pub mod save;
 pub mod video;
 
 pub use frame::Frame;
 pub use readback::{AsyncReadback, readback};
+pub use reencode::{
+    OptimizedCodec, ReencodeJob, ReencodeStatus, ffmpeg_format, partial_path, reencode_detached,
+    save_fallback,
+};
 pub use save::{default_path, save_png};
 pub use video::VideoEncoder;

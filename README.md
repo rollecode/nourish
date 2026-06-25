@@ -1,21 +1,56 @@
+<div align="center">
+
+<img src="compositor.website/assets/favicon.svg" alt="Nourish" width="84" height="84">
+
+# Nourish
+
+<img src="compositor.website/assets/hero-sphere.png" alt="The Nourish world — one endless canvas" width="300">
+
+<br><br>
+
 [![CI](https://github.com/y5-snowies/nourish/actions/workflows/ci.yml/badge.svg)](https://github.com/y5-snowies/nourish/actions/workflows/ci.yml)
 [![Coverage](https://nourish.snowies.com/docs/coverage.svg)](https://nourish.snowies.com/docs/coverage/)
-[![Release](https://img.shields.io/github/v/release/y5-snowies/nourish?include_prereleases&display_name=tag)](https://github.com/y5-snowies/nourish/releases)
+[![Release](https://img.shields.io/github/v/release/y5-snowies/nourish?sort=semver)](https://github.com/y5-snowies/nourish/releases)
 [![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
 
-# ✻ Nourish
+### A simple next-gen desktop for work.
 
-### A calmer way to use your computer.
+<video src="https://nourish.snowies.com/assets/hero.mp4" poster="compositor.website/assets/hero-sphere.png" controls muted loop width="720">
+  <a href="https://nourish.snowies.com">▶ Watch the intro at nourish.snowies.com</a>
+</video>
+
+**[nourish.snowies.com](https://nourish.snowies.com)**  ·  [Guide](https://nourish.snowies.com/guide)  ·  [Discord](https://discord.gg/kasec5bYb)
+
+</div>
+
+---
 
 Nourish is a Linux desktop where your screen is a window onto **one endless canvas**.
 Spread your work out, zoom in to focus, zoom out to see everything — nothing gets buried,
 nothing gets lost. Close the lid, come back tomorrow, and find it just as you left it.
 
-It's free, open source, and runs on Fedora 44 today.
+It's free, open source, and stable to be used as daily driver.
+It's performant, and renders using Vulkan. optionally, you can set automatic fallback or explicitly select Gles on systems where Vulkan is not supported.
 
-**[nourish.snowies.com](https://nourish.snowies.com)**  ·  [Guide](https://nourish.snowies.com/guide)
+## Glossary
 
----
+The whole desktop is a handful of ideas. Everything else is built from these:
+
+```
+Nourish — one endless desktop
+│
+├─ Canvas        — one endless, zoomable surface; windows sit side by side, never stacked
+│  ├─ Zoom       — step in to focus or out to see everything; text and video stay crisp
+│  └─ Navigation — fly to a neighbouring window with a keystroke; hands stay on the keys
+├─ Worlds        — many independent canvases; one key switches, each remembers itself
+│  └─ Picker     — a gentle 3D screen showing every world as a tile to fly into
+├─ Groups        — a named bundle of windows you line up, space out, or collapse to its name
+├─ Placeholders  — the outline a closed or crashed app leaves behind; one tap restores it in place
+├─ Capture       — screenshot or hardware-encoded H.264 video of a window, a region, or the screen
+├─ Launcher      — a keyboard finder that starts any app
+├─ Backdrop      — a living parallax scene that drifts behind your work
+└─ Lock screen   — a clean lock screen with a real password prompt behind it
+```
 
 ## What makes it different
 
@@ -35,6 +70,12 @@ saved to disk, so it survives a full reboot too.
 🪐 &nbsp;**Many canvases, one keystroke.** Want a clean slate? Flick to a whole separate
 canvas. Keep "work" and "play" apart — each one remembers itself between sessions.
 
+🎥 &nbsp;**Capture anything.** Screenshot or record a window, a region that follows your pan
+and zoom, or the whole screen — even with a transparent background for clean overlays. You can capture 4K@120 smoothly without any performance drawbacks.
+
+🖥️ &nbsp;**Runs on your hardware.** NVIDIA, Intel, or AMD; a stable Vulkan renderer with a
+GLES fallback for older cards. Built natively on Wayland, and older X11 apps run too.
+
 ## Install
 
 On Fedora 44, it's one command. You get a prebuilt build, so there's no toolchain to set up:
@@ -46,8 +87,10 @@ curl -fsSL https://nourish.snowies.com/release/latest/fedora44/package.tar.gz | 
 The installer is interactive and safe to re-run. For the full walkthrough see
 [`compositor.installer/INSTALL.md`](compositor.installer/INSTALL.md).
 
-> Nourish is **early — v0.0.1, early but real**. Expect a few rough edges, and please tell
-> us what you find.
+Prefer a pinned build? Every release is also published immutably under its version —
+`https://nourish.snowies.com/release/v1.0.0/fedora44/package.tar.gz` — while `latest`
+always points at the newest. Browse them on the
+[releases page](https://github.com/y5-snowies/nourish/releases).
 
 ## Made in the open
 
@@ -57,24 +100,18 @@ Wayland compositor written in Rust, standing on patched forks of
 [wgpu](https://wgpu.rs) (rendering), and [iced](https://iced.rs) (interface), all kept
 in-tree under `vendor/`.
 
-### For developers
+```bash
+# Build & run nested in your current Wayland session
+environment/run-host.sh winit debug
 
-| Start here | What it covers |
-| --- | --- |
-| [`CLAUDE.md`](CLAUDE.md) | how the codebase is organised + the conventions — the best entry point |
-| [`environment/README.md`](environment/README.md) | build, run, and deploy on your machine |
-| [`compositor.installer/`](compositor.installer/) | the installer, the shipped binaries, and the bundled components |
-| [`ci/README.md`](ci/README.md) | the CI/CD pipeline (one set of portable scripts, two platforms) |
+# Build a release install bundle (compositor + components + installer)
+ci/scripts/package-installer.sh
+```
 
-Each `compositor*/` folder is its own Cargo workspace — there's no root `Cargo.toml`. The
-quickest way in is `environment/README.md`.
+The conventions, architecture, and discovery commands live in [`CLAUDE.md`](CLAUDE.md) and
+[`document/`](document/).
 
 ## License
 
-Dual-licensed, at your option, under either:
-
-- **Apache License 2.0** — [LICENSE-APACHE](LICENSE-APACHE)
-- **MIT** — [LICENSE-MIT](LICENSE-MIT)
-
-Copyright © 2026 Yarden Apelker. Unless you state otherwise, any contribution you submit for
-inclusion is dual-licensed as above, with no additional terms.
+Licensed under either of [Apache License 2.0](LICENSE-APACHE) or
+[MIT license](LICENSE-MIT) at your option.

@@ -1,5 +1,6 @@
 use smithay::backend::input::KeyState;
 use smithay::input::keyboard::{KeysymHandle, ModifiersState};
+use smithay::input::pointer::CursorIcon;
 use compositor_orchestration_core_state_base::Loop;
 use compositor_orchestration_core_state_base::export::{ActiveOption, CanvasGrab, TargetOption};
 use compositor_support_library_input_keyboard_base::keyboard::combo::KeyCombo;
@@ -71,6 +72,13 @@ pub fn input_received(
         }
     }
 
+    // Momentary finger-only hand tool: Super held alone (same exact-modifier
+    // condition as the Move tool, but kept as its own flag — never the Move grab).
+    // While set, touchpad pan/pinch own the canvas; the mouse Move tool is
+    // untouched, so on a laptop the otherwise-idle two-finger gestures become
+    // pan/zoom without colliding with Super+drag window moves.
+    state.inner.canvas_mut().finger_pan = combo_move.matches(modifiers, key);
+
     let (targetting_available, is_active) = match state.inner.canvas_mut().Grab {
         CanvasGrab::None => (true, false),
         CanvasGrab::Target(_) => (true, false),
@@ -87,6 +95,9 @@ pub fn input_received(
 
                     if cancels {
                         state.inner.canvas_mut().Grab = CanvasGrab::None;
+                        // Hand tool released: drop the forced grab cursor so clients
+                        // (and the default arrow) take over again.
+                        state.state.seat.force_cursor = None;
                     }
 
                     true
@@ -151,6 +162,9 @@ pub fn input_received(
     } else if match_hand {
         // Because the hand tool activated, button presses must not be sent.
         state.inner.canvas_mut().Grab = CanvasGrab::Active(ActiveOption::Hand);
+        // Show the grab (open hand) cursor while the hand tool is active; the
+        // per-frame render forces it over any client-set cursor.
+        state.state.seat.force_cursor = Some(CursorIcon::Grab);
     } else {
         state.inner.canvas_mut().Grab = CanvasGrab::None;
     }

@@ -29,10 +29,40 @@ pub struct Environment {
     pub vk_diag: String,
     /// Capture encoder: `"mesa"`/`"vaapi"` for VAAPI, else NVENC.
     pub capture_encoder: String,
+    /// Live-capture video codec: `"av1"` | `"h265"` | `"h264"`. Falls back to
+    /// the first available NVENC encoder along av1 → h265 → h264 (VP9 has no
+    /// NVENC; reachable only via the optimized software re-encode).
+    pub capture_codec: String,
+    /// Live-capture quality: `"lossless"` (near-lossless, CQ 19) or
+    /// `"optimized"` (smaller, higher CQ — still real-time hardware). Sets the
+    /// live NVENC CQ; independent of the optional software re-encode below.
+    pub capture_quality: String,
+    /// Max live-capture frame rate, clamped to `30..=120`.
+    pub capture_refresh_rate_max: u32,
+    /// Optional post-capture **software** re-encode (much smaller): `""` = off
+    /// (offer it as an "Optimized encoding" checkbox in the save dialog);
+    /// `"ffmpeg"` = run it automatically in the background after every recording
+    /// (no checkbox; writes a `.y5-encoding` file renamed to the target on done).
+    pub capture_background_encoder: String,
+    /// `false` (default) = a failed NVENC zero-copy start aborts the capture with
+    /// an error dialog. `true` = fall back to the slower GPU→CPU readback encoder
+    /// instead. (The readback path also flips correctly on winit, unlike
+    /// zero-copy — but it's not used unless this is enabled.)
+    pub capture_nvenc_allow_readback_fallback: bool,
+    /// `true` = keep the capture's natural variable frame rate (exact timing,
+    /// smallest). `false` = produce a constant frame rate, snapped to a standard
+    /// rate (else nearest 5), for editors/players that reject VFR. CFR is applied
+    /// during the re-encode pass (it can't be done without re-timing frames), so
+    /// `false` forces a re-encode even for an otherwise plain save.
+    pub capture_variable_frame_rate: bool,
     /// `false` = compositor-tracked window sizing; `true` = client xdg geometry.
     pub window_client_size_fallback: bool,
     /// `false` = fit only the root toplevel; `true` = fit the whole surface tree.
     pub window_subsurface_shrinks: bool,
+    /// `true` (default) = natural scrolling: invert the touchpad finger-axis
+    /// direction for canvas pan, window scroll, and multi-finger swipe navigation
+    /// (a discrete mouse wheel is unaffected). `false` = use the raw direction.
+    pub input_natural_scroll: bool,
 }
 
 static ENV: OnceLock<Environment> = OnceLock::new();
@@ -94,4 +124,35 @@ pub fn init() {
 /// The parsed environment. Panics if called before [`init`].
 pub fn get() -> &'static Environment {
     ENV.get().expect("environment not initialized; call init() first in main()")
+}
+
+/// Canonical complete starting settings — the single source of default values shared by
+/// the configuration TOOLS: the `y5.compositor.settings` editor and the installer's seed.
+/// NOT used by the compositor at runtime — [`init`] still requires a fully-populated file
+/// and never falls back to these, so a real config can't be silently half-default. Living
+/// here (with the struct) means the editor and the installer agree on one set of values
+/// across the full 19-field schema, so any seeded file is always complete and valid.
+pub fn default_settings() -> Environment {
+    Environment {
+        renderer: "vulkan".to_string(),
+        renderer_fallback: true,
+        renderer_sync: String::new(),
+        hdr: false,
+        depth: 8,
+        vrr: false,
+        render_node: "/dev/dri/renderD128".to_string(),
+        desktop_name: "Y5Compositor".to_string(),
+        log_level: "info,warn,error".to_string(),
+        vk_diag: String::new(),
+        capture_encoder: "nvenc".to_string(),
+        capture_codec: "av1".to_string(),
+        capture_quality: "optimized".to_string(),
+        capture_refresh_rate_max: 120,
+        capture_background_encoder: "ffmpeg".to_string(),
+        capture_nvenc_allow_readback_fallback: false,
+        capture_variable_frame_rate: false,
+        window_client_size_fallback: false,
+        window_subsurface_shrinks: false,
+        input_natural_scroll: true,
+    }
 }

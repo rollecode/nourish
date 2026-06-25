@@ -1,14 +1,14 @@
-//! dmabuf -> VkImage (client buffer import) — the vulkan implementation of
-//! the contract import capability. Phase 4 Step 3 — real for the
-//! single-memory (non-disjoint) plane layout, which covers the formats this
-//! compositor offers; disjoint multi-plane import is the recorded follow-up.
+//! dmabuf -> VkImage (client buffer import) — the vulkan implementation of the
+//! contract import capability. Single-memory (non-disjoint) plane layout is the
+//! always-on path; DISJOINT multi-plane import (Intel CCS-style aux plane on a
+//! separate fd) is gated behind the `MULTIPLANE_SUPPORT` master knob.
 
 use ash::vk;
-use compositor_kernel_vulkan_device_factory_base::factory::VulkanDevice;
+use compositor_kernel_vulkan_device_factory_base::factory::{VulkanDevice, MULTIPLANE_SUPPORT};
 use smithay::backend::allocator::dmabuf::Dmabuf;
 use smithay::backend::allocator::Buffer;
 use smithay::backend::vulkan::PhysicalDevice;
-use std::os::unix::io::{AsRawFd, BorrowedFd};
+use std::os::unix::io::{AsRawFd, BorrowedFd, IntoRawFd, RawFd};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ImportError {
@@ -23,6 +23,8 @@ pub enum ImportError {
 pub struct ImportedImage {
     pub image: vk::Image,
     pub memory: vk::DeviceMemory,
+    /// Extra per-plane allocations for a DISJOINT import (empty otherwise).
+    pub extra_memory: Vec<vk::DeviceMemory>,
     pub view: vk::ImageView,
     pub format: vk::Format,
     pub size: (u32, u32),
@@ -61,9 +63,10 @@ pub fn import(
     if fds.is_empty() {
         return Err(ImportError::Vk("dmabuf has no planes".into()));
     }
-    // Single-memory path: all planes must reference one fd region.
+    // Disjoint = more than one plane referencing distinct fd regions.
     let first_fd = fds[0].as_raw_fd();
-    if fds.iter().any(|fd| fd.as_raw_fd() != first_fd) && fds.len() > 1 {
+    let disjoint = fds.len() > 1 && fds.iter().any(|fd| fd.as_raw_fd() != first_fd);
+    if disjoint && !MULTIPLANE_SUPPORT {
         return Err(ImportError::Disjoint);
     }
 
@@ -85,7 +88,14 @@ pub fn import(
     let mut external_info = vk::ExternalMemoryImageCreateInfo::default()
         .handle_types(vk::ExternalMemoryHandleTypeFlags::DMA_BUF_EXT);
 
+    // DISJOINT images bind one allocation per memory plane.
+    let create_flags = if disjoint {
+        vk::ImageCreateFlags::DISJOINT
+    } else {
+        vk::ImageCreateFlags::empty()
+    };
     let image_info = vk::ImageCreateInfo::default()
+        .flags(create_flags)
         .image_type(vk::ImageType::TYPE_2D)
         .format(format)
         .extent(vk::Extent3D {
@@ -108,76 +118,27 @@ pub fn import(
         dev.create_image(&image_info, None)
             .map_err(|e| ImportError::Vk(format!("create_image: {e}")))?
     };
-
-    let requirements = unsafe { dev.get_image_memory_requirements(image) };
-
-    // dup the fd: used for both the memory-type query and the import
-    // (vkAllocateMemory consumes the fd it is handed).
-    let owned = fds[0].try_clone_to_owned().map_err(|e| {
-        unsafe { dev.destroy_image(image, None) };
-        ImportError::Vk(format!("fd dup: {e}"))
-    })?;
-
-    // The imported allocation MUST use a memory type valid for THIS dmabuf fd
-    // (per VkMemoryFdPropertiesKHR), intersected with the image's requirements.
-    // Selecting an arbitrary type (the lowest requirement bit) binds the imported
-    // memory to an incompatible type — it may "work" without validation layers
-    // but faults the GPU when the image is later sampled (the iced-import crash).
     let fd_loader = ash::khr::external_memory_fd::Device::new(&device.instance, dev);
-    let mut fd_props = vk::MemoryFdPropertiesKHR::default();
-    unsafe {
-        fd_loader
-            .get_memory_fd_properties(
-                vk::ExternalMemoryHandleTypeFlags::DMA_BUF_EXT,
-                owned.as_raw_fd(),
-                &mut fd_props,
-            )
-            .map_err(|e| {
-                dev.destroy_image(image, None);
-                ImportError::Vk(format!("get_memory_fd_properties: {e}"))
-            })?;
-    }
-    let compatible = requirements.memory_type_bits & fd_props.memory_type_bits;
-    if compatible == 0 {
-        unsafe { dev.destroy_image(image, None) };
-        return Err(ImportError::Vk(
-            "no memory type compatible with both the image and the dmabuf fd".into(),
-        ));
-    }
-    let memory_type_index = compatible.trailing_zeros();
 
-    let mut import_info = vk::ImportMemoryFdInfoKHR::default()
-        .handle_type(vk::ExternalMemoryHandleTypeFlags::DMA_BUF_EXT)
-        .fd({
-            use std::os::unix::io::IntoRawFd;
-            owned.into_raw_fd()
-        });
-    let mut dedicated = vk::MemoryDedicatedAllocateInfo::default().image(image);
-    let alloc_info = vk::MemoryAllocateInfo::default()
-        .allocation_size(requirements.size)
-        .memory_type_index(memory_type_index)
-        .push_next(&mut import_info)
-        .push_next(&mut dedicated);
-
-    let memory = unsafe {
-        dev.allocate_memory(&alloc_info, None).map_err(|e| {
-            dev.destroy_image(image, None);
-            ImportError::Vk(format!("allocate_memory: {e}"))
-        })?
+    let (memory, extra_memory) = {
+        let bound = if disjoint {
+            bind_disjoint(dev, &fd_loader, image, &fds)
+        } else {
+            bind_single(dev, &fd_loader, image, &fds).map(|m| (m, Vec::new()))
+        };
+        match bound {
+            Ok(m) => m,
+            Err(e) => {
+                unsafe { dev.destroy_image(image, None) };
+                return Err(e);
+            }
+        }
     };
-    unsafe {
-        dev.bind_image_memory(image, memory, 0).map_err(|e| {
-            dev.free_memory(memory, None);
-            dev.destroy_image(image, None);
-            ImportError::Vk(format!("bind_image_memory: {e}"))
-        })?;
-    }
 
     // Opaque (X-prefixed) formats have no real alpha — the X byte is undefined,
-    // so clients (Blender, vkcube) often leave it 0. Vulkan maps Xrgb8888 →
-    // B8G8R8A8_UNORM (which HAS alpha), so sampling that 0 as alpha makes the
-    // window blend out transparent. Force the alpha channel to 1 via a view
-    // swizzle for X-formats; ARGB/ABGR keep real alpha.
+    // so clients often leave it 0. Vulkan maps Xrgb8888 -> B8G8R8A8_UNORM (which
+    // HAS alpha), so sampling that 0 makes the window blend out transparent.
+    // Force alpha to 1 via a view swizzle for X-formats; ARGB/ABGR keep alpha.
     use smithay::backend::allocator::Fourcc;
     let opaque = matches!(
         fourcc,
@@ -208,6 +169,7 @@ pub fn import(
     let view = unsafe {
         dev.create_image_view(&view_info, None).map_err(|e| {
             dev.free_memory(memory, None);
+            free_mems(dev, &extra_memory);
             dev.destroy_image(image, None);
             ImportError::Vk(format!("create_image_view: {e}"))
         })?
@@ -216,10 +178,159 @@ pub fn import(
     Ok(ImportedImage {
         image,
         memory,
+        extra_memory,
         view,
         format,
         size: (width, height),
     })
+}
+
+/// Single allocation imported from the first fd, bound at offset 0. Covers the
+/// single-plane case and single-fd multi-plane layouts.
+fn bind_single(
+    dev: &ash::Device,
+    fd_loader: &ash::khr::external_memory_fd::Device,
+    image: vk::Image,
+    fds: &[BorrowedFd<'_>],
+) -> Result<vk::DeviceMemory, ImportError> {
+    let requirements = unsafe { dev.get_image_memory_requirements(image) };
+    let owned = fds[0]
+        .try_clone_to_owned()
+        .map_err(|e| ImportError::Vk(format!("fd dup: {e}")))?;
+    let memory_type_index =
+        pick_memory_type(fd_loader, owned.as_raw_fd(), requirements.memory_type_bits)?;
+    let mut import_info = vk::ImportMemoryFdInfoKHR::default()
+        .handle_type(vk::ExternalMemoryHandleTypeFlags::DMA_BUF_EXT)
+        .fd(owned.into_raw_fd());
+    let mut dedicated = vk::MemoryDedicatedAllocateInfo::default().image(image);
+    let alloc_info = vk::MemoryAllocateInfo::default()
+        .allocation_size(requirements.size)
+        .memory_type_index(memory_type_index)
+        .push_next(&mut import_info)
+        .push_next(&mut dedicated);
+    let memory = unsafe {
+        dev.allocate_memory(&alloc_info, None)
+            .map_err(|e| ImportError::Vk(format!("allocate_memory: {e}")))?
+    };
+    unsafe {
+        dev.bind_image_memory(image, memory, 0).map_err(|e| {
+            dev.free_memory(memory, None);
+            ImportError::Vk(format!("bind_image_memory: {e}"))
+        })?;
+    }
+    Ok(memory)
+}
+
+/// DISJOINT bind: one allocation per memory plane (each from its own fd), bound
+/// via vkBindImageMemory2 with per-plane aspects. Returns (plane0, [plane1..]).
+fn bind_disjoint(
+    dev: &ash::Device,
+    fd_loader: &ash::khr::external_memory_fd::Device,
+    image: vk::Image,
+    fds: &[BorrowedFd<'_>],
+) -> Result<(vk::DeviceMemory, Vec<vk::DeviceMemory>), ImportError> {
+    let mut memories: Vec<vk::DeviceMemory> = Vec::with_capacity(fds.len());
+    for (i, fd) in fds.iter().enumerate() {
+        let aspect = plane_aspect(i).ok_or(ImportError::Disjoint)?;
+        let mut plane_req = vk::ImagePlaneMemoryRequirementsInfo::default().plane_aspect(aspect);
+        let req_info = vk::ImageMemoryRequirementsInfo2::default()
+            .image(image)
+            .push_next(&mut plane_req);
+        let mut req2 = vk::MemoryRequirements2::default();
+        unsafe { dev.get_image_memory_requirements2(&req_info, &mut req2) };
+        let reqs = req2.memory_requirements;
+
+        let result = (|| {
+            let owned = fd
+                .try_clone_to_owned()
+                .map_err(|e| ImportError::Vk(format!("fd dup: {e}")))?;
+            let memory_type_index =
+                pick_memory_type(fd_loader, owned.as_raw_fd(), reqs.memory_type_bits)?;
+            let mut import_info = vk::ImportMemoryFdInfoKHR::default()
+                .handle_type(vk::ExternalMemoryHandleTypeFlags::DMA_BUF_EXT)
+                .fd(owned.into_raw_fd());
+            let alloc_info = vk::MemoryAllocateInfo::default()
+                .allocation_size(reqs.size)
+                .memory_type_index(memory_type_index)
+                .push_next(&mut import_info);
+            unsafe { dev.allocate_memory(&alloc_info, None) }
+                .map_err(|e| ImportError::Vk(format!("allocate_memory: {e}")))
+        })();
+        match result {
+            Ok(mem) => memories.push(mem),
+            Err(e) => {
+                free_mems(dev, &memories);
+                return Err(e);
+            }
+        }
+    }
+
+    let mut plane_infos: Vec<vk::BindImagePlaneMemoryInfo> = (0..fds.len())
+        .map(|i| vk::BindImagePlaneMemoryInfo::default().plane_aspect(plane_aspect(i).unwrap()))
+        .collect();
+    let binds: Vec<vk::BindImageMemoryInfo> = memories
+        .iter()
+        .zip(plane_infos.iter_mut())
+        .map(|(mem, plane)| {
+            vk::BindImageMemoryInfo::default()
+                .image(image)
+                .memory(*mem)
+                .memory_offset(0)
+                .push_next(plane)
+        })
+        .collect();
+    if let Err(e) = unsafe { dev.bind_image_memory2(&binds) } {
+        free_mems(dev, &memories);
+        return Err(ImportError::Vk(format!("bind_image_memory2: {e}")));
+    }
+
+    let first = memories.remove(0);
+    Ok((first, memories))
+}
+
+/// Pick a memory type valid for both the image's requirement bits and the
+/// dmabuf fd (per VkMemoryFdPropertiesKHR). Selecting an arbitrary type binds
+/// incompatible memory that faults the GPU when later sampled.
+fn pick_memory_type(
+    fd_loader: &ash::khr::external_memory_fd::Device,
+    fd: RawFd,
+    image_type_bits: u32,
+) -> Result<u32, ImportError> {
+    let mut fd_props = vk::MemoryFdPropertiesKHR::default();
+    unsafe {
+        fd_loader
+            .get_memory_fd_properties(
+                vk::ExternalMemoryHandleTypeFlags::DMA_BUF_EXT,
+                fd,
+                &mut fd_props,
+            )
+            .map_err(|e| ImportError::Vk(format!("get_memory_fd_properties: {e}")))?;
+    }
+    let compatible = image_type_bits & fd_props.memory_type_bits;
+    if compatible == 0 {
+        return Err(ImportError::Vk(
+            "no memory type compatible with both the image and the dmabuf fd".into(),
+        ));
+    }
+    Ok(compatible.trailing_zeros())
+}
+
+fn plane_aspect(i: usize) -> Option<vk::ImageAspectFlags> {
+    Some(match i {
+        0 => vk::ImageAspectFlags::MEMORY_PLANE_0_EXT,
+        1 => vk::ImageAspectFlags::MEMORY_PLANE_1_EXT,
+        2 => vk::ImageAspectFlags::MEMORY_PLANE_2_EXT,
+        3 => vk::ImageAspectFlags::MEMORY_PLANE_3_EXT,
+        _ => return None,
+    })
+}
+
+fn free_mems(dev: &ash::Device, mems: &[vk::DeviceMemory]) {
+    unsafe {
+        for m in mems {
+            dev.free_memory(*m, None);
+        }
+    }
 }
 
 pub fn destroy(device: &VulkanDevice, img: ImportedImage) {
@@ -227,5 +338,6 @@ pub fn destroy(device: &VulkanDevice, img: ImportedImage) {
         device.device.destroy_image_view(img.view, None);
         device.device.destroy_image(img.image, None);
         device.device.free_memory(img.memory, None);
+        free_mems(&device.device, &img.extra_memory);
     }
 }

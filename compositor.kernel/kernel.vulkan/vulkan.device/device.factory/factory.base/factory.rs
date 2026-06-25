@@ -1,24 +1,29 @@
 //! Logical VkDevice creation with the compositor's required extensions and
-//! Vulkan 1.3 core features. Phase 4 Step 3 — real.
-//!
-//! Feature policy: timeline semaphores (1.2 core feature bit), dynamic
-//! rendering + synchronization2 (1.3 core feature bits). The promoted
-//! VK_KHR_timeline_semaphore extension is NOT requested — the core feature
-//! struct is the 1.3 way.
+//! Vulkan 1.3 core features. Feature policy: timeline semaphores (1.2 core),
+//! dynamic rendering + synchronization2 (1.3 core); promoted
+//! VK_KHR_timeline_semaphore is NOT requested.
 
 use ash::vk;
 use smithay::backend::vulkan::PhysicalDevice;
 use std::ffi::CStr;
 
-/// Device extensions the render path requires (dmabuf import/export +
-/// modifiers + external semaphore fds for syncobj bridging).
+/// MASTER GATE for Intel-CCS / multi-plane dmabuf support: disjoint multi-plane
+/// import + the VK_QUEUE_FAMILY_FOREIGN_EXT acquire that samples the compressed
+/// planes. Read across the vulkan import path. Off = single-plane-only import.
+pub const MULTIPLANE_SUPPORT: bool = true;
+
+/// Device extensions the render path requires.
 pub fn required_extensions() -> Vec<&'static CStr> {
-    vec![
+    let mut ext = vec![
         ash::khr::external_memory_fd::NAME,
         ash::ext::external_memory_dma_buf::NAME,
         ash::ext::image_drm_format_modifier::NAME,
         ash::khr::external_semaphore_fd::NAME,
-    ]
+    ];
+    if MULTIPLANE_SUPPORT {
+        ext.push(ash::ext::queue_family_foreign::NAME);
+    }
+    ext
 }
 
 pub struct VulkanDevice {

@@ -1,6 +1,6 @@
 use compositor_support_system_buffer_token_base::y5_buffer;
 use compositor_support_system_channel_token_base::y5_channel;
-use compositor_support_system_input_event_base::base::{InputEvent, InputFlow};
+use compositor_support_system_input_event_base::base::{InputEvent, InputFlow, PinchPhase};
 use compositor_support_system_input_layer_base::base as input_layer;
 use compositor_support_system_storage_slot_base::base::Storage;
 use compositor_support_system_trait_system_base::base::{BufferCx, System, SystemCx, WorldBuilder};
@@ -20,6 +20,16 @@ use std::any::Any;
 /// scene can wedge at extreme zoom until the damage interaction is root-caused).
 const MIN_ZOOM: f64 = 0.02;
 const MAX_ZOOM: f64 = 50.0;
+
+/// Momentum-pan tuning (touchpad two-finger swipe). `PAN_FRICTION` is the
+/// exponential decay rate of the coast velocity (1/seconds — larger = stops
+/// sooner); `PAN_MIN_SPEED` is the world-units/second floor below which the
+/// coast snaps to rest; `PAN_END_IDLE_FRAMES` is how many pan-free frames mark
+/// the fingers as lifted (works for both Finger and Continuous axis sources,
+/// which don't both guarantee a terminating event).
+const PAN_FRICTION: f64 = 6.0;
+const PAN_MIN_SPEED: f64 = 30.0;
+const PAN_END_IDLE_FRAMES: u32 = 3;
 
 #[derive(Clone, Copy, Debug)]
 pub struct CameraMoved {
@@ -46,6 +56,19 @@ enum CamCmd {
     /// gates the actual camera move (the rim advanced position_previous on every
     /// motion event but only panned when `position_updating`).
     Pan(f64, f64, bool),
+    /// Relative canvas pan from a touchpad two-finger scroll. Carries the raw
+    /// scroll delta (horizontal, vertical) in screen units; the handler divides
+    /// by the current zoom and advances the camera position. Unlike `Pan`, there
+    /// is no screen-cursor accumulator — the libinput axis delta is already
+    /// relative — so this never touches `position_previous`.
+    PanBy(f64, f64),
+    /// Per-frame momentum step. Converts the frame's accumulated pan into a
+    /// velocity while the swipe is live, then coasts the camera along that
+    /// velocity with friction once the fingers lift. Carries the frame delta
+    /// (seconds) so the physics is framerate-independent.
+    PanInertiaTick(f64),
+    /// Cancel any momentum/coast (e.g. a navigator travel takes over).
+    PanStop,
 }
 y5_buffer!(CAM_BUF: CamCmd);
 
@@ -56,7 +79,12 @@ y5_buffer!(CAM_BUF: CamCmd);
 /// accumulate across rapid scroll events) lives here, not in a separate canvas
 /// input system that could only defer via a channel.
 #[derive(Default)]
-pub struct CameraSystem;
+pub struct CameraSystem {
+    /// Wall-clock of the previous `update()`. `FrameTick.delta` is hardcoded to
+    /// ZERO in this compositor (animations run off `Instant`), so the momentum
+    /// integrator measures its own per-frame dt here.
+    last_update: Option<std::time::Instant>,
+}
 
 impl System for CameraSystem {
     fn name(&self) -> &'static str {
@@ -89,64 +117,105 @@ impl System for CameraSystem {
             return InputFlow::Pass;
         }
 
-        let InputEvent::PointerAxis { vertical, x, y, .. } = event else { return InputFlow::Pass };
-        let cursor = Point::<f64, Logical>::from((*x, *y));
-
-        // Over a visible window (and not a scene-group passthrough ice)? Then it's
-        // a window scroll — Pass so the rim's native_axis routes it to the client.
-        let over_window = surface_under_filtered_cx(cx.storage, cursor, &|hit| {
-            if let Some(window) = hit.window() {
-                return window_visible(cx.storage, window);
+        // Touchpad pinch: cursor-anchored zoom. Gated like axis-zoom, except a
+        // pinch ALWAYS zooms the canvas in hand mode (`canvas_owns_gesture`).
+        // When the canvas does not own the gesture (a window under the cursor in
+        // tool mode), Pass so the rim forwards the native pinch to the client.
+        // The caller latches ownership at `Begin` (this flow) and only routes
+        // `Update`s here while canvas-owned.
+        if let InputEvent::PointerPinch { phase, scale, x, y } = event {
+            let cursor = Point::<f64, Logical>::from((*x, *y));
+            if !canvas_owns_gesture(cx, cursor, true) {
+                return InputFlow::Pass;
             }
-            if let Some(layer) = hit.iced_layer()
-                && (layer & compositor_orchestration_draw_layer_base::base::Layer::SCENE_SURFACE_GROUP.bits()) != 0
-            {
-                return false;
+            if *phase == PinchPhase::Update && *scale != 1.0 {
+                cancel_travel(cx);
+                apply_zoom(cx, cursor, *scale);
             }
-            true
-        })
-        .is_some();
-        let hand = matches!(cx.storage.get(&CANVAS).Grab, CanvasGrab::Active(ActiveOption::Hand));
-        if over_window && !hand {
-            return InputFlow::Pass;
+            return InputFlow::Consume;
         }
 
+        let InputEvent::PointerAxis { horizontal, vertical, x, y, finger } = event else {
+            return InputFlow::Pass;
+        };
+        let cursor = Point::<f64, Logical>::from((*x, *y));
+
+        // Touchpad two-finger scroll PANS the canvas (hand mode, Super-held finger
+        // tool, or empty space). Over a window otherwise the canvas does not own it
+        // — Pass so the rim's native_axis scrolls the client.
+        if *finger {
+            if !canvas_owns_gesture(cx, cursor, true) {
+                return InputFlow::Pass;
+            }
+            if *horizontal != 0.0 || *vertical != 0.0 {
+                // Direct user intent: drop any navigator travel so the easing
+                // doesn't fight the pan.
+                cancel_travel(cx);
+                cx.write(&CAM_BUF, CamCmd::PanBy(*horizontal, *vertical));
+            }
+            return InputFlow::Consume;
+        }
+
+        // Mouse wheel: cursor-anchored zoom. Pass over a window in tool mode. The
+        // Super-held finger tool does NOT claim the wheel (finger_tool = false).
+        if !canvas_owns_gesture(cx, cursor, false) {
+            return InputFlow::Pass;
+        }
         // Canvas zoom, cursor-anchored. Synchronous via our own CAM_BUF (flushed
         // right after this input()), so the next scroll event reads the updated zoom.
         if *vertical != 0.0 {
             // A manual zoom is direct user intent: drop any active navigator travel
             // so the easing doesn't fight (and immediately overwrite) the gesture.
             cancel_travel(cx);
-            let (old_zoom, cam_position) = {
-                let camera = cx.storage.get(&CAMERA);
-                (*camera.transform.zoom(), camera.transform.position())
-            };
+            let old_zoom = *cx.storage.get(&CAMERA).transform.zoom();
             let base_step = 0.05 * old_zoom;
             let distance_from_normal = (old_zoom - 1.0).abs();
             let normal_dampener = 0.4 + (0.6 * (distance_from_normal / (distance_from_normal + 1.0)));
             let adjusted_step = base_step * normal_dampener * vertical.abs().min(1.0);
             let new_zoom = if *vertical < 0.0 { old_zoom + adjusted_step } else { (old_zoom - adjusted_step).max(0.01) };
-
-            // Position uses the CLAMPED zoom (the buffer clamps the same way), so the
-            // cursor stays pinned to the same logical point.
-            let actual_new_zoom = new_zoom.clamp(MIN_ZOOM, MAX_ZOOM);
-            let zoom_ratio = old_zoom / actual_new_zoom;
-            let new_x = cursor.x - (cursor.x - cam_position.x) * zoom_ratio;
-            let new_y = cursor.y - (cursor.y - cam_position.y) * zoom_ratio;
-
-            cx.write(&CAM_BUF, CamCmd::SetZoom(new_zoom));
-            cx.write(&CAM_BUF, CamCmd::SetPosition(new_x, new_y));
+            // Express the wheel step as a scale factor so zoom anchoring lives in
+            // one place (shared with pinch).
+            apply_zoom(cx, cursor, new_zoom / old_zoom);
         }
         InputFlow::Consume
     }
 
     fn update(&mut self, cx: &mut SystemCx, _tick: &FrameTick) {
-        let Some(output) = cx.storage.get(&NAVIGATOR).output else { return };
-        if let Some((x, y)) = output.position {
-            cx.write(&CAM_BUF, CamCmd::SetPosition(x, y));
+        // Real per-frame dt (FrameTick.delta is always ZERO here). Refreshed every
+        // frame so it never goes stale; clamped so a slow/first frame can't fling.
+        let now = std::time::Instant::now();
+        let dt = self
+            .last_update
+            .replace(now)
+            .map_or(1.0 / 60.0, |prev| (now - prev).as_secs_f64())
+            .clamp(0.001, 0.1);
+
+        let output = cx.storage.get(&NAVIGATOR).output;
+        if let Some(output) = output {
+            if let Some((x, y)) = output.position {
+                cx.write(&CAM_BUF, CamCmd::SetPosition(x, y));
+            }
+            if let Some(zoom) = output.zoom {
+                cx.write(&CAM_BUF, CamCmd::SetZoom(zoom));
+            }
         }
-        if let Some(zoom) = output.zoom {
-            cx.write(&CAM_BUF, CamCmd::SetZoom(zoom));
+
+        // Momentum pan: a navigator travel (eased view move) drives position
+        // directly, so cancel any coast while it runs; otherwise step the coast.
+        // Only emit when there is pan state to advance, to avoid per-frame churn.
+        let nav_driving = output.is_some_and(|o| o.position.is_some());
+        let camera = cx.storage.get(&CAMERA);
+        let pan_active = camera.panning
+            || camera.pan_velocity.x != 0.0
+            || camera.pan_velocity.y != 0.0
+            || camera.pan_accum.x != 0.0
+            || camera.pan_accum.y != 0.0;
+        if nav_driving {
+            if pan_active {
+                cx.write(&CAM_BUF, CamCmd::PanStop);
+            }
+        } else if pan_active {
+            cx.write(&CAM_BUF, CamCmd::PanInertiaTick(dt));
         }
     }
 
@@ -189,8 +258,108 @@ impl System for CameraSystem {
                     cx.channels.send(&CAMERA_MOVED_TX, CameraMoved { x: new_x, y: new_y });
                 }
             }
+            CamCmd::PanBy(dx, dy) => {
+                // Touchpad two-finger scroll: advance the camera by the zoom-scaled
+                // scroll delta. Direction is set upstream (natural-scroll inversion
+                // in the rim's axis handler), so no sign flip here.
+                let zoom = *camera.transform.zoom();
+                let px = camera.transform.position().x;
+                let py = camera.transform.position().y;
+                let wdx = dx / zoom;
+                let wdy = dy / zoom;
+                let nx = px + wdx;
+                let ny = py + wdy;
+                camera.transform.position = Point::from((nx, ny));
+                cx.channels.send(&CAMERA_MOVED_TX, CameraMoved { x: nx, y: ny });
+                // Feed momentum: accumulate this frame's world delta and mark the
+                // swipe live (velocity is measured per-frame in PanInertiaTick).
+                camera.pan_accum = Point::from((camera.pan_accum.x + wdx, camera.pan_accum.y + wdy));
+                camera.panning = true;
+                camera.pan_idle_frames = 0;
+            }
+            CamCmd::PanInertiaTick(dt) => {
+                let moved = camera.pan_accum.x != 0.0 || camera.pan_accum.y != 0.0;
+                if moved {
+                    // Live swipe: velocity = this frame's world delta / dt.
+                    if dt > 0.0 {
+                        camera.pan_velocity = Point::from((camera.pan_accum.x / dt, camera.pan_accum.y / dt));
+                    }
+                    camera.pan_accum = Point::from((0.0, 0.0));
+                    camera.pan_idle_frames = 0;
+                } else if camera.panning {
+                    // Pan-free frame(s): treat as fingers lifting → begin to coast.
+                    camera.pan_idle_frames += 1;
+                    if camera.pan_idle_frames >= PAN_END_IDLE_FRAMES {
+                        camera.panning = false;
+                    }
+                }
+                if !camera.panning && (camera.pan_velocity.x != 0.0 || camera.pan_velocity.y != 0.0) {
+                    let px = camera.transform.position().x;
+                    let py = camera.transform.position().y;
+                    let nx = px + camera.pan_velocity.x * dt;
+                    let ny = py + camera.pan_velocity.y * dt;
+                    camera.transform.position = Point::from((nx, ny));
+                    cx.channels.send(&CAMERA_MOVED_TX, CameraMoved { x: nx, y: ny });
+                    let decay = (-PAN_FRICTION * dt).exp();
+                    camera.pan_velocity = Point::from((camera.pan_velocity.x * decay, camera.pan_velocity.y * decay));
+                    if camera.pan_velocity.x.hypot(camera.pan_velocity.y) < PAN_MIN_SPEED {
+                        camera.pan_velocity = Point::from((0.0, 0.0));
+                    }
+                }
+            }
+            CamCmd::PanStop => {
+                camera.pan_velocity = Point::from((0.0, 0.0));
+                camera.pan_accum = Point::from((0.0, 0.0));
+                camera.panning = false;
+                camera.pan_idle_frames = 0;
+            }
         }
     }
+}
+
+/// Whether the canvas owns a pointer gesture at `cursor`: always in hand mode,
+/// otherwise only when the cursor is NOT over a visible window (a scene-group
+/// passthrough ice does not count as a window). When this is false the gesture
+/// belongs to the client under the cursor (window scroll / native pinch).
+fn canvas_owns_gesture(cx: &mut SystemCx, cursor: Point<f64, Logical>, finger_tool: bool) -> bool {
+    let canvas = cx.storage.get(&CANVAS);
+    // The persistent hand tool owns every gesture. The momentary finger-only hand
+    // tool (Super held) owns FINGER gestures (pan/pinch) only — a mouse wheel
+    // (`finger_tool == false`) is unaffected so it still scrolls windows.
+    let hand = matches!(canvas.Grab, CanvasGrab::Active(ActiveOption::Hand));
+    if hand || (finger_tool && canvas.finger_pan) {
+        return true;
+    }
+    let over_window = surface_under_filtered_cx(cx.storage, cursor, &|hit| {
+        if let Some(window) = hit.window() {
+            return window_visible(cx.storage, window);
+        }
+        if let Some(layer) = hit.iced_layer()
+            && (layer & compositor_orchestration_draw_layer_base::base::Layer::SCENE_SURFACE_GROUP.bits()) != 0
+        {
+            return false;
+        }
+        true
+    })
+    .is_some();
+    !over_window
+}
+
+/// Cursor-anchored zoom by a multiplicative `factor` (shared by mouse-wheel and
+/// pinch). Position uses the CLAMPED zoom (the buffer clamps the same way) so the
+/// cursor stays pinned to the same logical point. Synchronous via CAM_BUF so a
+/// rapid gesture accumulates (each step reads the just-written zoom).
+fn apply_zoom(cx: &mut SystemCx, cursor: Point<f64, Logical>, factor: f64) {
+    let (old_zoom, cam_position) = {
+        let camera = cx.storage.get(&CAMERA);
+        (*camera.transform.zoom(), camera.transform.position())
+    };
+    let new_zoom = (old_zoom * factor).clamp(MIN_ZOOM, MAX_ZOOM);
+    let zoom_ratio = old_zoom / new_zoom;
+    let new_x = cursor.x - (cursor.x - cam_position.x) * zoom_ratio;
+    let new_y = cursor.y - (cursor.y - cam_position.y) * zoom_ratio;
+    cx.write(&CAM_BUF, CamCmd::SetZoom(new_zoom));
+    cx.write(&CAM_BUF, CamCmd::SetPosition(new_x, new_y));
 }
 
 /// Cancel an in-progress navigator travel when the user pans/zooms by hand.

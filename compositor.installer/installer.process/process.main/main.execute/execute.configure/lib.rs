@@ -1,19 +1,20 @@
-//! Installer steps 2-3: prompt the default Y5 Desktop configuration (values
-//! propagate to every preset) and build the preset list (incl. optional Custom).
+//! Installer steps 2-3: prompt the Y5 Compositor configuration and build the single
+//! session preset from it.
 
 use compositor_installer_process_config_parse_base as cfg;
 use compositor_installer_process_config_parse_base::prompt;
+use compositor_installer_process_packages_enumerate_base as pkg;
 
-/// Prompt the base configuration, expand it into the standard preset matrix, and
-/// optionally append the Custom preset.
+/// Prompt the compositor configuration and build the single "Y5 Compositor" preset. The
+/// capture encoder defaults to the detected GPU's (NVENC on NVIDIA, VAAPI otherwise).
 pub fn gather() -> Vec<cfg::Preset> {
-    println!("\n-- Default Y5 Desktop configuration (propagates to all presets) --");
+    println!("\n-- Y5 Compositor configuration --");
     let defaults = cfg::BaseConfig::default();
     let base = cfg::BaseConfig {
         render_node: prompt::ask("render_node", "DRM render node path", &defaults.render_node),
         desktop_name_root: prompt::ask(
             "desktop_name",
-            "Root XDG desktop name (variants append Dev/Exp/…)",
+            "XDG desktop name",
             &defaults.desktop_name_root,
         ),
         log_level: prompt::ask("log_level", "Developer log levels", &defaults.log_level),
@@ -36,11 +37,6 @@ pub fn gather() -> Vec<cfg::Preset> {
         ),
     };
 
-    let mut presets = cfg::default_presets(&base);
-    // Always offer the Custom entry (Y5CompositorCustom).
-    if prompt::yes_no("custom", "Also create a Y5CompositorCustom preset", true) {
-        let env = cfg::prompt_custom_env(&base);
-        presets.push(cfg::custom_preset(&base.desktop_name_root, env));
-    }
-    presets
+    let encoder = pkg::capture_encoder_for(pkg::detect_gpu());
+    cfg::default_presets(&base, encoder)
 }

@@ -17,6 +17,24 @@ pub fn pam_y5_lock() -> String {
         .to_string()
 }
 
+/// App-launcher entry for the developer tool window (installed to
+/// /usr/share/applications). `Exec`/`StartupWMClass`/`Icon` use the bare
+/// `y5.compositor.monitor` command (on PATH; launched under that name, the GTK window
+/// reports it as its WM class). The app self-sets WEBKIT_DISABLE_DMABUF_RENDERER, so no
+/// env wrapper is needed.
+pub fn devtool_desktop_entry() -> String {
+    "[Desktop Entry]\n\
+     Categories=\n\
+     Comment=y5 developer log viewer (Tauri + React)\n\
+     Exec=y5.compositor.monitor\n\
+     StartupWMClass=y5.compositor.monitor\n\
+     Icon=y5.compositor.monitor\n\
+     Name=y5.compositor.monitor\n\
+     Terminal=false\n\
+     Type=Application\n"
+        .to_string()
+}
+
 /// systemd user service for the polkit authentication agent (new — none shipped).
 pub fn polkit_service() -> String {
     "# ~/.config/systemd/user/y5-polkit-agent.service\n\

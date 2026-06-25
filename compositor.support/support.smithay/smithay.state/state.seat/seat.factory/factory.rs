@@ -3,12 +3,17 @@ use smithay::input::{Seat, SeatHandler, SeatState};
 use smithay::reexports::wayland_protocols::wp::pointer_constraints::zv1::server::zwp_confined_pointer_v1::ZwpConfinedPointerV1;
 use smithay::reexports::wayland_protocols::wp::pointer_constraints::zv1::server::zwp_locked_pointer_v1::ZwpLockedPointerV1;
 use smithay::reexports::wayland_protocols::wp::pointer_constraints::zv1::server::zwp_pointer_constraints_v1::ZwpPointerConstraintsV1;
+use smithay::reexports::wayland_protocols::wp::pointer_gestures::zv1::server::zwp_pointer_gesture_hold_v1::ZwpPointerGestureHoldV1;
+use smithay::reexports::wayland_protocols::wp::pointer_gestures::zv1::server::zwp_pointer_gesture_pinch_v1::ZwpPointerGesturePinchV1;
+use smithay::reexports::wayland_protocols::wp::pointer_gestures::zv1::server::zwp_pointer_gesture_swipe_v1::ZwpPointerGestureSwipeV1;
+use smithay::reexports::wayland_protocols::wp::pointer_gestures::zv1::server::zwp_pointer_gestures_v1::ZwpPointerGesturesV1;
 use smithay::reexports::wayland_protocols::wp::relative_pointer::zv1::server::zwp_relative_pointer_manager_v1::ZwpRelativePointerManagerV1;
 use smithay::reexports::wayland_protocols::wp::relative_pointer::zv1::server::zwp_relative_pointer_v1::ZwpRelativePointerV1;
 use smithay::reexports::wayland_server::protocol::wl_seat::WlSeat;
 use smithay::reexports::wayland_server::{Dispatch, DisplayHandle, GlobalDispatch};
 use smithay::wayland::GlobalData;
 use smithay::wayland::pointer_constraints::{PointerConstraintsState, PointerConstraintUserData};
+use smithay::wayland::pointer_gestures::{PointerGesturesState, PointerGestureUserData};
 use smithay::wayland::relative_pointer::{RelativePointerManagerState, RelativePointerUserData};
 use smithay::wayland::seat::{SeatGlobalData, WaylandFocus};
 use compositor_support_smithay_dispatch_state_base::state::DispatchWire;
@@ -25,6 +30,11 @@ where
     I: Dispatch<ZwpPointerConstraintsV1, GlobalData>,
     I: Dispatch<ZwpConfinedPointerV1, PointerConstraintUserData<I>>,
     I: Dispatch<ZwpLockedPointerV1, PointerConstraintUserData<I>>,
+    I: GlobalDispatch<ZwpPointerGesturesV1, GlobalData>,
+    I: Dispatch<ZwpPointerGesturesV1, GlobalData>,
+    I: Dispatch<ZwpPointerGestureSwipeV1, PointerGestureUserData<I>>,
+    I: Dispatch<ZwpPointerGesturePinchV1, PointerGestureUserData<I>>,
+    I: Dispatch<ZwpPointerGestureHoldV1, PointerGestureUserData<I>>,
     <I as SeatHandler>::PointerFocus: WaylandFocus,
     <I as SeatHandler>::KeyboardFocus: WaylandFocus,
 {
@@ -54,12 +64,18 @@ where
 
     let pointer_constraints_state = PointerConstraintsState::new::<I>(&display_handle);
 
+    // Touchpad gesture protocol: clients that bind it receive native pinch/swipe
+    // gestures when focused (the canvas otherwise repurposes them for zoom/pan).
+    let pointer_gestures_state = PointerGesturesState::new::<I>(&display_handle);
+
     return compositor_support_smithay_state_seat_base::state::Seat {
         state: seat_state,
         seat: seat,
         pointer_status: CursorImageStatus::default_named(),
         relative_pointer_manager_state,
         pointer_constraints_state,
+        pointer_gestures_state,
+        force_cursor: None,
         unlock_restoration_location: None,
         previous_focus: None,
         libseat: None,

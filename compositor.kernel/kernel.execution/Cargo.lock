@@ -1772,6 +1772,7 @@ dependencies = [
  "compositor_developer_debug_instance_record",
  "compositor_introspection_execution_launch_scope",
  "compositor_introspection_execution_launch_types",
+ "libc",
 ]
 
 [[package]]
@@ -2595,16 +2596,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "compositor_monitor_devtool_example_base"
-version = "0.1.0"
-dependencies = [
- "compositor_developer_debug_instance_record",
- "compositor_support_iced_core_engine_base",
- "iced_core",
- "iced_widget",
-]
-
-[[package]]
 name = "compositor_monitor_launcher_ui_base"
 version = "0.1.0"
 dependencies = [
@@ -2624,6 +2615,44 @@ dependencies = [
  "smithay",
  "thiserror 2.0.18",
  "wgpu",
+]
+
+[[package]]
+name = "compositor_monitor_selection_font_base"
+version = "0.1.0"
+dependencies = [
+ "bitflags 2.13.0",
+ "iced_core",
+ "iced_graphics",
+ "iced_runtime",
+ "iced_wgpu",
+ "iced_widget",
+ "prost",
+ "smithay",
+ "tokio-stream",
+ "tonic",
+ "tonic-prost",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "compositor_monitor_selection_scene_base"
+version = "0.1.0"
+dependencies = [
+ "bitflags 2.13.0",
+ "compositor_developer_debug_instance_record",
+ "compositor_monitor_selection_font_base",
+ "compositor_support_iced_core_engine_base",
+ "iced_core",
+ "iced_runtime",
+ "iced_wgpu",
+ "iced_widget",
+ "prost",
+ "smithay",
+ "tokio-stream",
+ "tonic",
+ "tonic-prost",
 ]
 
 [[package]]
@@ -2649,6 +2678,7 @@ dependencies = [
  "compositor_orchestration_driver_logind_base",
  "compositor_orchestration_driver_remote_base",
  "compositor_orchestration_driver_resume_base",
+ "compositor_orchestration_driver_selection_base",
  "compositor_orchestration_environment_type_base",
  "compositor_orchestration_seat_gesture_state",
  "compositor_orchestration_seat_pointer_state",
@@ -2790,6 +2820,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_orchestration_driver_selection_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_monitor_compositor_iced_base",
+ "compositor_support_system_storage_token_base",
+ "smithay",
+]
+
+[[package]]
 name = "compositor_orchestration_environment_type_base"
 version = "0.0.1"
 dependencies = [
@@ -2865,6 +2904,7 @@ dependencies = [
  "bitflags 2.13.0",
  "compositor_remote_message_client_base",
  "compositor_support_library_input_keyboard_base",
+ "compositor_support_system_storage_token_base",
  "smithay",
  "tracing",
  "tracing-subscriber",
@@ -4654,6 +4694,7 @@ dependencies = [
  "compositor_monitor_compositor_iced_base",
  "compositor_orchestration_draw_layer_base",
  "compositor_orchestration_draw_platform_base",
+ "compositor_orchestration_storage_state_base",
  "compositor_support_smithay_dispatch_state_base",
  "compositor_support_system_buffer_token_base",
  "compositor_support_system_input_event_base",
@@ -4661,6 +4702,7 @@ dependencies = [
  "compositor_support_system_storage_slot_base",
  "compositor_support_system_storage_token_base",
  "compositor_support_system_trait_system_base",
+ "compositor_y5_camera_state_base",
  "compositor_y5_camera_transform_translate",
  "compositor_y5_canvas_input_state",
  "compositor_y5_canvas_state_base",
@@ -5058,6 +5100,7 @@ name = "compositor_y5_surface_protocol_base"
 version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
+ "compositor_monitor_selection_scene_base",
  "compositor_y5_graphic_capture_session",
  "compositor_y5_group_protocol_base",
  "compositor_y5_group_surface_base",
@@ -5076,7 +5119,6 @@ version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
  "compositor_monitor_compositor_iced_base",
- "compositor_monitor_devtool_example_base",
  "compositor_monitor_runtime_surface_base",
  "compositor_support_iced_core_engine_base",
  "compositor_y5_surface_protocol_base",

@@ -29,7 +29,6 @@ use smithay::backend::input::{ButtonState, KeyState};
 use smithay::desktop::Window;
 use smithay::input::keyboard::Keycode;
 use smithay::input::pointer::ButtonEvent;
-use smithay::output::Output;
 use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
 use smithay::utils::{Logical, Point, Rectangle, Size, SERIAL_COUNTER};
 use std::collections::HashSet;
@@ -356,7 +355,8 @@ fn anchor_flags(rect: Rectangle<i32, Logical>, cursor: Point<f64, Logical>) -> (
 }
 
 /// Build the snap map for a grab. `sources` get the rects of every window + every
-/// active visible placeholder NOT in `exclude`; the screen edges go into the
+/// active visible placeholder NOT in `exclude`; the screen edges (output geometry +
+/// the camera viewport extent, see [`snap::SNAP_VIEWPORT_EDGES`]) go into the
 /// always-on `vertical`/`horizontal` lines. All in storage/world space — the same
 /// space the grab geometry math runs in. Window rects use `element_location` +
 /// `geometry().size`, matching the start-geo snapshot in `trigger_candidates` so
@@ -442,13 +442,17 @@ fn build_snap_map(cx: &mut SystemCx, exclude: &HashSet<Uuid>) -> SnapMap {
         }
     }
 
-    let outputs: Vec<Output> = space.outputs().cloned().collect();
-    for output in &outputs {
-        if let Some(geo) = space.output_geometry(output) {
-            map.vertical.push(geo.loc.x as f64);
-            map.vertical.push((geo.loc.x + geo.size.w) as f64);
-            map.horizontal.push(geo.loc.y as f64);
-            map.horizontal.push((geo.loc.y + geo.size.h) as f64);
+    // The screen-boundary snap lines are the camera VIEWPORT edges — the visible
+    // world region (camera-centered, `screen / zoom`), in the same world-logical
+    // frame the grab math runs in, so they track pan/zoom and stay on the boundary
+    // the user actually sees. (The output geometry is a fixed origin rect that only
+    // coincides with the viewport at zoom 1.0 / centered — wrong rect once panned.)
+    if snap::SNAP_VIEWPORT_EDGES {
+        if let Some(vp) = base_viewport {
+            map.vertical.push(vp.loc.x as f64);
+            map.vertical.push((vp.loc.x + vp.size.w) as f64);
+            map.horizontal.push(vp.loc.y as f64);
+            map.horizontal.push((vp.loc.y + vp.size.h) as f64);
         }
     }
 

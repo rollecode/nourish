@@ -1,9 +1,13 @@
 # CD = build the full install bundle (installer + binaries + components) on a version tag
 # (vX.Y.Z) and expose it as job artifacts / GitLab Release assets. Same package.tar.gz the
-# pages job serves at /release/latest/fedora44/ and that compositor.installer/get.sh fetches.
+# pages job serves at /release/<version>/fedora44/ and that compositor.installer/get.sh fetches.
+# The tag itself IS the version, so the binary is stamped from $CI_COMMIT_TAG (strip the `v`)
+# by writing it into the VERSION file before building — the compositor bakes it in at compile
+# time (include_str!). The working-tree edit is never committed.
 release-artifacts:
   stage: release
   script:
+    - echo "${CI_COMMIT_TAG#v}" > VERSION
     - ci/scripts/package-installer.sh
   artifacts:
     paths: [dist/package.tar.gz, dist/SHA256SUMS]

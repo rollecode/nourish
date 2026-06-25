@@ -5,7 +5,7 @@ name: Publish
 # drift:
 #   Pages (nourish.snowies.com):
 #     /                         the marketing site (compositor.website, carries the CNAME)
-#     /docs                     generated rustdoc + coverage site
+#     /docs                     coverage report + reference guides
 #     /release/latest/fedora44  the install bundle (package.tar.gz + SHA256SUMS) get.sh fetches
 #   GitHub Release:
 #     the rolling `latest` release — the same package.tar.gz + SHA256SUMS attached as assets.
@@ -37,7 +37,26 @@ env:
   CARGO_PROFILE_DEV_DEBUG: "0"
 
 jobs:
-  # The public site: marketing root + rustdoc/coverage under /docs.
+  # Compute the release version ONCE (committed VERSION base + git-tag history, see
+  # ci/scripts/version.sh) and hand it to every downstream job, so the embedded binary,
+  # the /release/<version>/ path and the v<version> GitHub Release can never disagree.
+  version:
+    runs-on: ubuntu-latest
+    container: ghcr.io/${{ github.repository_owner }}/y5-ci:fedora44
+    outputs:
+      version: ${{ steps.compute.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0       # full history + tags so the patch derivation sees the series
+          fetch-tags: true
+      - id: compute
+        run: |
+          v="$(ci/scripts/version.sh)"
+          echo ">> release version: $v"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+  # The public site: marketing root + coverage report under /docs.
   site:
     runs-on: ubuntu-latest
     container: ghcr.io/${{ github.repository_owner }}/y5-ci:fedora44
@@ -66,7 +85,7 @@ jobs:
           else
             echo ">> no successful upstream-integration CI run found — publishing without coverage"
           fi
-      # rustdoc only (no coverage recompile); build-docs.sh folds in the reused .ci-coverage/.
+      # No recompile here; build-docs.sh just folds in the reused .ci-coverage/ report.
       - name: Build docs site
         run: ci/scripts/build-docs.sh
       - name: Assemble site tree (marketing at root, docs under /docs)
@@ -83,10 +102,18 @@ jobs:
 
   # The install bundle (installer + binaries + components), built once here.
   bundle:
+    needs: version
     runs-on: ubuntu-latest
     container: ghcr.io/${{ github.repository_owner }}/y5-ci:fedora44
     steps:
       - uses: actions/checkout@v4
+      # Stamp the computed release number into the VERSION file BEFORE building, so the
+      # compositor bakes it in at compile time (include_str! in the loader bin). This
+      # working-tree edit is never committed — git state stays clean.
+      - name: Set build version
+        run: |
+          echo "${{ needs.version.outputs.version }}" > VERSION
+          echo ">> building compositor as $(cat VERSION)"
       - uses: actions/cache@v4
         with:
           # Same key prefix as ci.yml's installer-bundle job, so the bundle built while
@@ -107,7 +134,7 @@ jobs:
 
   # Lay the bundle into the site tree under /release/... and deploy the single Pages artifact.
   deploy:
-    needs: [site, bundle]
+    needs: [site, bundle, version]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -121,21 +148,29 @@ jobs:
         with:
           name: install-bundle
           path: bundle
-      - name: Place the install bundle at /release/latest/fedora44/
+      - name: Place the install bundle at /release/<version>/ and /release/latest/
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
         run: |
-          mkdir -p public/release/latest/fedora44
-          cp bundle/package.tar.gz bundle/SHA256SUMS public/release/latest/fedora44/
+          # Immutable per-version path plus the rolling "latest" the installer fetches —
+          # identical bytes, so a pinned download and the latest download never drift.
+          for slot in "$VERSION" latest; do
+            mkdir -p "public/release/$slot/fedora44"
+            cp bundle/package.tar.gz bundle/SHA256SUMS "public/release/$slot/fedora44/"
+          done
       - uses: actions/upload-pages-artifact@v3
         with:
           path: public
       - id: deploy
         uses: actions/deploy-pages@v4
 
-  # Publish the SAME bundle as a GitHub Release on every upstream push, so the Release assets
-  # and the Pages /release/ download are always the identical artifact (no drift). The rolling
-  # `latest` tag is moved to the merged commit each push — tag + binaries together.
+  # Publish the SAME bundle as TWO GitHub Releases on every upstream push, so the Release
+  # assets and the Pages /release/ downloads are always the identical artifact (no drift):
+  #   v<version>  immutable, auto-numbered (patch bumped from tag history) — marked "Latest"
+  #               so the README badge + GitHub's "Latest release" pointer track the real number.
+  #   latest      rolling, recreated each push — the stable URL the installer/get.sh fetch.
   release:
-    needs: bundle
+    needs: [bundle, version]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -144,21 +179,39 @@ jobs:
         with:
           name: install-bundle
           path: dist
-      - name: Update the rolling "latest" release
+      - name: Publish v<version> and move the rolling "latest"
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.version.outputs.version }}
         run: |
-          notes="Automatically built from \`upstream\` @ ${GITHUB_SHA:0:7}.
+          common="\`package.tar.gz\` is the install bundle — prebuilt compositor + components
+          + the \`y5-install\` installer — the same artifact served under
+          https://nourish.snowies.com/release/. Extract it and run \`y5-install/install.sh\`."
 
-          \`package.tar.gz\` is the install bundle — prebuilt compositor + components + the
-          \`y5-install\` installer — the same artifact served at
-          https://nourish.snowies.com/release/latest/fedora44/. Extract it and run
-          \`y5-install/install.sh\`."
-          # Recreate so the 'latest' tag tracks the current upstream commit (no stale tag).
+          # 1) Immutable, versioned release. The `v<version>` tag pins this commit; created
+          #    once, then re-runs of the same commit just refresh the attached assets.
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo ">> release v$VERSION exists — refreshing assets"
+            gh release upload "v$VERSION" dist/package.tar.gz dist/SHA256SUMS --clobber
+          else
+            gh release create "v$VERSION" \
+              --target "$GITHUB_SHA" \
+              --title "v$VERSION" \
+              --latest \
+              --notes "Nourish v$VERSION — built from \`upstream\` @ ${GITHUB_SHA:0:7}.
+
+          $common" \
+              dist/package.tar.gz dist/SHA256SUMS
+          fi
+
+          # 2) Rolling "latest" — recreated so its tag tracks the current commit. Marked
+          #    NOT-latest so it never steals the "Latest release" pointer from v<version>.
           gh release delete latest --yes --cleanup-tag 2>/dev/null || true
           gh release create latest \
             --target "$GITHUB_SHA" \
-            --title "Latest (upstream build)" \
-            --notes "$notes" \
+            --title "Latest (v$VERSION)" \
+            --latest=false \
+            --notes "Rolling pointer to the newest release (currently **v$VERSION**, \`upstream\`
+          @ ${GITHUB_SHA:0:7}). $common" \
             dist/package.tar.gz dist/SHA256SUMS

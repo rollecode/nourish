@@ -501,56 +501,56 @@ pub fn inline_shortcut_handlers(nosuper: bool) -> Vec<ShortcutHandler<Loop>> {
         ShortcutHandler {
             combo: shortcut!(Super + Right),
             action: Box::new(move |s| {
-                move_direction(s, Direction::Right, false);
+                move_direction(s, Direction::Right, true);
                 true
             }),
         },
         ShortcutHandler {
             combo: shortcut!(Super + Left),
             action: Box::new(move |s| {
-                move_direction(s, Direction::Left, false);
+                move_direction(s, Direction::Left, true);
                 true
             }),
         },
         ShortcutHandler {
             combo: shortcut!(Super + Up),
             action: Box::new(move |s| {
-                move_direction(s, Direction::Up, false);
+                move_direction(s, Direction::Up, true);
                 true
             }),
         },
         ShortcutHandler {
             combo: shortcut!(Super + Down),
             action: Box::new(move |s| {
-                move_direction(s, Direction::Down, false);
+                move_direction(s, Direction::Down, true);
                 true
             }),
         },
         ShortcutHandler {
             combo: shortcut!(Super + Alt + Right),
             action: Box::new(move |s| {
-                move_direction(s, Direction::Right, true);
+                move_direction(s, Direction::Right, false);
                 true
             }),
         },
         ShortcutHandler {
             combo: shortcut!(Super + Alt + Left),
             action: Box::new(move |s| {
-                move_direction(s, Direction::Left, true);
+                move_direction(s, Direction::Left, false);
                 true
             }),
         },
         ShortcutHandler {
             combo: shortcut!(Super + Alt + Up),
             action: Box::new(move |s| {
-                move_direction(s, Direction::Up, true);
+                move_direction(s, Direction::Up, false);
                 true
             }),
         },
         ShortcutHandler {
             combo: shortcut!(Super + Alt + Down), // <-- should be alt but intellij seems to intercept(or something else)
             action: Box::new(move |s| {
-                move_direction(s, Direction::Down, true);
+                move_direction(s, Direction::Down, false);
                 true
             }),
         },

@@ -48,7 +48,7 @@ pub struct NvencEncoder {
 }
 
 impl NvencEncoder {
-    pub fn start(width: u32, height: u32, fps: u32) -> Option<Self> {
+    pub fn start(width: u32, height: u32, fps: u32, cq: u32) -> Option<Self> {
         let w = (width & !1) as c_int;
         let h = (height & !1) as c_int;
         if w == 0 || h == 0 {
@@ -61,12 +61,12 @@ impl NvencEncoder {
             .unwrap_or(0);
         let temp = std::env::temp_dir().join(format!("y5-capture-{nanos}.mp4"));
 
-        match unsafe { Self::init(w, h, fps, &temp) } {
+        match unsafe { Self::init(w, h, fps, cq, &temp) } {
             Ok((codec_ctx, frame, mux)) => Some(NvencEncoder {
                 codec_ctx,
                 frame,
                 mux,
-                pts: 0,
+                pts: -1,
                 width: w as u32,
                 height: h as u32,
                 temp,
@@ -83,6 +83,7 @@ impl NvencEncoder {
         w: c_int,
         h: c_int,
         fps: u32,
+        cq: u32,
         temp: &std::path::Path,
     ) -> Result<(*mut ffi::AVCodecContext, *mut ffi::AVFrame, Muxer), String> {
         let codec = ffi::avcodec_find_encoder_by_name(c"h264_nvenc".as_ptr());
@@ -118,7 +119,8 @@ impl NvencEncoder {
             ffi::av_opt_set(p, c"preset".as_ptr(), NVENC_PRESET.as_ptr(), 0);
             ffi::av_opt_set(p, c"tune".as_ptr(), NVENC_TUNE.as_ptr(), 0);
             ffi::av_opt_set(p, c"rc".as_ptr(), NVENC_RC.as_ptr(), 0);
-            ffi::av_opt_set(p, c"cq".as_ptr(), NVENC_CQ.as_ptr(), 0);
+            let cq_str = std::ffi::CString::new(cq.to_string()).unwrap();
+            ffi::av_opt_set(p, c"cq".as_ptr(), cq_str.as_ptr(), 0);
             ffi::av_opt_set(p, c"profile".as_ptr(), NVENC_PROFILE.as_ptr(), 0);
         }
         let r = ffi::avcodec_open2(codec_ctx, codec, ptr::null_mut());
@@ -153,7 +155,7 @@ impl NvencEncoder {
     /// needs even dimensions, so `start` rounds down with `& !1`). We copy the
     /// even-cropped overlap rather than dropping the frame — otherwise odd-sized
     /// world/window captures would encode zero frames ("no video track").
-    pub fn push(&mut self, bgra: &[u8], w: u32, h: u32) {
+    pub fn push(&mut self, bgra: &[u8], w: u32, h: u32, pts: i64) {
         if !self.started || w < self.width || h < self.height {
             return;
         }
@@ -170,8 +172,9 @@ impl NvencEncoder {
                 let dstp = dst.add(y * dst_stride);
                 ptr::copy_nonoverlapping(src, dstp, copy_w);
             }
-            (*self.frame).pts = self.pts;
-            self.pts += 1;
+            let pts = pts.max(self.pts + 1); // strictly monotonic guard
+            self.pts = pts;
+            (*self.frame).pts = pts;
             self.mux.pump(self.codec_ctx, self.frame);
         }
     }

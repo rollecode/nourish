@@ -9,6 +9,18 @@ pub struct GestureAccumulator {
     pub acc_x: f64,
     pub acc_y: f64,
     pub active: bool,
+    /// Last absolute pinch scale seen (relative to pinch begin = 1.0). Used to
+    /// derive the per-update incremental factor (`scale / pinch_prev_scale`).
+    pub pinch_prev_scale: f64,
+    /// Pinch ownership latched at begin: `true` means the gesture is forwarded to
+    /// the focused window client; `false` means the canvas zooms.
+    pub pinch_to_window: bool,
+    /// Finger count latched at pinch begin. A four-finger pinch is a discrete
+    /// window command (fit one window / fit all) rather than a continuous zoom.
+    pub pinch_fingers: u32,
+    /// Latest absolute pinch scale (relative to begin) — read at end to decide a
+    /// four-finger pinch's direction (in vs. out).
+    pub pinch_scale: f64,
 }
 
 impl GestureAccumulator {

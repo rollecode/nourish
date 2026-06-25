@@ -1,8 +1,9 @@
-//! `SaveDialog` — shown when a capture stops: Save / Save As / Discard.
-//! Its own small centered screen-space instance.
+//! `SaveDialog` — shown when a capture stops: Save / Save As / Discard, with an
+//! optional "Optimized encoding" checkbox (video only; hidden when the
+//! `background_encoder` setting makes the optimized re-encode automatic).
 
 use iced_core::{Alignment, Background, Border, Element, Length, Shadow, Theme};
-use iced_widget::{button, column, container, row, text};
+use iced_widget::{button, checkbox, column, container, row, text};
 use compositor_y5_graphic_capture_session::message::CaptureMessage;
 use compositor_support_iced_core_engine_base::{IcedUi, Renderer};
 
@@ -11,18 +12,35 @@ use crate::style;
 pub struct SaveDialog {
     /// Label for the artifact ("Screenshot" / "Video").
     pub kind_label: &'static str,
+    /// Whether to offer the "Optimized encoding" checkbox (video + manual mode).
+    show_optimize: bool,
+    /// Current checkbox state (read by the interface on Save).
+    optimized: bool,
 }
 
 impl SaveDialog {
-    pub fn new(kind_label: &'static str) -> Self {
-        Self { kind_label }
+    pub fn new(kind_label: &'static str, show_optimize: bool) -> Self {
+        Self {
+            kind_label,
+            show_optimize,
+            optimized: false,
+        }
+    }
+
+    /// Whether the user ticked "Optimized encoding".
+    pub fn optimized(&self) -> bool {
+        self.optimized
     }
 }
 
 impl IcedUi for SaveDialog {
     type Message = CaptureMessage;
 
-    fn update(&mut self, _message: Self::Message) {}
+    fn update(&mut self, message: Self::Message) {
+        if let CaptureMessage::ToggleOptimized(v) = message {
+            self.optimized = v;
+        }
+    }
 
     fn view(&self) -> Element<'_, Self::Message, Theme, Renderer> {
         let title = text(format!("{} captured", self.kind_label))
@@ -49,13 +67,24 @@ impl IcedUi for SaveDialog {
         ]
         .spacing(12);
 
-        let panel = container(
-            column![title, hint, buttons]
-                .spacing(14)
-                .align_x(Alignment::Center),
-        )
-        .padding(24)
-        .style(|_t| container::Style {
+        let mut col = column![title, hint];
+        // The optimized-encode checkbox only applies to video, and only when the
+        // background re-encode isn't already automatic.
+        if self.show_optimize && self.kind_label == "Video" {
+            col = col.push(
+                row![
+                    checkbox(self.optimized).on_toggle(CaptureMessage::ToggleOptimized),
+                    text("Optimized encoding (smaller file, encodes after saving)")
+                        .size(13)
+                        .color(style::TEXT_DIM),
+                ]
+                .spacing(8)
+                .align_y(Alignment::Center),
+            );
+        }
+        col = col.push(buttons).spacing(14).align_x(Alignment::Center);
+
+        let panel = container(col).padding(24).style(|_t| container::Style {
             background: Some(Background::Color(style::PANEL_BG)),
             text_color: Some(style::TEXT),
             border: Border {

@@ -11,8 +11,9 @@ curl -fsSL https://nourish.snowies.com/release/latest/fedora44/package.tar.gz | 
 ```
 
 That downloads the release, unpacks it to `./y5-install/`, and launches the
-interactive installer. It uses `sudo` for the system-level steps and is safe to
-re-run (every file is overwritten).
+interactive installer. Run it as **your normal user, not with `sudo`** — it invokes
+`sudo` itself only for the system-level steps, so your configuration lands in your
+`$HOME/.config` (it refuses to run as root). It is safe to re-run.
 
 If you host the bootstrap script ([`get.sh`](get.sh)) at a stable URL, the command
 becomes even shorter:
@@ -27,15 +28,22 @@ curl -fsSL https://nourish.snowies.com/install | bash
 curl -fsSL https://nourish.snowies.com/release/latest/fedora44/package.tar.gz | tar -xz && y5-install/install.sh --dry-run
 ```
 
-After install, log out and pick a **"Y5…"** session in your display manager.
+After install, log out and pick the **"Y5 Compositor"** session in your display manager.
 
 ## What the installer does
 
-1. **Detects your GPU** (`lspci`) and pre-selects the matching driver group.
-2. **Installs the runtime packages** (see below) via `dnf`.
-3. Prompts the default Y5 Desktop configuration (render node, color depth, VRR, …).
-4. Lays down every session preset with its systemd user service, wayland-session
-   entry and xdg-desktop-portal config.
+1. **Detects your GPU** (`lspci`). On NVIDIA it does not install a driver — it checks
+   the bound kernel driver and warns if `nouveau` is in use or none is bound (see the
+   NVIDIA note below).
+2. **Installs the runtime packages** (see below) via `dnf`. The install is **strict**:
+   if a package is unavailable, it aborts rather than continuing half-installed. Every
+   default package is in base Fedora repos, so this only fails if your repos are broken.
+3. Prompts the Y5 Compositor configuration (render node, color depth, VRR, …) and
+   **seeds `~/.config/y5.compositor/settings.json`** from your answers. The session
+   wrapper never rewrites it afterwards, so later edits (via `y5.compositor.settings`)
+   stick.
+4. Lays down the single **Y5 Compositor** session — its `/usr/bin` wrapper, systemd
+   user service, wayland-session entry and xdg-desktop-portal config.
 5. Optionally installs the developer tool window, the polkit agent, the MX gesture
    daemon and the PAM lock policy.
 
@@ -57,14 +65,27 @@ plus the sonames it `dlopen`s at runtime (Wayland, Vulkan, EGL):
 | `libpixman-1.so.0` | `pixman` | linked |
 | `libgbm.so.1` | `mesa-libgbm` (→ `libdrm`) | linked |
 | `libwayland-{client,server}.so.0` | `libwayland-client`, `libwayland-server` | dlopen |
-| `libwayland-egl.so.1` | `mesa-libwayland-egl` | dlopen |
+| `libwayland-egl.so.1` | `libwayland-egl` | dlopen |
 | `libvulkan.so.1` | `vulkan-loader` + driver | dlopen (default renderer) |
 | `libEGL.so.1` / GLES | `libglvnd-egl`/`libglvnd-gles` + `mesa-libEGL` | dlopen (GLES fallback) |
 
-The GPU **driver** comes from the vendor group the installer pre-selects:
-`mesa-vulkan-drivers`/`mesa-dri-drivers` (AMD/Intel/generic) or the `akmod-nvidia`
-stack (NVIDIA). `libdisplay-info` (EDID parsing) and `xorg-x11-server-Xwayland`
-(X11 clients) round out the default set.
+The generic Mesa Vulkan driver (`mesa-vulkan-drivers`, for AMD/Intel) ships in the
+required `runtime` group, so **Vulkan rendering works with no extra repos**;
+`libdisplay-info` (EDID parsing) and `xorg-x11-server-Xwayland` (X11 clients) round
+out the default set.
+
+**Hardware video acceleration (optional, opt-in):** the VA-API video driver
+(`mesa-va-drivers-freeworld`) is one Fedora can't ship, so it lives in RPM Fusion. The
+installer offers an explicit prompt — say yes and it enables RPM Fusion (free) for you,
+then installs it; say no (the default) and it's never touched. This is only for VA-API
+video decode/encode (e.g. faster capture), not for Vulkan rendering.
+
+**NVIDIA:** the installer does **not** install the proprietary NVIDIA driver — the
+`akmod-nvidia` stack needs a kernel-module build, a reboot, and Secure Boot signing,
+so it's left to you. When an NVIDIA GPU is detected the installer instead checks the
+bound kernel driver and prints a prominent warning if `nouveau` is in use (or no
+driver is bound), with instructions to install the driver via RPM Fusion's
+`akmod-nvidia` or NVIDIA's own `.run` installer, then reboot and re-run.
 
 You do **not** need the build toolchain. The installer offers a `toolchain` group
 (off by default) only for the rare case of compiling y5 on the target.

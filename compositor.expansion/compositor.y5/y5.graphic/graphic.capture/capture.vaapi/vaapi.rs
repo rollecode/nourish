@@ -20,9 +20,20 @@ use smithay::backend::allocator::dmabuf::Dmabuf;
 
 use crate::common::{AVERROR, AVERROR_EOF, EAGAIN, averr, y5_avfmt_get_pb, y5_avfmt_set_pb};
 use crate::ffi;
+use crate::nvenc_cuda::Codec;
 
-const RENDER_NODE: &str = "/dev/dri/renderD128";
 const MAX_PLANES: usize = 4;
+
+// `lseek(fd, 0, SEEK_END)` reports a dmabuf's size (needed for the DRM object
+// descriptor). In libc, always linked — no extra crate dependency.
+unsafe extern "C" {
+    fn lseek(fd: c_int, offset: i64, whence: c_int) -> i64;
+}
+const SEEK_END: c_int = 2;
+
+/// No-op `AVBuffer` free callback: the wrapped DRM descriptor is owned by the
+/// encoder's `Box`, not by libav, so dropping the buffer must not free it.
+unsafe extern "C" fn noop_buffer_free(_opaque: *mut c_void, _data: *mut u8) {}
 
 // --- Encoder tuning knobs (VAAPI). All compile-time constants; see CAPTURE.md. ---
 // Kept conservative: VAAPI drivers vary, and unsupported options fail soft
@@ -59,6 +70,7 @@ pub struct VaapiEncoder {
     stream_index: c_int,
     pts: i64,
     fps: u32,
+    codec: Codec,
     width: u32,
     height: u32,
     temp: PathBuf,
@@ -66,9 +78,11 @@ pub struct VaapiEncoder {
 }
 
 impl VaapiEncoder {
-    /// Set up the pipeline for the given capture dmabuf (BGRA). Returns `None`
-    /// on any failure (no VAAPI, unsupported format, etc.).
-    pub fn start(dmabuf: &Dmabuf, fps: u32) -> Option<Self> {
+    /// Set up the pipeline for the given capture dmabuf (BGRA), encoding with
+    /// `codec`'s VAAPI encoder. Returns `None` on any failure (no VAAPI, codec
+    /// unsupported on this GPU, etc.) — the caller walks a fallback list
+    /// (`av1 → hevc → h264`), so a GPU without AV1/HEVC encode lands on H.264.
+    pub fn start(dmabuf: &Dmabuf, fps: u32, codec: Codec) -> Option<Self> {
         let width = dmabuf.width();
         let height = dmabuf.height();
         let w = (width & !1) as i32;
@@ -96,8 +110,9 @@ impl VaapiEncoder {
             stream: ptr::null_mut(),
             desc: Box::new(unsafe { std::mem::zeroed() }),
             stream_index: 0,
-            pts: 0,
+            pts: -1,
             fps: fps.max(1),
+            codec,
             width: w as u32,
             height: h as u32,
             temp: temp.clone(),
@@ -121,17 +136,21 @@ impl VaapiEncoder {
     }
 
     unsafe fn init(&mut self, dmabuf: &Dmabuf, w: c_int, h: c_int) -> Result<(), String> {
-        // 1. VAAPI/DRM device on the render node.
-        let node = CString::new(RENDER_NODE).unwrap();
+        // 1. DRM device on the render node. The capture dmabuf is wrapped as a
+        //    DRM_PRIME hw frame, and a DRM_PRIME frames context can ONLY live on a
+        //    DRM-type device — allocating it on a VAAPI device makes
+        //    `av_hwframe_ctx_init` return ENOSYS ("function not implemented").
+        //    The VAAPI device is derived later by `hwmap=derive_device=vaapi`.
+        let node = CString::new(crate::capture_render_node()).unwrap();
         let r = ffi::av_hwdevice_ctx_create(
             &mut self.drm_device,
-            ffi::AV_HWDEVICE_TYPE_VAAPI,
+            ffi::AV_HWDEVICE_TYPE_DRM,
             node.as_ptr(),
             ptr::null_mut(),
             0,
         );
         if r < 0 {
-            return Err(format!("av_hwdevice_ctx_create(vaapi): {}", averr(r)));
+            return Err(format!("av_hwdevice_ctx_create(drm): {}", averr(r)));
         }
 
         // 2. Fill the persistent DRM_PRIME descriptor from the dmabuf.
@@ -146,6 +165,23 @@ impl VaapiEncoder {
         (*self.drm_frame).width = w;
         (*self.drm_frame).height = h;
         (*self.drm_frame).data[0] = (&mut *self.desc) as *mut _ as *mut u8;
+        // Make the frame REFERENCE-COUNTED by wrapping the (persistent) descriptor
+        // in an AVBuffer with a no-op free (the Box<AVDRMFrameDescriptor> owns the
+        // memory; this buffer must not free it). Without a `buf[0]`, libav treats
+        // the frame as non-refcounted, so `av_buffersrc_add_frame(KEEP_REF)`
+        // allocate-and-copies every frame — churning the DRM hwframe pool until it
+        // ENOMEMs ("Cannot allocate memory"). A real `buf[0]` makes KEEP_REF a
+        // cheap new reference.
+        (*self.drm_frame).buf[0] = ffi::av_buffer_create(
+            (&mut *self.desc) as *mut _ as *mut u8,
+            std::mem::size_of::<ffi::AVDRMFrameDescriptor>(),
+            Some(noop_buffer_free),
+            ptr::null_mut(),
+            0,
+        );
+        if (*self.drm_frame).buf[0].is_null() {
+            return Err("av_buffer_create(drm descriptor) failed".into());
+        }
 
         // 4. Filter graph: buffer(drm_prime) → hwmap→vaapi → nv12 → buffersink.
         self.build_filtergraph(w, h)?;
@@ -175,13 +211,25 @@ impl VaapiEncoder {
         let fourcc: u32 = format.code as u32;
         let modifier: u64 = format.modifier.into();
 
+        let height = dmabuf.height();
         let desc = &mut *self.desc;
         // One object per fd (planes may share an fd; deduping is optional — VAAPI
         // import accepts one object per plane fd).
         desc.nb_objects = nplanes as c_int;
         for i in 0..nplanes {
-            desc.objects[i].fd = fds.get(i).copied().unwrap_or(fds[0]);
-            desc.objects[i].size = 0; // unknown; VAAPI tolerates 0
+            let fd = fds.get(i).copied().unwrap_or(fds[0]);
+            desc.objects[i].fd = fd;
+            // The object size MUST be the real dmabuf size. NVIDIA never reached
+            // this path, but MESA's VAAPI dmabuf import rejects `size = 0` with
+            // ENOMEM ("Cannot allocate memory") when the frame flows through
+            // `hwmap`. `lseek(SEEK_END)` returns a dmabuf's size; fall back to
+            // stride*height if that ever fails.
+            let sz = lseek(fd, 0, SEEK_END);
+            desc.objects[i].size = if sz > 0 {
+                sz as _
+            } else {
+                (strides.get(i).copied().unwrap_or(0) as u64 * height as u64) as _
+            };
             desc.objects[i].format_modifier = modifier;
         }
         desc.nb_layers = 1;
@@ -227,30 +275,36 @@ impl VaapiEncoder {
         }
         (*self.drm_frame).hw_frames_ctx = ffi::av_buffer_ref(self.drm_frames);
 
-        let args = CString::new(format!(
-            "video_size={w}x{h}:pix_fmt={}:time_base=1/{}:pixel_aspect=1/1",
-            ffi::AV_PIX_FMT_DRM_PRIME,
-            self.fps
-        ))
-        .unwrap();
-        let name_src = c"in";
-        let r = ffi::avfilter_graph_create_filter(
-            &mut self.src,
-            buffersrc,
-            name_src.as_ptr(),
-            args.as_ptr(),
-            ptr::null_mut(),
-            self.graph,
-        );
-        if r < 0 {
-            return Err(format!("create buffersrc: {}", averr(r)));
+        // A buffersrc carrying a HW pixel format must have its `hw_frames_ctx`
+        // set BEFORE the filter is initialized. So: alloc (uninitialized) →
+        // set parameters (format/size/time_base + the DRM frames ctx) → init.
+        // (`avfilter_graph_create_filter` initializes immediately, which errors
+        // with "Setting BufferSourceContext.pix_fmt to a HW format requires
+        // hw_frames_ctx to be non-NULL".)
+        self.src = ffi::avfilter_graph_alloc_filter(self.graph, buffersrc, c"in".as_ptr());
+        if self.src.is_null() {
+            return Err("avfilter_graph_alloc_filter(buffersrc) failed".into());
         }
-        // Attach the hw_frames_ctx to the buffersrc.
         let par = ffi::av_buffersrc_parameters_alloc();
-        if !par.is_null() {
-            (*par).hw_frames_ctx = ffi::av_buffer_ref(self.drm_frames);
-            ffi::av_buffersrc_parameters_set(self.src, par);
-            ffi::av_free(par as *mut c_void);
+        if par.is_null() {
+            return Err("av_buffersrc_parameters_alloc failed".into());
+        }
+        (*par).format = ffi::AV_PIX_FMT_DRM_PRIME as c_int;
+        (*par).width = w;
+        (*par).height = h;
+        (*par).time_base = ffi::AVRational {
+            num: 1,
+            den: self.fps as c_int,
+        };
+        (*par).hw_frames_ctx = ffi::av_buffer_ref(self.drm_frames);
+        let r = ffi::av_buffersrc_parameters_set(self.src, par);
+        ffi::av_free(par as *mut c_void);
+        if r < 0 {
+            return Err(format!("av_buffersrc_parameters_set: {}", averr(r)));
+        }
+        let r = ffi::avfilter_init_str(self.src, ptr::null());
+        if r < 0 {
+            return Err(format!("avfilter_init_str(buffersrc): {}", averr(r)));
         }
 
         let name_sink = c"out";
@@ -302,9 +356,17 @@ impl VaapiEncoder {
     }
 
     unsafe fn build_encoder(&mut self, w: c_int, h: c_int) -> Result<(), String> {
-        let codec = ffi::avcodec_find_encoder_by_name(c"h264_vaapi".as_ptr());
+        // Codec → VAAPI encoder + profile. Not every GPU exposes every encoder
+        // (e.g. Kaby Lake has no AV1/VP9 encode), so a missing encoder or a failed
+        // open returns Err and the caller falls back to the next codec.
+        let (name, profile): (&CStr, Option<&CStr>) = match self.codec {
+            Codec::H264 => (c"h264_vaapi", Some(VAAPI_PROFILE)),
+            Codec::Hevc => (c"hevc_vaapi", Some(c"main")),
+            Codec::Av1 => (c"av1_vaapi", None),
+        };
+        let codec = ffi::avcodec_find_encoder_by_name(name.as_ptr());
         if codec.is_null() {
-            return Err("h264_vaapi encoder not found".into());
+            return Err(format!("vaapi encoder {name:?} not found"));
         }
         self.codec_ctx = ffi::avcodec_alloc_context3(codec);
         if self.codec_ctx.is_null() {
@@ -339,11 +401,13 @@ impl VaapiEncoder {
         // h264_vaapi-private options (rc mode + profile); ignored if unsupported.
         let p = c.priv_data;
         ffi::av_opt_set(p, c"rc_mode".as_ptr(), VAAPI_RC_MODE.as_ptr(), 0);
-        ffi::av_opt_set(p, c"profile".as_ptr(), VAAPI_PROFILE.as_ptr(), 0);
+        if let Some(prof) = profile {
+            ffi::av_opt_set(p, c"profile".as_ptr(), prof.as_ptr(), 0);
+        }
 
         let r = ffi::avcodec_open2(self.codec_ctx, codec, ptr::null_mut());
         if r < 0 {
-            return Err(format!("avcodec_open2(h264_vaapi): {}", averr(r)));
+            return Err(format!("avcodec_open2({name:?}): {}", averr(r)));
         }
         Ok(())
     }
@@ -386,13 +450,14 @@ impl VaapiEncoder {
 
     /// Encode the current contents of the capture dmabuf as one frame. Call
     /// after the per-frame render into the dmabuf has completed (synced).
-    pub fn encode(&mut self) {
+    pub fn encode(&mut self, pts: i64) {
         if !self.started {
             return;
         }
         unsafe {
-            (*self.drm_frame).pts = self.pts;
-            self.pts += 1;
+            let pts = pts.max(self.pts + 1); // strictly monotonic guard
+            self.pts = pts;
+            (*self.drm_frame).pts = pts;
             // Push the (persistent) DRM frame into the graph (its dmabuf content
             // changed since last frame). KEEP_REF so the graph doesn't take it.
             let r = ffi::av_buffersrc_add_frame_flags(

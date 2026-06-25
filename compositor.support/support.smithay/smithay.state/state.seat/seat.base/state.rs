@@ -1,9 +1,10 @@
 use smithay::backend::session::libseat::LibSeatSession;
-use smithay::input::pointer::{CursorImageStatus, PointerHandle};
+use smithay::input::pointer::{CursorImageStatus, CursorIcon, PointerHandle};
 use smithay::input::{SeatHandler, SeatState};
 use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
 use smithay::utils::{Logical, Point};
 use smithay::wayland::pointer_constraints::{PointerConstraintsState, with_pointer_constraint};
+use smithay::wayland::pointer_gestures::PointerGesturesState;
 use smithay::wayland::relative_pointer::RelativePointerManagerState;
 use smithay::wayland::seat::WaylandFocus;
 
@@ -13,6 +14,14 @@ pub struct Seat<Handler: SeatHandler> {
     pub pointer_status: CursorImageStatus,
     pub relative_pointer_manager_state: RelativePointerManagerState,
     pub pointer_constraints_state: PointerConstraintsState,
+    /// `zwp_pointer_gestures_v1` global — lets the focused window client receive
+    /// native touchpad pinch/swipe gestures (the canvas zoom/pan repurposes them
+    /// otherwise). Held to keep the global alive for the session.
+    pub pointer_gestures_state: PointerGesturesState,
+    /// Compositor-forced cursor icon that overrides client `set_cursor` while set.
+    /// Used by the canvas hand tool to keep the grab cursor showing even when the
+    /// pointer is over a window that sets its own cursor. `None` = clients win.
+    pub force_cursor: Option<CursorIcon>,
     pub unlock_restoration_location: Option<(WlSurface, Point<f64, Logical>)>,
     pub previous_focus: Option<WlSurface>,
     pub libseat: Option<LibSeatSession>,

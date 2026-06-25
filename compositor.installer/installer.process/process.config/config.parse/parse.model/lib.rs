@@ -1,9 +1,10 @@
 //! Config model: the compositor environment (`Env`) and the prompted base
 //! configuration (`BaseConfig`). Pure std.
 
-/// The compositor's runtime configuration — mirrors the `Environment` struct the
-/// compositor reads from its settings.json file. Every field is emitted (the
-/// compositor requires all of them; no optionals, no defaults).
+/// Carrier for the installer's prompted values + the GPU-derived capture encoder. NOT
+/// the full settings schema and NOT serialized directly — the complete settings.json is
+/// built by layering the fields the installer sets onto `config.base::default_settings()`
+/// (see `compute.plan::settings_json`), so the seed always has every required field.
 #[derive(Clone, Debug)]
 pub struct Env {
     pub renderer: String,
@@ -19,37 +20,6 @@ pub struct Env {
     pub capture_encoder: String,
     pub window_client_size_fallback: bool,
     pub window_subsurface_shrinks: bool,
-}
-
-impl Env {
-    /// Emit the settings JSON. Hand-rolled (no serde dep); string fields are
-    /// escaped for `"` and `\`.
-    pub fn to_json(&self) -> String {
-        format!(
-            "{{\"renderer\":\"{}\",\"renderer_fallback\":{},\"renderer_sync\":\"{}\",\
-             \"hdr\":{},\"depth\":{},\"vrr\":{},\"render_node\":\"{}\",\
-             \"desktop_name\":\"{}\",\"log_level\":\"{}\",\"vk_diag\":\"{}\",\
-             \"capture_encoder\":\"{}\",\"window_client_size_fallback\":{},\
-             \"window_subsurface_shrinks\":{}}}",
-            esc(&self.renderer),
-            self.renderer_fallback,
-            esc(&self.renderer_sync),
-            self.hdr,
-            self.depth,
-            self.vrr,
-            esc(&self.render_node),
-            esc(&self.desktop_name),
-            esc(&self.log_level),
-            esc(&self.vk_diag),
-            esc(&self.capture_encoder),
-            self.window_client_size_fallback,
-            self.window_subsurface_shrinks,
-        )
-    }
-}
-
-fn esc(s: &str) -> String {
-    s.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
 /// Values prompted once for the default Y5 Desktop. Most propagate unchanged into

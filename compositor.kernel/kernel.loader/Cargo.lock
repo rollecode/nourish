@@ -4777,6 +4777,7 @@ name = "compositor_orchestration_seat_pointer_input"
 version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
+ "compositor_developer_environment_config_base",
  "compositor_monitor_compositor_iced_base",
  "compositor_orchestration_core_state_base",
  "compositor_orchestration_draw_layer_base",
@@ -7296,6 +7297,7 @@ name = "compositor_y5_canvas_input_gesture"
 version = "0.0.1"
 dependencies = [
  "compositor_developer_debug_instance_record",
+ "compositor_developer_environment_config_base",
  "compositor_orchestration_core_state_base",
  "compositor_support_action_camera_find_base",
  "compositor_y5_navigator_interface_base",
@@ -7900,6 +7902,8 @@ dependencies = [
  "compositor_developer_debug_instance_record",
  "compositor_orchestration_core_state_base",
  "compositor_support_action_camera_find_base",
+ "compositor_support_action_camera_find_origin",
+ "compositor_support_action_camera_find_window",
  "compositor_support_action_camera_fit_aspect",
  "compositor_support_action_camera_fit_element",
  "compositor_support_library_ease_velocity_base",

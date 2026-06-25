@@ -42,7 +42,12 @@ where
     let cursor_phys: Point<i32, Physical> = cursor_rect_transform.into();
     let render_at = cursor_phys - hotspot_phys; // subtract hotspot
 
-    state.inner.pointer_mut().element.status = state.state.seat.pointer_status.clone();
+    // A compositor-forced cursor (e.g. the canvas hand tool's grab icon) overrides
+    // whatever the focused client set, so the affordance survives moving over windows.
+    state.inner.pointer_mut().element.status = match state.state.seat.force_cursor {
+        Some(icon) => smithay::input::pointer::CursorImageStatus::Named(icon),
+        None => state.state.seat.pointer_status.clone(),
+    };
     let pointer_elements: Vec<PointerRenderElement<_>> =
         state.inner.pointer_mut().element.render_elements(
             renderer,

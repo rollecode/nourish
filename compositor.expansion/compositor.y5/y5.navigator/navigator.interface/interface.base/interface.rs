@@ -2,9 +2,11 @@ use std::time::Instant;
 
 use smithay::{
     desktop::Window,
-    utils::{Logical, Point, Size},
+    utils::{Logical, Point, Rectangle, Size},
 };
 use compositor_support_action_camera_find_base::find::Direction;
+use compositor_support_action_camera_find_origin::distance_sq_to_viewport_center;
+use compositor_support_action_camera_find_window::cmp_f64;
 use compositor_support_action_camera_fit_aspect::aspect;
 use compositor_orchestration_core_state_base::Loop;
 use compositor_y5_navigator_travel_machine::view::view;
@@ -186,6 +188,89 @@ pub fn fit(state: &mut Loop, zoom_1: bool, fit_1: bool) {
             compositor_y5_navigator_state_base::state::State::Travel(travel),
         ),
     );
+}
+
+/// Four-finger pinch IN: frame the focused window — or, if nothing is focused or
+/// selected, the most-centered visible window — like Super+Alt+F with a centered
+/// fallback. Eases there via the navigator (one-shot, like the swipe handler).
+pub fn fit_window(state: &mut Loop) {
+    let selected = state.inner.select().Selection.clone();
+    let windows: Vec<Window> = if !selected.is_empty() {
+        selected.iter().map(|w| w.as_ref().clone()).collect()
+    } else if let Some(window) = focused(state) {
+        vec![window]
+    } else if let Some(window) = most_centered(state) {
+        vec![window]
+    } else {
+        return;
+    };
+    let refs: Vec<&Window> = windows.iter().collect();
+    let result = view(state, refs, false);
+    travel(state, result.position, result.zoom);
+}
+
+/// Four-finger pinch OUT: zoom out to an overview framing every (toplevel) window.
+/// Zoom is capped at 1.0 so the view never zooms IN past the viewport — the most
+/// zoomed-out floor is the screen itself (the user's "minimum zoom out").
+pub fn fit_all(state: &mut Loop) {
+    let windows: Vec<Window> = state
+        .inner.space_state().state
+        .elements()
+        .filter(|w| w.toplevel().is_some())
+        .cloned()
+        .collect();
+    if windows.is_empty() {
+        return;
+    }
+    let refs: Vec<&Window> = windows.iter().collect();
+    let result = view(state, refs, true);
+    let zoom = result.zoom.map(|z| z.min(1.0));
+    travel(state, result.position, zoom);
+}
+
+/// Issue a one-shot navigator travel to an optional target position/zoom.
+fn travel(state: &mut Loop, position: Option<(f64, f64)>, zoom: Option<f64>) {
+    let travel = Travel {
+        duration: None,
+        time_start: None,
+        position: position.map(|target| Target { start: None, target }),
+        zoom: zoom.map(|target| Target { start: None, target }),
+    };
+    compositor_y5_navigator_state_base::state::request(
+        state.inner.focus_channels(),
+        compositor_y5_navigator_state_base::state::NavRequest::Set(
+            compositor_y5_navigator_state_base::state::State::Travel(travel),
+        ),
+    );
+}
+
+/// The most-centered visible window: smallest squared distance from its geometry
+/// center to the output center (the action.camera.find metric, used directly).
+fn most_centered(state: &mut Loop) -> Option<Window> {
+    let output_rects: Vec<Rectangle<f64, Logical>> = {
+        let outputs: Vec<_> = state.inner.space_state().state.outputs().cloned().collect();
+        outputs
+            .iter()
+            .filter_map(|o| state.inner.space_state().state.output_geometry(o).map(|r| r.to_f64()))
+            .collect()
+    };
+    if output_rects.is_empty() {
+        return None;
+    }
+    let windows: Vec<Window> = state
+        .inner.space_state().state
+        .elements()
+        .filter(|w| w.toplevel().is_some())
+        .cloned()
+        .collect();
+    windows
+        .into_iter()
+        .filter_map(|w| {
+            let rect = state.inner.space_state().state.element_geometry(&w)?.to_f64();
+            Some((w, distance_sq_to_viewport_center(&rect, &output_rects)))
+        })
+        .min_by(|a, b| cmp_f64(a.1, b.1))
+        .map(|(w, _)| w)
 }
 
 fn focused(state: &mut Loop) -> Option<Window> {

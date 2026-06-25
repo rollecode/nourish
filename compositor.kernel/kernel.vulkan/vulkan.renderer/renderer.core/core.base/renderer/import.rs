@@ -25,7 +25,13 @@ impl VulkanRenderer {
                 &vk::CommandBufferBeginInfo::default()
                     .flags(vk::CommandBufferUsageFlags::ONE_TIME_SUBMIT),
             )?;
-            let barrier = vk::ImageMemoryBarrier2::default()
+            // With MULTIPLANE_SUPPORT, acquire the imported dmabuf from its
+            // external producer (VK_QUEUE_FAMILY_FOREIGN_EXT) so the driver
+            // interprets the existing DRM-modifier / CCS-compressed contents
+            // rather than reinitializing them; oldLayout = UNDEFINED is the
+            // content-preserving pairing for a foreign acquire. Without it both
+            // indices stay IGNORED (the original no-transfer barrier).
+            let mut barrier = vk::ImageMemoryBarrier2::default()
                 .src_stage_mask(vk::PipelineStageFlags2::TOP_OF_PIPE)
                 .dst_stage_mask(vk::PipelineStageFlags2::FRAGMENT_SHADER)
                 .dst_access_mask(vk::AccessFlags2::SHADER_SAMPLED_READ)
@@ -39,6 +45,11 @@ impl VulkanRenderer {
                     base_array_layer: 0,
                     layer_count: 1,
                 });
+            if compositor_kernel_vulkan_device_factory_base::factory::MULTIPLANE_SUPPORT {
+                barrier = barrier
+                    .src_queue_family_index(vk::QUEUE_FAMILY_FOREIGN_EXT)
+                    .dst_queue_family_index(self.dev.queue_family_index);
+            }
             let barriers = [barrier];
             let dep = vk::DependencyInfo::default().image_memory_barriers(&barriers);
             dev.cmd_pipeline_barrier2(cmd, &dep);
@@ -78,6 +89,7 @@ impl ImportDma for VulkanRenderer {
                 device: self.dev.device.clone(),
                 image: imported.image,
                 memory: imported.memory,
+                extra_memory: imported.extra_memory,
                 view: imported.view,
                 format: imported.format,
                 fourcc: Some(dmabuf.format().code),
@@ -133,6 +145,7 @@ impl ImportMem for VulkanRenderer {
                 device: self.dev.device.clone(),
                 image: up.image,
                 memory: up.memory,
+                extra_memory: Vec::new(),
                 view: up.view,
                 format: up.format,
                 fourcc: Some(format),

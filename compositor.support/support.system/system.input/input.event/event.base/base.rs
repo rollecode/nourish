@@ -46,5 +46,29 @@ pub enum InputEvent {
         vertical: f64,
         x: f64,
         y: f64,
+        /// Source is a touchpad finger (or continuous device), as opposed to a
+        /// discrete scroll wheel. Lets the canvas treat two-finger touchpad
+        /// scroll (pan) differently from mouse-wheel scroll (zoom).
+        finger: bool,
     },
+    /// Touchpad pinch gesture, translated from the libinput pinch lifecycle.
+    /// Carries the cursor location (the zoom anchor) and, on `Update`, the
+    /// incremental scale factor relative to the previous update (1.0 = no
+    /// change). `Begin`/`End` carry `scale = 1.0` and exist so a receiver can
+    /// gate the gesture (decide canvas-zoom vs. window-forward) at begin and
+    /// release any latched state at end.
+    PointerPinch {
+        phase: PinchPhase,
+        scale: f64,
+        x: f64,
+        y: f64,
+    },
+}
+
+/// Lifecycle phase of a [`InputEvent::PointerPinch`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PinchPhase {
+    Begin,
+    Update,
+    End,
 }

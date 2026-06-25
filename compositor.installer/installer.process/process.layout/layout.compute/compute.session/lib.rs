@@ -4,9 +4,14 @@
 
 use compositor_installer_process_config_parse_base::Preset;
 
-/// The /usr/bin wrapper script: exports session identity + a few third-party
-/// debug vars, then writes the compositor's settings.json (the only place the
-/// compositor's config is supplied), then execs the compositor binary.
+/// The /usr/bin wrapper script: exports session identity + a few third-party debug
+/// vars, then execs the compositor binary.
+///
+/// It deliberately does NOT write settings.json. The compositor's config is owned by
+/// the user (authored with the `y5.compositor.settings` tool); a wrapper that rewrote
+/// it every launch would clobber those edits. If the file is absent the wrapper points
+/// the user at the tool and refuses to launch — the compositor panics without it, so a
+/// clear message beats a stack trace.
 pub fn wrapper_desktop(p: &Preset) -> String {
     format!(
         "#!/bin/bash\n\
@@ -20,19 +25,22 @@ pub fn wrapper_desktop(p: &Preset) -> String {
          export XDG_CURRENT_DESKTOP={desktop}\n\
          export XDG_SESSION_TYPE=wayland\n\
          \n\
-         # The compositor reads ALL of its configuration from this file (every field\n\
-         # required; it panics if the file is missing or partial).\n\
+         # The compositor reads ALL of its configuration from settings.json (every field\n\
+         # required; it panics if the file is missing or partial). This wrapper NEVER\n\
+         # writes that file — it belongs to the user. Configure it with the\n\
+         # 'y5.compositor.settings' tool. If it's absent, say so and stop rather than\n\
+         # launching into a panic.\n\
          _y5_cfg=\"${{XDG_CONFIG_HOME:-$HOME/.config}}/y5.compositor\"\n\
-         mkdir -p \"$_y5_cfg\"\n\
-         cat > \"$_y5_cfg/settings.json\" <<'Y5_SETTINGS_EOF'\n\
-         {json}\n\
-         Y5_SETTINGS_EOF\n\
+         if [ ! -f \"$_y5_cfg/settings.json\" ]; then\n\
+         \techo \"y5: no configuration at $_y5_cfg/settings.json\" >&2\n\
+         \techo \"y5: run 'y5.compositor.settings' to configure, then start this session again.\" >&2\n\
+         \texit 1\n\
+         fi\n\
          \n\
          exec /usr/bin/{binary}\n",
         wrapper = p.wrapper,
         service = p.service,
         desktop = p.desktop_name,
-        json = p.env.to_json(),
         binary = p.binary,
     )
 }

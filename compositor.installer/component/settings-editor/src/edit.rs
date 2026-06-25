@@ -24,7 +24,9 @@ pub fn interactive(base: Environment) -> Environment {
             &["", "infence", "kms"],
             &base.renderer_sync,
         ),
-        hdr: yes_no("hdr", "Enable HDR output (Vulkan only).", base.hdr),
+        // Experimental — always disabled, never prompted (hdr, vk_diag, and the two
+        // window-sizing flags below are forced off regardless of the existing file).
+        hdr: false,
         depth: ask_u8(
             "depth",
             "Scanout bit depth: 8 (SDR) or 10 (deep color).",
@@ -47,27 +49,57 @@ pub fn interactive(base: Environment) -> Environment {
             "Developer-log level spec, e.g. info,warn,error.",
             &base.log_level,
         ),
-        vk_diag: choose(
-            "vk_diag",
-            "Vulkan diagnostics overlay.",
-            &["", "vk", "blit"],
-            &base.vk_diag,
-        ),
+        vk_diag: String::new(),
         capture_encoder: choose(
             "capture_encoder",
             "Hardware video-capture encoder (mesa/vaapi -> VAAPI, else NVENC).",
             &["nvenc", "vaapi", "mesa"],
             &base.capture_encoder,
         ),
-        window_client_size_fallback: yes_no(
-            "window_client_size_fallback",
-            "Fall back to client xdg geometry instead of compositor-tracked sizing.",
-            base.window_client_size_fallback,
+        capture_codec: choose(
+            "capture_codec",
+            "Live capture codec (falls back av1 -> h265 -> h264 by availability).",
+            &["av1", "h265", "h264"],
+            &base.capture_codec,
         ),
-        window_subsurface_shrinks: yes_no(
-            "window_subsurface_shrinks",
-            "Fit the whole surface tree so a subsurface can shrink the window.",
-            base.window_subsurface_shrinks,
+        capture_quality: choose(
+            "capture_quality",
+            "Live capture quality: lossless (CQ 19) or optimized (smaller, higher CQ).",
+            &["lossless", "optimized"],
+            &base.capture_quality,
         ),
+        capture_refresh_rate_max: choose(
+            "capture_refresh_rate_max",
+            "Max capture frame rate.",
+            &["30", "60", "90", "120"],
+            &base.capture_refresh_rate_max.to_string(),
+        )
+        .parse()
+        .unwrap_or(60)
+        .clamp(30, 120),
+        capture_background_encoder: choose(
+            "capture_background_encoder",
+            "Auto background software re-encode after capture: ffmpeg, or off.",
+            &["", "ffmpeg"],
+            &base.capture_background_encoder,
+        ),
+        capture_nvenc_allow_readback_fallback: yes_no(
+            "capture_nvenc_allow_readback_fallback",
+            "Fall back to the slower readback encoder if NVENC zero-copy fails (else show an error).",
+            base.capture_nvenc_allow_readback_fallback,
+        ),
+        capture_variable_frame_rate: yes_no(
+            "capture_variable_frame_rate",
+            "Keep variable frame rate (true) or force constant frame rate during re-encode (false).",
+            base.capture_variable_frame_rate,
+        ),
+        input_natural_scroll: yes_no(
+            "input_natural_scroll",
+            "Natural scrolling: invert touchpad finger-axis for pan, window scroll, and swipes.",
+            base.input_natural_scroll,
+        ),
+        // Experimental window-sizing flags — always disabled, never prompted.
+        window_client_size_fallback: false,
+        window_subsurface_shrinks: false,
     }
 }

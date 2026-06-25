@@ -16,9 +16,9 @@ pub mod templates {
 
 pub use compositor_installer_process_layout_compute_apply::apply;
 pub use compositor_installer_process_layout_compute_plan::{
-    binary_actions, pam_actions, preset_actions,
+    binary_actions, pam_actions, preset_actions, settings_action, settings_json,
 };
-pub use compositor_installer_process_layout_compute_stage::{Action, Source, Stage, home};
+pub use compositor_installer_process_layout_compute_stage::{Action, Source, Stage, home, is_root};
 pub use compositor_installer_process_layout_compute_units::{
     devtool_actions, mx_actions, polkit_actions, xwayland_actions,
 };

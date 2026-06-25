@@ -136,8 +136,10 @@ y5 has its **own** tracing-free structured logging system. **All logging uses th
 NOT use `tracing` or `log` in new/changed code.** Each crate declares its instance once in
 `lib.rs` (the `add-crate` template does this automatically). **Read `document/LOGGING.md`** and
 use the **`logging`** skill before adding or migrating log statements. Records stream to the
-`compositor.developer/developer.tool` viewer over gRPC; levels are controlled by cargo features (compile)
-and `COMPOSITOR_LOG_LEVEL` (runtime).
+`compositor.developer/developer.tool` viewer over gRPC; levels are controlled by cargo features
+(compile) and the `log_level` field in `settings.json` (read once at startup). The compositor
+exports that value as the `COMPOSITOR_LOG_LEVEL` env var for child processes but does not read it
+back to override the config.
 
 ## Reference docs
 

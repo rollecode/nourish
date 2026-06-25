@@ -5,13 +5,16 @@
 # builds via build.sh and execs the binary on the bare-metal host, so it nests
 # into your real Wayland session (winit) or drives DRM/KMS on a TTY (udev).
 #
-# Usage: ./run-host.sh [winit|udev] [debug|release] [--it] [--env=FILE]
+# Usage: ./run-host.sh [winit|udev] [debug|release] [--it] [--env=FILE] [--write-settings]
 #   winit | udev      backend (default: winit). udev = DRM/KMS, run from a TTY.
 #   debug | release   cargo profile (default: debug).
 #   --it, -i          interactively prompt for every supported env var, showing
 #                     each one's description + current default (Enter = keep it).
 #   --env=FILE        source FILE first as the env base before prompting/running,
 #                     e.g. --env=../environment.container/container.env for the NVIDIA var set.
+#   --write-settings  (re)generate the compositor settings file from the env knobs.
+#                     The file is written automatically when it doesn't exist yet;
+#                     pass this to overwrite an existing one with the current knobs.
 #
 # Without --it it runs with the defaults below (inheriting your shell env). The
 # renderer is chosen at runtime via COMPOSITOR_RENDERER (no rebuild needed):
@@ -24,13 +27,15 @@ BACKEND=winit
 PROFILE=debug
 INTERACTIVE=0
 ENV_FILE=""
+WRITE_SETTINGS=0
 for arg in "$@"; do
     case "$arg" in
         winit | udev | native) BACKEND="$arg" ;;
         debug | release) PROFILE="$arg" ;;
         --it | -i) INTERACTIVE=1 ;;
         --env=*) ENV_FILE="${arg#--env=}" ;;
-        -h | --help) sed -n '2,20p' "${BASH_SOURCE[0]}"; exit 0 ;;
+        --write-settings) WRITE_SETTINGS=1 ;;
+        -h | --help) sed -n '2,23p' "${BASH_SOURCE[0]}"; exit 0 ;;
         *) echo "run-host.sh: unknown arg '$arg' (see --help)" >&2; exit 1 ;;
     esac
 done
@@ -89,9 +94,16 @@ done
 echo "" >&2
 
 # Collapse the individual COMPOSITOR_* knobs into the settings file the compositor reads.
+# Write it automatically when it's never been written, or on demand with --write-settings;
+# otherwise leave an existing file alone so hand-edits survive a plain re-run.
 # shellcheck disable=SC1091
 . "$HERE/compositor-env.sh"
-compositor_write_settings
+SETTINGS_PATH="$(compositor_settings_path)"
+if [ "$WRITE_SETTINGS" = 1 ] || [ ! -f "$SETTINGS_PATH" ]; then
+    compositor_write_settings
+else
+    echo ">> using existing compositor settings $SETTINGS_PATH (pass --write-settings to regenerate)" >&2
+fi
 
 BIN="$("$HERE/build.sh" "$BACKEND" "$PROFILE")"
 echo ">> running $BIN  [backend=$BACKEND profile=$PROFILE renderer=${COMPOSITOR_RENDERER:-vulkan}]" >&2

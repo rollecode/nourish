@@ -1,16 +1,25 @@
 # Publish the public site + the install bundle via GitLab Pages (the `pages` job name +
 # public/ artifact are GitLab Pages conventions). Default branch only — mirror of the
-# GitHub Publish workflow: marketing site at root, rustdoc/coverage under /docs, and the
-# install bundle (installer + binaries + components) under /release/latest/fedora44/.
+# GitHub Publish workflow: marketing site at root, coverage report under /docs, and the
+# install bundle (installer + binaries + components) under /release/<version>/fedora44/
+# plus the rolling /release/latest/fedora44/.
 pages:
   stage: docs
   script:
     - ci/scripts/build-site.sh
     - mv public _site_docs && mkdir public && mv _site_docs public/docs
     - cp -r compositor.website/. public/ && rm -f public/SHOT_LIST.md
+    # Resolve the release number (committed VERSION base + v<MAJOR>.<MINOR>.* tag history —
+    # see ci/scripts/version.sh) and write it back into the VERSION file BEFORE building, so
+    # the compositor bakes it in at compile time (include_str!). The edit is never committed.
+    - VERSION_STR="$(ci/scripts/version.sh)"; echo "$VERSION_STR" > VERSION
     - ci/scripts/package-installer.sh
-    - mkdir -p public/release/latest/fedora44
-    - cp dist/package.tar.gz dist/SHA256SUMS public/release/latest/fedora44/
+    # Lay the bundle under both the immutable per-version path and the rolling "latest" the
+    # installer fetches — identical bytes, so a pinned and a latest download never drift.
+    - for slot in "$VERSION_STR" latest; do
+        mkdir -p "public/release/$slot/fedora44";
+        cp dist/package.tar.gz dist/SHA256SUMS "public/release/$slot/fedora44/";
+      done
   artifacts:
     paths: [public]
   rules:

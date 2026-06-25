@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Build the browsable repository documentation site into $REPO_ROOT/public/:
-#   - rustdoc for every workspace entry (cargo doc --no-deps), collected under public/<slug>/
-#   - a landing index.html linking each entry's rustdoc and the document/*.md guides
+# Build the repository documentation site into $REPO_ROOT/public/:
+#   - a landing index.html with the coverage report and the document/*.md guides
 # Published to GitHub Pages / GitLab Pages by the docs workflow.
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -9,22 +8,6 @@ cd "$REPO_ROOT"
 
 pub="$REPO_ROOT/public"
 rm -rf "$pub"; mkdir -p "$pub"
-
-entries_html=""
-while IFS= read -r entry; do
-    slug="$(printf '%s' "$entry" | tr '/.' '__')"
-    log "cargo doc: $entry"
-    if ( cd "$entry" && cargo doc --no-deps --workspace 2>/dev/null ); then
-        ws_target="$(y5_workspace_root_of "$REPO_ROOT/$entry")/target/doc"
-        if [ -d "$ws_target" ]; then
-            mkdir -p "$pub/$slug"
-            cp -r "$ws_target/." "$pub/$slug/"
-            entries_html+="    <li><a href=\"$slug/\">$entry</a></li>\n"
-        fi
-    else
-        log "doc build failed for $entry (skipped)"
-    fi
-done < <("$(dirname "${BASH_SOURCE[0]}")/discover-workspaces.sh" --lines)
 
 guides_html=""
 for g in document/*.md environment/README.md CLAUDE.md; do
@@ -68,15 +51,11 @@ table{border-collapse:collapse;width:100%;font-size:14px}
 th,td{border:1px solid #ddd;padding:.3em .6em}td:not(:first-child),th:not(:first-child){text-align:right}
 </style></head><body>
 <h1>y5 compositor — documentation</h1>
-<p>Generated rustdoc per workspace entry, plus the in-repo reference guides.</p>
+<p>Coverage report plus the in-repo reference guides.</p>
 HTML
     printf '%b' "$coverage_html"
     cat <<'HTML'
-<h2>Crate API docs (rustdoc)</h2><ul>
-HTML
-    printf '%b' "$entries_html"
-    cat <<'HTML'
-</ul><h2>Reference guides</h2><ul>
+<h2>Reference guides</h2><ul>
 HTML
     printf '%b' "$guides_html"
     cat <<'HTML'

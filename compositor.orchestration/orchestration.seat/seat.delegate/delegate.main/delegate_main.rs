@@ -1,7 +1,7 @@
 use smithay::backend::input::{
-    AbsolutePositionEvent, ButtonState, GestureBeginEvent, GestureEndEvent, GestureSwipeUpdateEvent,
-    InputBackend, InputEvent, KeyboardKeyEvent, PointerButtonEvent, Switch, SwitchState,
-    SwitchToggleEvent,
+    AbsolutePositionEvent, ButtonState, GestureBeginEvent, GestureEndEvent, GesturePinchUpdateEvent,
+    GestureSwipeUpdateEvent, InputBackend, InputEvent, KeyboardKeyEvent, PointerButtonEvent, Switch,
+    SwitchState, SwitchToggleEvent,
 };
 use compositor_orchestration_core_state_base::Loop;
 
@@ -38,9 +38,34 @@ pub fn process_input_event<I: InputBackend>(_loop: &mut Loop, event: &InputEvent
             _loop.inner.gesture.active = false;
             compositor_y5_canvas_input_gesture::gesture::swipe_end(_loop, cancelled);
         }
-        InputEvent::GesturePinchBegin { .. } => {}
-        InputEvent::GesturePinchUpdate { .. } => {}
-        InputEvent::GesturePinchEnd { .. } => {}
+        // Two/three-finger pinch is a continuous canvas (or forwarded window) zoom;
+        // a FOUR-finger pinch is a discrete window command (fit one / fit all),
+        // accumulated here and dispatched to the y5 handler at end.
+        InputEvent::GesturePinchBegin { event, .. } => {
+            let fingers = event.fingers();
+            _loop.inner.gesture.pinch_fingers = fingers;
+            if fingers >= 4 {
+                _loop.inner.gesture.pinch_scale = 1.0;
+            } else {
+                compositor_orchestration_seat_pointer_input::pinch::begin::<I>(event, _loop);
+            }
+        }
+        InputEvent::GesturePinchUpdate { event, .. } => {
+            if _loop.inner.gesture.pinch_fingers >= 4 {
+                _loop.inner.gesture.pinch_scale = event.scale();
+            } else {
+                compositor_orchestration_seat_pointer_input::pinch::update::<I>(event, _loop);
+            }
+        }
+        InputEvent::GesturePinchEnd { event, .. } => {
+            if _loop.inner.gesture.pinch_fingers >= 4 {
+                let scale = _loop.inner.gesture.pinch_scale;
+                _loop.inner.gesture.pinch_fingers = 0;
+                compositor_y5_canvas_input_gesture::gesture::pinch_four(_loop, scale);
+            } else {
+                compositor_orchestration_seat_pointer_input::pinch::end::<I>(event, _loop);
+            }
+        }
         InputEvent::GestureHoldBegin { .. } => {}
         InputEvent::GestureHoldEnd { .. } => {}
         InputEvent::TouchDown { .. } => {}

@@ -19,6 +19,18 @@ pub fn input_received<I: InputBackend>(
     let horizontal_amount_discrete = event.amount_v120(Axis::Horizontal);
     let vertical_amount_discrete = event.amount_v120(Axis::Vertical);
 
+    // Natural scrolling: invert the finger-axis direction sent to the window
+    // (and iced), matching the inversion the canvas-pan path applies. A discrete
+    // wheel is left untouched. `stop`/zero detection below reads the raw event,
+    // so flipping the forwarded amounts here does not affect it.
+    let invert = matches!(source, AxisSource::Finger | AxisSource::Continuous)
+        && compositor_developer_environment_config_base::base::get().input_natural_scroll;
+    let sign = if invert { -1.0 } else { 1.0 };
+    let horizontal_amount = horizontal_amount * sign;
+    let vertical_amount = vertical_amount * sign;
+    let horizontal_amount_discrete = horizontal_amount_discrete.map(|d| d * sign);
+    let vertical_amount_discrete = vertical_amount_discrete.map(|d| d * sign);
+
     let mut frame = AxisFrame::new(event.time_msec()).source(source);
     if horizontal_amount != 0.0 {
         frame = frame.value(Axis::Horizontal, horizontal_amount);

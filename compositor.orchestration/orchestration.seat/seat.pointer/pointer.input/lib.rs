@@ -5,3 +5,4 @@ pub mod motion;
 pub mod native_axis;
 pub mod native_motion;
 pub mod native_press;
+pub mod pinch;

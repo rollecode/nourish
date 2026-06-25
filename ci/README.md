@@ -26,8 +26,8 @@ coverage, packaging and report-generation are identical on both.
 | `link-drift.sh` | re-run `workspace.link.js` in every entry with a generated links block; fail if the committed block is stale (the "forgot `link.all.sh`" guard) |
 | `coverage-full.sh` | per-entry coverage **including dead code** (LLVM region baseline + unit-test merge) → `.ci-coverage/<slug>.lcov` |
 | `merge-coverage.sh` | fuse all entry lcov → `coverage.lcov` + `cobertura.xml` + `html/` + **per-crate `coverage-crates.md`** + self-hosted **`coverage.svg`** badge + a `Coverage: NN.N%` line |
-| `build-docs.sh` | rustdoc per entry + landing page → `public/`; folds in the coverage report + badge when present |
-| `build-site.sh` | full Pages build: run coverage for every entry → merge → `build-docs.sh` (docs + coverage in one site) |
+| `build-docs.sh` | landing page → `public/`; folds in the coverage report + badge and lists the reference guides when present |
+| `build-site.sh` | full Pages build: run coverage for every entry → merge → `build-docs.sh` (coverage site) |
 | `doc-suggest.sh` | PR/MR-only: `claude -p` reviews the diff, posts doc/README suggestions as a comment (advisory, never commits) |
 | `gen-report.sh` | compose the markdown promotion "deployment notes" (tests/coverage/lint/drift/doc) |
 | `open-promotion-pr.sh` | open/update the upstream-integration→upstream PR/MR with the report (never merges) |

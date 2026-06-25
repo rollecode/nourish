@@ -7,7 +7,7 @@ use std::time::Instant;
 
 use smithay::utils::{Logical, Physical, Point, Rectangle};
 use uuid::Uuid;
-use compositor_y5_graphic_capture_encode::{AsyncReadback, Frame};
+use compositor_y5_graphic_capture_encode::{AsyncReadback, Frame, ReencodeJob};
 use compositor_y5_graphic_capture_registry::CaptureHandle;
 use compositor_y5_graphic_capture_vaapi::CaptureEncoder;
 use compositor_monitor_compositor_iced_base::HandleId;
@@ -65,6 +65,10 @@ pub struct ActiveState {
     pub region_origin: Point<i32, Logical>,
     /// Last time a frame was encoded (frame-rate throttle).
     pub last_frame: Option<Instant>,
+    /// Wall-clock anchor for the first encoded video frame. Frame PTS are derived
+    /// from `now - video_start` (not a counter), so the recorded timeline matches
+    /// real time regardless of the achieved capture rate vs. the configured max.
+    pub video_start: Option<Instant>,
     /// Frames waited for a screenshot before reading back (lets the capture tap
     /// fill the entry). `None` for video; `Some(n)` counts up for screenshots.
     pub shot_wait: Option<u8>,
@@ -102,6 +106,16 @@ pub enum CapturePhase {
         /// per-frame hook drains its result (`Some(path)` = save there,
         /// `None` = portal failed/cancelled → keep the dialog up).
         saveas: Option<Receiver<Option<PathBuf>>>,
+    },
+    /// Optimized (software) re-encode in progress for the manual "Optimized
+    /// encoding" path: the progress dialog is up; the per-frame hook polls `job`
+    /// and updates the bar. On success `output` is moved to `target`; on failure
+    /// we revert to the Save dialog so the `lossless` temp can still be saved.
+    Encoding {
+        job: ReencodeJob,
+        target: PathBuf,
+        output: PathBuf,
+        lossless: PathBuf,
     },
 }
 
@@ -161,6 +175,10 @@ impl CaptureState {
 
     pub fn is_saving(&self) -> bool {
         matches!(self.phase, CapturePhase::Saving { .. })
+    }
+
+    pub fn is_encoding(&self) -> bool {
+        matches!(self.phase, CapturePhase::Encoding { .. })
     }
 }
 

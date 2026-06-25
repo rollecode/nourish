@@ -37,6 +37,13 @@ pub const SNAP_EXCLUSION_RANGE: f64 = 600.0;
 /// transform + screen size; see `build_snap_map`).
 pub const SNAP_VISIBLE_ONLY: bool = true;
 
+/// When true, the four edges of the camera VIEWPORT — the on-screen world region
+/// (camera-centered, `screen / zoom`), i.e. the visible screen boundary the user
+/// actually sees — are added as always-on snap lines. Distinct from the fixed
+/// output-geometry edges: the viewport pans and scales with the camera, so this is
+/// what lets a window/placeholder snap to the edge of what's currently shown.
+pub const SNAP_VIEWPORT_EDGES: bool = true;
+
 /// Margin by which [`SNAP_VISIBLE_ONLY`]'s viewport is inflated, so windows just
 /// off the screen can still snap. World-logical units, zoom-scaled the SAME way as
 /// [`SNAP_EXCLUSION_RANGE`] (divided by zoom — zooming out widens it). `0.0` keeps

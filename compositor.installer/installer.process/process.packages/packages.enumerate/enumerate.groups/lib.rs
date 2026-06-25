@@ -16,22 +16,31 @@
 //!   libgbm.so.1         -> mesa-libgbm         libseat.so.1     -> libseat
 //!   libinput.so.10      -> libinput            libxkbcommon.so.0-> libxkbcommon
 //!   libpixman-1.so.0    -> pixman
-//!   libwayland-{client,server,egl}.so* -> libwayland-{client,server} + mesa-libwayland-egl
-//!   libvulkan.so.1      -> vulkan-loader (+ mesa-vulkan-drivers / nvidia ICD)
-//!   libEGL.so.1         -> libglvnd-egl (+ mesa-libEGL / nvidia)
+//!   libwayland-{client,server,egl}.so* -> libwayland-{client,server} + libwayland-egl
+//!   libvulkan.so.1      -> vulkan-loader (+ mesa-vulkan-drivers / the NVIDIA ICD)
+//!   libEGL.so.1         -> libglvnd-egl (+ mesa-libEGL / NVIDIA)
+//!
+//! NVIDIA note: Nourish does NOT install the proprietary NVIDIA driver. The akmod /
+//! CUDA / 32-bit stack lives in RPM Fusion, needs a kernel-module build + reboot (and
+//! Secure Boot signing), and is best owned by the user. When an NVIDIA GPU is present
+//! the installer only *checks* the bound driver and warns if it's nouveau / missing —
+//! it never installs it (see `nvidia_driver_status` + the warning in execute.packages).
 //!
 //! Pure std.
 
-use compositor_installer_process_packages_enumerate_model::{Gpu, PackageGroup};
+use compositor_installer_process_packages_enumerate_model::PackageGroup;
 
-/// All selectable groups. `gpu` pre-selects the matching driver group.
+/// All selectable groups — each entry installs ONLY packages that base Fedora repos
+/// carry, so a strict (abort-on-missing) `dnf install` over any selection succeeds.
 ///
-/// The default selection installs only what the **prebuilt** binary needs at
-/// runtime: the `runtime` libs, the GPU driver for the detected vendor, XWayland
-/// and the dev tool's runtime libs. Nothing here pulls the Rust toolchain or
-/// `-devel` headers — that is the opt-in `toolchain` group, for building from
-/// source on the target.
-pub fn groups(gpu: Gpu) -> Vec<PackageGroup> {
+/// The default selection installs only what the **prebuilt** binary needs at runtime:
+/// the `runtime` libs (generic Mesa Vulkan + EGL included — Vulkan-on-Mesa works with
+/// no extra repos), XWayland and the dev tool's runtime libs. Nothing here pulls the
+/// Rust toolchain or `-devel` headers (the opt-in `toolchain` group), nothing installs
+/// the proprietary NVIDIA driver, and nothing RPM-Fusion-only lives here: hardware
+/// VA-API video (`mesa-va-drivers-freeworld`) is a separate explicit opt-in that first
+/// enables RPM Fusion (see execute.packages), precisely so this list never aborts.
+pub fn groups() -> Vec<PackageGroup> {
     vec![
         PackageGroup {
             key: "runtime",
@@ -49,7 +58,7 @@ pub fn groups(gpu: Gpu) -> Vec<PackageGroup> {
                 "libavutil-free", "libavcodec-free", "libavformat-free",
                 "libavfilter-free", "libswscale-free",
                 // dlopen'd Wayland libs.
-                "libwayland-client", "libwayland-server", "mesa-libwayland-egl",
+                "libwayland-client", "libwayland-server", "libwayland-egl",
                 // dlopen'd render stack: loaders + dispatch + generic Mesa driver
                 // (the vendor-specific driver comes from the matching group below).
                 "vulkan-loader", "mesa-vulkan-drivers",
@@ -58,30 +67,11 @@ pub fn groups(gpu: Gpu) -> Vec<PackageGroup> {
             ],
             default_on: true,
         },
-        PackageGroup {
-            key: "intel",
-            title: "Intel VA-API video acceleration",
-            description: "Intel media drivers for hardware video (Intel GPUs)",
-            packages: vec!["intel-media-driver", "libva-intel-driver", "mesa-va-drivers"],
-            default_on: matches!(gpu, Gpu::Intel),
-        },
-        PackageGroup {
-            key: "amd",
-            title: "AMD VA-API video acceleration",
-            description: "Mesa VA-API drivers for hardware video (AMD GPUs)",
-            packages: vec!["mesa-va-drivers", "libva-utils"],
-            default_on: matches!(gpu, Gpu::Amd),
-        },
-        PackageGroup {
-            key: "nvidia",
-            title: "NVIDIA proprietary driver stack",
-            description: "akmod-nvidia, CUDA, 32-bit libs, NVIDIA VA-API (NVIDIA GPUs)",
-            packages: vec![
-                "akmod-nvidia", "xorg-x11-drv-nvidia-cuda",
-                "xorg-x11-drv-nvidia-libs.i686", "libva-nvidia-driver",
-            ],
-            default_on: matches!(gpu, Gpu::Nvidia),
-        },
+        // NOTE: no Intel/AMD VA-API group and no NVIDIA group live here. Hardware VA-API
+        // video drivers (mesa-va-drivers-freeworld) are RPM-Fusion-only, so they're an
+        // explicit opt-in handled in execute.packages (enable RPM Fusion, then install);
+        // the proprietary NVIDIA stack is never installed (akmod build + reboot + Secure
+        // Boot signing — the user's call), only a driver-state check + warning.
         PackageGroup {
             key: "xwayland",
             title: "XWayland / X11 compatibility",

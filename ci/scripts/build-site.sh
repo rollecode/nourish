@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build the full public/ site for Pages: full coverage (per entry) + merged report +
-# rustdoc + landing page. Used by the docs/pages job so the published site carries the
+# landing page. Used by the docs/pages job so the published site carries the
 # self-hosted coverage badge and per-crate report — no third-party coverage service.
 #
 # (PR runs gate coverage in ci.yml without publishing; this is the master/Pages build.)

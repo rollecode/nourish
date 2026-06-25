@@ -82,6 +82,12 @@ pub enum CaptureMessage {
     SaveAs,
     /// Throw the capture away.
     Discard,
+    /// Toggle the "Optimized encoding" checkbox in the save dialog (video only).
+    ToggleOptimized(bool),
+
+    // ---- inbound: interface → encoding dialog ----
+    /// Update the optimized-encode progress shown (0..=100 percent).
+    SetEncodeProgress(u32),
 
     // ---- inbound: interface → indicator UIs ----
     /// Update the region rect a border/dim element draws (screen pixels).

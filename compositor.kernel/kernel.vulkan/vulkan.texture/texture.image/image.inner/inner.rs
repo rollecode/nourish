@@ -8,6 +8,9 @@ pub struct TextureInner {
     pub device: ash::Device,
     pub image: vk::Image,
     pub memory: vk::DeviceMemory,
+    /// Extra per-plane allocations for a DISJOINT multi-plane (Intel CCS)
+    /// import; empty for the common single-memory case. Freed with `memory`.
+    pub extra_memory: Vec<vk::DeviceMemory>,
     pub view: vk::ImageView,
     pub format: vk::Format,
     pub fourcc: Option<Fourcc>,
@@ -37,6 +40,9 @@ impl Drop for TextureInner {
             }
             if self.owns_memory && self.memory != vk::DeviceMemory::null() {
                 self.device.free_memory(self.memory, None);
+                for m in &self.extra_memory {
+                    self.device.free_memory(*m, None);
+                }
             }
         }
     }

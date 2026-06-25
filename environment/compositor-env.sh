@@ -35,6 +35,14 @@ compositor_env_json() {
     local log_level="${COMPOSITOR_LOG_LEVEL:-info,warn,error}"
     local vk_diag="${Y5_VK_DIAG:-}"
     local capture_encoder="${COMPOSITOR_CAPTURE_ENCODER:-nvenc}"
+    local capture_codec="${COMPOSITOR_CAPTURE_CODEC:-av1}"
+    local capture_quality="${COMPOSITOR_CAPTURE_QUALITY:-optimized}"
+    local capture_refresh_rate_max="${COMPOSITOR_CAPTURE_REFRESH_RATE_MAX:-120}"
+    local capture_background_encoder="${COMPOSITOR_CAPTURE_BACKGROUND_ENCODER:-ffmpeg}"
+    local capture_variable_frame_rate
+    capture_variable_frame_rate="$(_y5_bool "${COMPOSITOR_CAPTURE_VARIABLE_FRAME_RATE:-1}")"
+    local capture_nvenc_allow_readback_fallback
+    capture_nvenc_allow_readback_fallback="$(_y5_bool "${COMPOSITOR_CAPTURE_NVENC_ALLOW_READBACK_FALLBACK:-0}")"
     local fallback
     fallback="$(_y5_bool "${COMPOSITOR_RENDERER_FALLBACK:-}")"
     local hdr
@@ -54,9 +62,11 @@ compositor_env_json() {
     local depth=8
     [ "${COMPOSITOR_DEPTH:-}" = "10" ] && depth=10
 
-    printf '{"renderer":"%s","renderer_fallback":%s,"renderer_sync":"%s","hdr":%s,"depth":%s,"vrr":%s,"render_node":"%s","desktop_name":"%s","log_level":"%s","vk_diag":"%s","capture_encoder":"%s","window_client_size_fallback":%s,"window_subsurface_shrinks":%s}' \
+    printf '{"renderer":"%s","renderer_fallback":%s,"renderer_sync":"%s","hdr":%s,"depth":%s,"vrr":%s,"render_node":"%s","desktop_name":"%s","log_level":"%s","vk_diag":"%s","capture_encoder":"%s","capture_codec":"%s","capture_quality":"%s","capture_refresh_rate_max":%s,"capture_background_encoder":"%s","capture_nvenc_allow_readback_fallback":%s,"capture_variable_frame_rate":%s,"window_client_size_fallback":%s,"window_subsurface_shrinks":%s}' \
         "$renderer" "$fallback" "$renderer_sync" "$hdr" "$depth" "$vrr" \
         "$render_node" "$desktop_name" "$log_level" "$vk_diag" "$capture_encoder" \
+        "$capture_codec" "$capture_quality" "$capture_refresh_rate_max" "$capture_background_encoder" \
+        "$capture_nvenc_allow_readback_fallback" "$capture_variable_frame_rate" \
         "$win_size_fallback" "$win_subsurface_shrinks"
 }
 
