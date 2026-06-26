@@ -1,4 +1,5 @@
 use smithay::input::{Seat, SeatHandler, SeatState};
+use smithay::input::keyboard::LedState;
 use smithay::input::dnd::DndGrabHandler;
 use smithay::input::pointer::CursorImageStatus;
 use smithay::reexports::calloop::{self, LoopHandle};
@@ -177,6 +178,15 @@ impl SeatHandler for Dispatch {
         // `set_data_device_focus` needs DataDeviceHandler (downstream) — defer it.
         self.pending_data_focus = Some(client);
         self.schedule_redraw();
+    }
+
+    fn led_state_changed(&mut self, _seat: &Seat<Self>, led_state: LedState) {
+        // Mirror the xkb NumLock/CapsLock/ScrollLock state onto the physical
+        // keyboard LEDs (udev backend). `keyboards` is empty under winit, so
+        // this is a no-op there.
+        for device in &mut self.seat.keyboards {
+            device.led_update(led_state.into());
+        }
     }
 }
 

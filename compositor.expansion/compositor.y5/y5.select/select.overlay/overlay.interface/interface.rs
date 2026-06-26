@@ -25,7 +25,8 @@ use compositor_orchestration_core_state_base::Loop;
 use compositor_orchestration_core_state_base::state::CoordinateTrait;
 use compositor_orchestration_driver_selection_base::base::{
     BAR_H, BAR_W, Placement, SCREEN_BOTTOM_MARGIN, SELECTION_OVERLAY, SELECTION_OVERLAY_MUT,
-    SELECTION_OVERLAY_PLACEMENT, SELECTION_REANCHOR_MUT, world_loc_under_cursor,
+    SELECTION_OVERLAY_PLACEMENT, SELECTION_REANCHOR_MUT, world_loc_under_cursor, world_scale_factor,
+    world_size,
 };
 use compositor_orchestration_draw_layer_base::base::Layer;
 use compositor_support_world_order_track_base::base::DrawLayer;
@@ -55,6 +56,40 @@ pub fn per_frame(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, 
 
     // Apply a re-anchor requested by the selection-change event (system-driven).
     reanchor_if_pending(state);
+    // Keep the on-screen size constant as the camera zoom changes.
+    resize_on_zoom(state);
+}
+
+/// Counter-scale the world toolbar when zoom changes so it keeps a constant
+/// on-screen size (and stays clearly visible when zoomed out). Re-centers on the
+/// current world center so it scales in place rather than from its top-left.
+fn resize_on_zoom(state: &mut Loop) {
+    if SELECTION_OVERLAY_PLACEMENT != Placement::WorldAtCursor {
+        return;
+    }
+    let Some(id) = state.inner.kernel.get(&SELECTION_OVERLAY).handle else {
+        return;
+    };
+    let zoom = state.inner.camera().transform.zoom;
+    if state.inner.kernel.get(&SELECTION_OVERLAY).prev_zoom == zoom {
+        return;
+    }
+    let new_size = world_size(zoom);
+    let scale = world_scale_factor(zoom);
+    if let Some(reg) = state.inner.surface_mut().registry.as_mut() {
+        let recentered = match (reg.location_of(id), reg.size_of(id)) {
+            (Some(loc), Some(old)) => Some(Point::from((
+                loc.x + old.w / 2 - new_size.w / 2,
+                loc.y + old.h / 2 - new_size.h / 2,
+            ))),
+            _ => None,
+        };
+        reg.request_resize_scaled_by_id(id, new_size, scale);
+        if let Some(loc) = recentered {
+            reg.set_location_by_id(id, loc);
+        }
+    }
+    state.inner.kernel.get_mut(&SELECTION_OVERLAY_MUT).prev_zoom = zoom;
 }
 
 /// Consume the one-shot `SELECTION_REANCHOR` flag (raised by the overlay system
@@ -118,9 +153,19 @@ fn create(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Physica
     // mirrors the old layer-shell overlay's on-demand keyboard grab.
     grab_keyboard_to_overlay(state);
 
+    // World placement: set the counter-scale iced factor so content fills the
+    // (zoom-counter-scaled) surface. `placement` already sized it for this zoom.
+    let zoom = state.inner.camera().transform.zoom;
+    if let IcedSpace::World = space {
+        if let Some(reg) = state.inner.surface_mut().registry.as_mut() {
+            reg.request_resize_scaled_by_id(untyped, world_size(zoom), world_scale_factor(zoom));
+        }
+    }
+
     let st = state.inner.kernel.get_mut(&SELECTION_OVERLAY_MUT);
     st.handle = Some(untyped);
     st.count = count;
+    st.prev_zoom = zoom;
 }
 
 /// Clear the wayland keyboard focus so keys/modifiers flow to the iced registry
@@ -189,9 +234,11 @@ fn placement(
             (Point::from((x, y)), Size::from((BAR_W, BAR_H)), IcedSpace::Screen)
         }
         Placement::WorldAtCursor => {
-            // Fixed native size: world-space items scale with zoom on their own,
-            // and a 1:1 logical/dmabuf size lets the content fill the surface.
-            (world_loc(state), Size::from((BAR_W, BAR_H)), IcedSpace::World)
+            // Counter-scaled so the ON-SCREEN size stays constant as zoom changes
+            // (a World item's screen size = world size × zoom). The matching iced
+            // scale factor (set in `create`/`resize_on_zoom`) keeps content filling.
+            let zoom = state.inner.camera().transform.zoom;
+            (world_loc(state), world_size(zoom), IcedSpace::World)
         }
     }
 }
@@ -210,7 +257,8 @@ fn world_loc(state: &Loop) -> Point<i32, Physical> {
         .get_pointer()
         .map(|p| p.current_location())
         .unwrap_or_default();
-    world_loc_under_cursor((cursor.x, cursor.y), state.size_context().scale)
+    let zoom = state.inner.camera().transform.zoom;
+    world_loc_under_cursor((cursor.x, cursor.y), state.size_context().scale, zoom)
 }
 
 // --- font / registry plumbing ---------------------------------------------

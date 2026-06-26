@@ -1,4 +1,5 @@
 use smithay::backend::session::libseat::LibSeatSession;
+use smithay::reexports::input::Device as InputDevice;
 use smithay::input::pointer::{CursorImageStatus, CursorIcon, PointerHandle};
 use smithay::input::{SeatHandler, SeatState};
 use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
@@ -25,6 +26,11 @@ pub struct Seat<Handler: SeatHandler> {
     pub unlock_restoration_location: Option<(WlSurface, Point<f64, Logical>)>,
     pub previous_focus: Option<WlSurface>,
     pub libseat: Option<LibSeatSession>,
+    /// Physical (libinput) keyboard devices, tracked on DeviceAdded/Removed so
+    /// `led_state_changed` can mirror the xkb NumLock/CapsLock/ScrollLock state
+    /// onto their hardware LEDs. Only populated on the udev backend (winit has
+    /// no physical LEDs).
+    pub keyboards: Vec<InputDevice>,
 }
 
 impl<I> Seat<I>

@@ -52,7 +52,16 @@ where
     // Wayland events and flushes them to the currently focused client.
     //
     // The parameters here set the repeat rate (200ms delay, 25 repeats/sec).
-    seat.add_keyboard(Default::default(), 200, 25).unwrap();
+    let keyboard = seat.add_keyboard(Default::default(), 200, 25).unwrap();
+
+    // Enable NumLock at startup. In Wayland the compositor owns the xkb state,
+    // so this is our responsibility (no external `numlockx` equivalent). Set it
+    // as a *locked* modifier so it persists until the user toggles NumLock; this
+    // also recomputes the LED state, which is mirrored to physical keyboards via
+    // `SeatHandler::led_state_changed` + the per-device update on DeviceAdded.
+    let mut mods = keyboard.modifier_state();
+    mods.num_lock = true;
+    keyboard.set_modifier_state(mods);
 
     // Notify clients that we have a pointer (mouse).
     // Side-effect: Clients use this to render their own cursor icons. When you dispatch mouse
@@ -79,5 +88,6 @@ where
         unlock_restoration_location: None,
         previous_focus: None,
         libseat: None,
+        keyboards: Vec::new(),
     };
 }

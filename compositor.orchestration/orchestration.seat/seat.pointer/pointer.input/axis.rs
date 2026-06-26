@@ -7,10 +7,11 @@ pub fn axis<I: InputBackend>(event: &<I as InputBackend>::PointerAxisEvent, _loo
         let location = _loop.state.seat.seat.get_pointer().unwrap().current_location();
         let h = smithay::backend::input::Axis::Horizontal;
         let v = smithay::backend::input::Axis::Vertical;
-        // Touchpad two-finger scroll (Finger/Continuous) pans the canvas;
-        // a discrete wheel keeps zooming. The kernel event carries the bit so
-        // the camera system can branch without re-deriving the backend source.
-        let finger = matches!(event.source(), AxisSource::Finger | AxisSource::Continuous);
+        // Touchpad two-finger scroll (libinput `Finger` source) pans the canvas;
+        // a discrete wheel keeps zooming. ONLY `Finger` counts — `Continuous` is
+        // what the winit/nested backend reports for ALL pixel-delta scroll, so
+        // including it made winit treat every wheel scroll as a momentum pan.
+        let finger = matches!(event.source(), AxisSource::Finger);
         let mut horizontal = event.amount(h).unwrap_or_else(|| event.amount_v120(h).unwrap_or(0.0));
         let mut vertical = event.amount(v).unwrap_or_else(|| event.amount_v120(v).unwrap_or(0.0));
         // Natural scrolling: invert the finger-axis direction for canvas pan

@@ -23,7 +23,7 @@ pub fn input_received<I: InputBackend>(
     // (and iced), matching the inversion the canvas-pan path applies. A discrete
     // wheel is left untouched. `stop`/zero detection below reads the raw event,
     // so flipping the forwarded amounts here does not affect it.
-    let invert = matches!(source, AxisSource::Finger | AxisSource::Continuous)
+    let invert = matches!(source, AxisSource::Finger)
         && compositor_developer_environment_config_base::base::get().input_natural_scroll;
     let sign = if invert { -1.0 } else { 1.0 };
     let horizontal_amount = horizontal_amount * sign;

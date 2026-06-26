@@ -3,6 +3,8 @@
 
 use compositor_kernel_input_loop_libinput_base::libinput::LibinputSource;
 use compositor_kernel_native_context_render_base::render::NativeRenderContext;
+use smithay::backend::input::InputEvent;
+use smithay::reexports::input::DeviceCapability;
 use smithay::reexports::calloop::EventLoop;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -19,6 +21,24 @@ pub fn register(
         .insert_source(libinput_source, move |event, _, state| {
             if let StatusSession::Paused = state.inner.status_session {
                 return;
+            }
+            // Track physical keyboards so `led_state_changed` can drive their
+            // LEDs, and seed each newly added keyboard with the current LED
+            // state (e.g. the NumLock-on-by-default set at seat creation).
+            match &event {
+                InputEvent::DeviceAdded { device }
+                    if device.has_capability(DeviceCapability::Keyboard) =>
+                {
+                    let mut device = device.clone();
+                    if let Some(keyboard) = state.state.seat.seat.get_keyboard() {
+                        device.led_update(keyboard.led_state().into());
+                    }
+                    state.state.seat.keyboards.push(device);
+                }
+                InputEvent::DeviceRemoved { device } => {
+                    state.state.seat.keyboards.retain(|d| d != device);
+                }
+                _ => {}
             }
             // Any input event potentially changes what should be on screen
             // (cursor position, focus, key feedback). Request a redraw.

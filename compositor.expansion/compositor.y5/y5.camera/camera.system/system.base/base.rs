@@ -21,14 +21,24 @@ use std::any::Any;
 const MIN_ZOOM: f64 = 0.02;
 const MAX_ZOOM: f64 = 50.0;
 
-/// Momentum-pan tuning (touchpad two-finger swipe). `PAN_FRICTION` is the
-/// exponential decay rate of the coast velocity (1/seconds — larger = stops
-/// sooner); `PAN_MIN_SPEED` is the world-units/second floor below which the
-/// coast snaps to rest; `PAN_END_IDLE_FRAMES` is how many pan-free frames mark
-/// the fingers as lifted (works for both Finger and Continuous axis sources,
-/// which don't both guarantee a terminating event).
-const PAN_FRICTION: f64 = 6.0;
-const PAN_MIN_SPEED: f64 = 30.0;
+/// Momentum-pan tuning (touchpad two-finger swipe).
+/// - `PAN_LAUNCH_GAIN`: multiplies the swipe velocity at release. >1 makes the
+///   fling punchier AND travel farther (the "snappy" knob).
+/// - `PAN_FRICTION`: exponential (viscous) decay rate (1/seconds). Proportional to
+///   speed, so it shapes the main glide but asymptotes — it alone leaves a long
+///   faded tail.
+/// - `PAN_DAMPING`: constant (Coulomb) deceleration (world-units/second²). Speed-
+///   independent, so it's negligible at speed but dominates at the end, bringing
+///   the coast to a firm stop in finite time — this is the knob that kills the
+///   faded tail.
+/// - `PAN_MIN_SPEED`: world-units/second floor below which the coast snaps to rest.
+/// - `PAN_END_IDLE_FRAMES`: fallback lift detection (pan-free frames) for when no
+///   terminating axis event arrives; the real touchpad path launches immediately
+///   off the libinput 0,0 finger event, so this only backstops odd devices.
+const PAN_LAUNCH_GAIN: f64 = 2.5;
+const PAN_FRICTION: f64 = 3.6;
+const PAN_DAMPING: f64 = 400.0;
+const PAN_MIN_SPEED: f64 = 8.0;
 const PAN_END_IDLE_FRAMES: u32 = 3;
 
 #[derive(Clone, Copy, Debug)]
@@ -67,6 +77,9 @@ enum CamCmd {
     /// velocity with friction once the fingers lift. Carries the frame delta
     /// (seconds) so the physics is framerate-independent.
     PanInertiaTick(f64),
+    /// Touchpad lift-off (terminating 0,0 finger axis): arm an immediate coast
+    /// launch on the next tick instead of waiting out the idle-frame fallback.
+    PanEnd,
     /// Cancel any momentum/coast (e.g. a navigator travel takes over).
     PanStop,
 }
@@ -125,7 +138,7 @@ impl System for CameraSystem {
         // `Update`s here while canvas-owned.
         if let InputEvent::PointerPinch { phase, scale, x, y } = event {
             let cursor = Point::<f64, Logical>::from((*x, *y));
-            if !canvas_owns_gesture(cx, cursor, true) {
+            if !canvas_owns_gesture(cx, cursor) {
                 return InputFlow::Pass;
             }
             if *phase == PinchPhase::Update && *scale != 1.0 {
@@ -144,7 +157,7 @@ impl System for CameraSystem {
         // tool, or empty space). Over a window otherwise the canvas does not own it
         // — Pass so the rim's native_axis scrolls the client.
         if *finger {
-            if !canvas_owns_gesture(cx, cursor, true) {
+            if !canvas_owns_gesture(cx, cursor) {
                 return InputFlow::Pass;
             }
             if *horizontal != 0.0 || *vertical != 0.0 {
@@ -152,13 +165,17 @@ impl System for CameraSystem {
                 // doesn't fight the pan.
                 cancel_travel(cx);
                 cx.write(&CAM_BUF, CamCmd::PanBy(*horizontal, *vertical));
+            } else {
+                // libinput `Finger` source terminates the scroll with a 0,0 event:
+                // fingers lifted → launch the coast immediately (snappy release).
+                cx.write(&CAM_BUF, CamCmd::PanEnd);
             }
             return InputFlow::Consume;
         }
 
-        // Mouse wheel: cursor-anchored zoom. Pass over a window in tool mode. The
-        // Super-held finger tool does NOT claim the wheel (finger_tool = false).
-        if !canvas_owns_gesture(cx, cursor, false) {
+        // Mouse wheel: cursor-anchored zoom. Pass over a window unless a hand tool
+        // owns it — including the Super-held tool, so Super+wheel zooms anywhere.
+        if !canvas_owns_gesture(cx, cursor) {
             return InputFlow::Pass;
         }
         // Canvas zoom, cursor-anchored. Synchronous via our own CAM_BUF (flushed
@@ -287,11 +304,17 @@ impl System for CameraSystem {
                     camera.pan_accum = Point::from((0.0, 0.0));
                     camera.pan_idle_frames = 0;
                 } else if camera.panning {
-                    // Pan-free frame(s): treat as fingers lifting → begin to coast.
+                    // Pan-free frame: count toward the idle-fallback lift detection.
                     camera.pan_idle_frames += 1;
-                    if camera.pan_idle_frames >= PAN_END_IDLE_FRAMES {
-                        camera.panning = false;
-                    }
+                }
+                // Launch the coast when the touchpad signalled lift-off (snappy) or
+                // the idle fallback fires. Apply the launch gain ONCE here, AFTER
+                // velocity is measured above, so the boost survives.
+                if camera.panning && (camera.pan_ending || camera.pan_idle_frames >= PAN_END_IDLE_FRAMES) {
+                    camera.panning = false;
+                    camera.pan_ending = false;
+                    camera.pan_velocity =
+                        Point::from((camera.pan_velocity.x * PAN_LAUNCH_GAIN, camera.pan_velocity.y * PAN_LAUNCH_GAIN));
                 }
                 if !camera.panning && (camera.pan_velocity.x != 0.0 || camera.pan_velocity.y != 0.0) {
                     let px = camera.transform.position().x;
@@ -300,11 +323,31 @@ impl System for CameraSystem {
                     let ny = py + camera.pan_velocity.y * dt;
                     camera.transform.position = Point::from((nx, ny));
                     cx.channels.send(&CAMERA_MOVED_TX, CameraMoved { x: nx, y: ny });
+                    // Viscous (exponential) decay shapes the glide...
                     let decay = (-PAN_FRICTION * dt).exp();
-                    camera.pan_velocity = Point::from((camera.pan_velocity.x * decay, camera.pan_velocity.y * decay));
+                    let mut vx = camera.pan_velocity.x * decay;
+                    let mut vy = camera.pan_velocity.y * decay;
+                    // ...then a constant deceleration (Coulomb damping) firms up the
+                    // end: subtract a fixed speed step along the direction of travel,
+                    // so the tail dies in finite time instead of fading out.
+                    let speed = vx.hypot(vy);
+                    if speed > 0.0 {
+                        let scale = (speed - PAN_DAMPING * dt).max(0.0) / speed;
+                        vx *= scale;
+                        vy *= scale;
+                    }
+                    camera.pan_velocity = Point::from((vx, vy));
                     if camera.pan_velocity.x.hypot(camera.pan_velocity.y) < PAN_MIN_SPEED {
                         camera.pan_velocity = Point::from((0.0, 0.0));
                     }
+                }
+            }
+            CamCmd::PanEnd => {
+                // Fingers lifted: arm the immediate coast launch (the next
+                // PanInertiaTick measures the final velocity, then launches). Only
+                // while a swipe is live, so a stray terminating event is harmless.
+                if camera.panning {
+                    camera.pan_ending = true;
                 }
             }
             CamCmd::PanStop => {
@@ -312,6 +355,7 @@ impl System for CameraSystem {
                 camera.pan_accum = Point::from((0.0, 0.0));
                 camera.panning = false;
                 camera.pan_idle_frames = 0;
+                camera.pan_ending = false;
             }
         }
     }
@@ -321,13 +365,14 @@ impl System for CameraSystem {
 /// otherwise only when the cursor is NOT over a visible window (a scene-group
 /// passthrough ice does not count as a window). When this is false the gesture
 /// belongs to the client under the cursor (window scroll / native pinch).
-fn canvas_owns_gesture(cx: &mut SystemCx, cursor: Point<f64, Logical>, finger_tool: bool) -> bool {
+fn canvas_owns_gesture(cx: &mut SystemCx, cursor: Point<f64, Logical>) -> bool {
     let canvas = cx.storage.get(&CANVAS);
-    // The persistent hand tool owns every gesture. The momentary finger-only hand
-    // tool (Super held) owns FINGER gestures (pan/pinch) only — a mouse wheel
-    // (`finger_tool == false`) is unaffected so it still scrolls windows.
+    // The persistent hand tool owns every gesture. The momentary Super-held tool
+    // owns touchpad pan/pinch AND the mouse wheel (zoom) — the user reserves the
+    // mouse CLICK for the Move tool it shares the modifier with, but the wheel is
+    // free, so Super+wheel zooms the canvas even over a window.
     let hand = matches!(canvas.Grab, CanvasGrab::Active(ActiveOption::Hand));
-    if hand || (finger_tool && canvas.finger_pan) {
+    if hand || canvas.finger_pan {
         return true;
     }
     let over_window = surface_under_filtered_cx(cx.storage, cursor, &|hit| {

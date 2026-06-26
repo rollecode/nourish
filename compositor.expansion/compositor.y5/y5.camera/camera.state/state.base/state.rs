@@ -25,5 +25,8 @@ pub struct Camera {
     pub pan_accum: smithay::utils::Point<f64, smithay::utils::Logical>,
     pub panning: bool,
     pub pan_idle_frames: u32,
+    /// Set when the touchpad reports lift-off (terminating 0,0 finger axis), so the
+    /// coast launches on the NEXT tick with no idle delay — the snappy release.
+    pub pan_ending: bool,
 }
 

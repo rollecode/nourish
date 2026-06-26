@@ -330,6 +330,25 @@ impl IcedRegistry {
         }
     }
 
+    /// Resize with an explicit per-instance iced scale factor. Used by a
+    /// world-space surface that counter-scales with zoom: `new_size = base/zoom`
+    /// keeps the on-screen size constant, and `scale_factor = 1/zoom` keeps the
+    /// content laid out at the native `base` logical size (so it fills).
+    pub fn request_resize_scaled_by_id(
+        &mut self,
+        id: HandleId,
+        new_size: Size<i32, Physical>,
+        scale_factor: f32,
+    ) -> bool {
+        match self.get_mut(id) {
+            Some(item) => {
+                item.request_resize(new_size, scale_factor);
+                true
+            }
+            None => false,
+        }
+    }
+
     pub fn apply_pending_resizes(
         &mut self,
         render_node: &str,
