@@ -26,7 +26,7 @@ _y5_bool() {
 #   COMPOSITOR_HDR, COMPOSITOR_DEPTH, COMPOSITOR_VRR, COMPOSITOR_RENDER_NODE,
 #   COMPOSITOR_DESKTOP_NAME, COMPOSITOR_LOG_LEVEL, Y5_VK_DIAG,
 #   COMPOSITOR_CAPTURE_ENCODER, COMPOSITOR_WINDOW_CLIENT_SIZE_FALLBACK,
-#   COMPOSITOR_WINDOW_SUBSURFACE_SHRINKS, COMPOSITOR_INPUT_NATURAL_SCROLL
+#   COMPOSITOR_WINDOW_SUBSURFACE_SHRINKS
 compositor_env_json() {
     local renderer="${COMPOSITOR_RENDERER:-vulkan}"
     local renderer_sync="${COMPOSITOR_RENDERER_SYNC:-}"
@@ -51,9 +51,6 @@ compositor_env_json() {
     win_size_fallback="$(_y5_bool "${COMPOSITOR_WINDOW_CLIENT_SIZE_FALLBACK:-}")"
     local win_subsurface_shrinks
     win_subsurface_shrinks="$(_y5_bool "${COMPOSITOR_WINDOW_SUBSURFACE_SHRINKS:-}")"
-    # Natural scrolling defaults ON (matches the compositor's struct default).
-    local input_natural_scroll
-    input_natural_scroll="$(_y5_bool "${COMPOSITOR_INPUT_NATURAL_SCROLL:-1}")"
 
     # VRR is ON unless explicitly disabled.
     local vrr=true
@@ -65,12 +62,12 @@ compositor_env_json() {
     local depth=8
     [ "${COMPOSITOR_DEPTH:-}" = "10" ] && depth=10
 
-    printf '{"renderer":"%s","renderer_fallback":%s,"renderer_sync":"%s","hdr":%s,"depth":%s,"vrr":%s,"render_node":"%s","desktop_name":"%s","log_level":"%s","vk_diag":"%s","capture_encoder":"%s","capture_codec":"%s","capture_quality":"%s","capture_refresh_rate_max":%s,"capture_background_encoder":"%s","capture_nvenc_allow_readback_fallback":%s,"capture_variable_frame_rate":%s,"window_client_size_fallback":%s,"window_subsurface_shrinks":%s,"input_natural_scroll":%s}' \
+    printf '{"renderer":"%s","renderer_fallback":%s,"renderer_sync":"%s","hdr":%s,"depth":%s,"vrr":%s,"render_node":"%s","desktop_name":"%s","log_level":"%s","vk_diag":"%s","capture_encoder":"%s","capture_codec":"%s","capture_quality":"%s","capture_refresh_rate_max":%s,"capture_background_encoder":"%s","capture_nvenc_allow_readback_fallback":%s,"capture_variable_frame_rate":%s,"window_client_size_fallback":%s,"window_subsurface_shrinks":%s}' \
         "$renderer" "$fallback" "$renderer_sync" "$hdr" "$depth" "$vrr" \
         "$render_node" "$desktop_name" "$log_level" "$vk_diag" "$capture_encoder" \
         "$capture_codec" "$capture_quality" "$capture_refresh_rate_max" "$capture_background_encoder" \
         "$capture_nvenc_allow_readback_fallback" "$capture_variable_frame_rate" \
-        "$win_size_fallback" "$win_subsurface_shrinks" "$input_natural_scroll"
+        "$win_size_fallback" "$win_subsurface_shrinks"
 }
 
 # Resolve the settings-file path the compositor reads ($XDG_CONFIG_HOME wins, else

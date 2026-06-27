@@ -89,11 +89,6 @@ pub fn interactive(base: Environment) -> Environment {
             "Keep variable frame rate (true) or force constant frame rate during re-encode (false).",
             base.capture_variable_frame_rate,
         ),
-        input_natural_scroll: yes_no(
-            "input_natural_scroll",
-            "Natural scrolling: invert touchpad finger-axis for pan, window scroll, and swipes.",
-            base.input_natural_scroll,
-        ),
         // Experimental window-sizing flags — always disabled, never prompted.
         window_client_size_fallback: false,
         window_subsurface_shrinks: false,

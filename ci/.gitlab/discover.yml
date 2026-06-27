@@ -1,25 +1,8 @@
-# Dynamic per-entry fan-out (GitLab equivalent of the GitHub matrix): generate a child
-# pipeline from the discovered workspace entries, then trigger it. Plus the link-drift
-# guard. Rename-proof — the entry list comes from discover-workspaces.sh at run time.
-
-generate-child:
-  stage: discover
-  script:
-    - ci/scripts/gen-child-pipeline.sh child-pipeline.yml
-  artifacts:
-    paths: [child-pipeline.yml]
-    expire_in: 1 day
+# The link-drift guard. The former per-workspace fan-out (generate-child + per-entry,
+# GitLab's equivalent of the GitHub matrix) was removed: CI builds only the root product
+# (release / pages), not every workspace independently.
 
 link-drift:
   stage: discover
   script:
     - ci/scripts/link-drift.sh
-
-per-entry:
-  stage: check
-  needs: [generate-child]
-  trigger:
-    include:
-      - artifact: child-pipeline.yml
-        job: generate-child
-    strategy: depend

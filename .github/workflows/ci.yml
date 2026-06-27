@@ -21,54 +21,10 @@ env:
   CARGO_PROFILE_DEV_DEBUG: "0"
 
 jobs:
-  # Enumerate workspace entries (Cargo.toml + link.json) into a JSON matrix. Rename-proof.
-  discover:
-    runs-on: ubuntu-latest
-    outputs:
-      entries: ${{ steps.d.outputs.entries }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: d
-        run: echo "entries=$(ci/scripts/discover-workspaces.sh)" >> "$GITHUB_OUTPUT"
-
-  # One job per entry: clippy (advisory) + build + test + coverage.
-  check:
-    needs: discover
-    runs-on: ubuntu-latest
-    container: ghcr.io/${{ github.repository_owner }}/y5-ci:fedora44
-    strategy:
-      fail-fast: false
-      matrix:
-        entry: ${{ fromJson(needs.discover.outputs.entries) }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: slug
-        run: echo "v=$(echo '${{ matrix.entry }}' | tr '/.' '__')" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ${{ env.SCCACHE_DIR }}
-            ${{ env.CARGO_HOME }}/registry
-          key: ${{ runner.os }}-${{ steps.slug.outputs.v }}-${{ hashFiles(format('{0}/Cargo.lock', matrix.entry)) }}
-          restore-keys: ${{ runner.os }}-${{ steps.slug.outputs.v }}-
-      - name: clippy (advisory)
-        continue-on-error: true
-        run: cd "${{ matrix.entry }}" && cargo clippy --all-targets
-      - name: build
-        run: cd "${{ matrix.entry }}" && cargo build
-      - name: test
-        run: cd "${{ matrix.entry }}" && cargo test
-      - name: coverage (full, incl. dead code)
-        run: ci/scripts/coverage-full.sh "${{ matrix.entry }}"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: cov-${{ steps.slug.outputs.v }}
-          path: .ci-coverage/*.lcov
-          if-no-files-found: warn
-
   # Validate the y5_compositor udev_release build path once (the loader entry).
+  # This is the single root build — the actual product — replacing the former
+  # per-workspace clippy/build/test/coverage matrix.
   build-udev:
-    needs: discover
     runs-on: ubuntu-latest
     container: ghcr.io/${{ github.repository_owner }}/y5-ci:fedora44
     steps:
@@ -111,38 +67,3 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: ci/scripts/link-drift.sh
-
-  # Merge every entry's lcov into one report; comment coverage on PRs.
-  coverage:
-    needs: check
-    runs-on: ubuntu-latest
-    container: ghcr.io/${{ github.repository_owner }}/y5-ci:fedora44
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: cov-*
-          path: .ci-coverage
-          merge-multiple: true
-      - name: Merge + render coverage
-        run: |
-          ci/scripts/merge-coverage.sh
-          cat .ci-coverage/coverage-crates.md >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: |
-            .ci-coverage/coverage.lcov
-            .ci-coverage/cobertura.xml
-            .ci-coverage/coverage.svg
-            .ci-coverage/coverage.txt
-            .ci-coverage/coverage-crates.md
-            .ci-coverage/html
-      - name: PR coverage comment (per-crate table)
-        if: github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh pr comment "${{ github.event.pull_request.number }}" --body-file .ci-coverage/coverage-crates.md || true

@@ -9,6 +9,12 @@ members = [
     "configurator.*/*/*",
 ]
 
+# pam-sys patched to ship prebuilt bindings (upstream bindgen 0.69 fails under
+# clang 22: "libclang not loaded on this thread"). Mirror every other pam-sys-
+# consuming workspace so smithay's session backend resolves the vendored crate.
+[patch.crates-io]
+pam-sys = { path = "../../vendor/pam-sys" }
+
 [workspace.dependencies]
 zbus = { version = "5.15.0", default-features = false, features = ["tokio", "blocking-api"] }
 smithay = { path = "../../vendor/smithay", version = "0.7.0", default-features = false, features = [

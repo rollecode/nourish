@@ -3,11 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nourish — a calmer way to use your computer</title>
-<meta name="description" content="Nourish is a free, open-source Linux desktop where every window lives on one endless, zoomable canvas. Spread your work out, zoom in to focus, zoom out to see everything. A Snowies project.">
+<title>Nourish OS</title>
+<meta name="description" content="Nourish is a free, open-source Linux desktop where every window lives on one endless, zoomable canvas. Spread your work out, zoom in to focus, zoom out to see everything.">
 <!-- Open Graph: using the sphere hero for now; swap to the M0 end frame (assets/og.png)
      before launch — see SHOT_LIST.md. -->
-<meta property="og:title" content="Nourish — a calmer way to use your computer">
+<meta property="og:title" content="Nourish OS">
 <meta property="og:description" content="A free, open-source Linux desktop where your whole workspace lives on one endless canvas.">
 <meta property="og:image" content="assets/hero-sphere.png">
 <meta property="og:url" content="https://nourish.snowies.com/">
@@ -76,14 +76,16 @@
 
 <section class="highlight reveal">
   <div class="highlight-media">
-    <!-- VIDEO PLACEHOLDER: one looping <video> (Shot M4 — groups + placeholders) -->
-    <div class="video-ph" role="img" aria-label="Placeholder: grouping windows and restoring a closed app in place">
-      <span class="ph-play" aria-hidden="true"></span>
-      <span class="ph-label">Looping video placeholder — Organization (M4)</span>
-    </div>
+    <!-- Looping clip M1 — Organization (groups + placeholders). main.js plays it while visible. -->
+    <video class="guide-video" loop muted playsinline preload="none"
+           poster="assets/m1.jpg"
+           aria-label="Grouping windows and restoring a closed app in place">
+      <source src="assets/m1-av1.webm" type="video/webm; codecs=av01.0.05M.08">
+      <source src="assets/m1-vp9.webm" type="video/webm; codecs=vp9">
+      <source src="assets/m1.mp4" type="video/mp4">
+    </video>
   </div>
   <div class="highlight-text">
-    <p class="eyebrow">Highlight</p>
     <h2>Keep everything in order</h2>
     <p>Gather a handful of windows into a named group — line them up, space
     them evenly, fullscreen one <em>within</em> the group, or collapse the
@@ -91,43 +93,44 @@
     or crashes, Nourish leaves a placeholder right where it was, and one tap
     brings it back — same spot, same size. Your whole layout is saved to
     disk, so it survives a reboot too.</p>
-    <a class="text-link" href="guide.html#groups">How organizing works →</a>
   </div>
 </section>
 
 <section class="highlight reveal">
   <div class="highlight-media">
-    <!-- VIDEO PLACEHOLDER: a looping <video> (Shot M6 — worlds) -->
-    <div class="video-ph" role="img" aria-label="Placeholder: the 3D world picker">
-      <span class="ph-play" aria-hidden="true"></span>
-      <span class="ph-label">Looping video placeholder — World picker (M6)</span>
-    </div>
+    <!-- Looping clip M2 — World picker. main.js plays it while visible. -->
+    <video class="guide-video" loop muted playsinline preload="none"
+           poster="assets/m2.jpg"
+           aria-label="The 3D world picker">
+      <source src="assets/m2-av1.webm" type="video/webm; codecs=av01.0.05M.08">
+      <source src="assets/m2-vp9.webm" type="video/webm; codecs=vp9">
+      <source src="assets/m2.mp4" type="video/mp4">
+    </video>
   </div>
   <div class="highlight-text">
-    <p class="eyebrow">Highlight</p>
     <h2>The world picker</h2>
     <p>Keep separate canvases for separate jobs. A keyboard shortcut raises a
     gentle 3D picker with every world shown as a tile — fly into any one, and
     each keeps its own windows and remembers itself between sessions.</p>
-    <a class="text-link" href="guide.html#worlds">How worlds work →</a>
   </div>
 </section>
 
 <section class="highlight reveal">
   <div class="highlight-media">
-    <!-- VIDEO PLACEHOLDER: a looping <video> (Shot M8 — capture) -->
-    <div class="video-ph" role="img" aria-label="Placeholder: the capture overlay recording a region">
-      <span class="ph-play" aria-hidden="true"></span>
-      <span class="ph-label">Looping video placeholder — Capture (M8)</span>
-    </div>
+    <!-- Looping clip M3 — Capture. main.js plays it while visible. -->
+    <video class="guide-video" loop muted playsinline preload="none"
+           poster="assets/m3.jpg"
+           aria-label="The capture overlay recording a region">
+      <source src="assets/m3-av1.webm" type="video/webm; codecs=av01.0.05M.08">
+      <source src="assets/m3-vp9.webm" type="video/webm; codecs=vp9">
+      <source src="assets/m3.mp4" type="video/mp4">
+    </video>
   </div>
   <div class="highlight-text">
-    <p class="eyebrow">Highlight</p>
     <h2>Capture anything</h2>
     <p>Screenshot or record a window, a region of the canvas that follows your
     pan and zoom, or the whole screen. Save a crisp PNG or a hardware-encoded
     H.264 video — even with a transparent background for clean overlays.</p>
-    <a class="text-link" href="guide.html#capture">How capture works →</a>
   </div>
 </section>
 
@@ -136,92 +139,91 @@
 <!-- ========== FEATURE GRID ========== -->
 <section class="features">
   <div class="features-head reveal">
-    <h2>Everything in the box</h2>
-    <p class="muted">Tap any feature to read its guide.</p>
+    <h2>Featuring</h2>
   </div>
 
   <div class="feature-grid">
-    <!-- Each card: icon + heading + link to its guide. (No media on the small cards.) -->
+    <!-- Each card: icon + heading + short blurb. (No media on the small cards.) -->
 
-    <a class="feature-card reveal" href="guide.html#canvas">
+    <div class="feature-card reveal">
       <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>One endless canvas</h3>
       <p>Glide across all your work instead of digging through stacks.</p>
-    </a>
+    </div>
 
-    <a class="feature-card reveal" href="guide.html#zoom">
+    <div class="feature-card reveal">
       <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Pin-sharp zoom</h3>
       <p>Zoom into any window — video stays crisp, text stays readable.</p>
-    </a>
+    </div>
 
-    <a class="feature-card reveal" href="guide.html#navigation">
-      <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Fly between windows</h3>
-      <p>Hop to the window beside you with a keyboard shortcut. Hands stay put.</p>
-    </a>
-
-    <a class="feature-card reveal" href="guide.html#worlds">
+    <div class="feature-card reveal">
       <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Many worlds</h3>
       <p>Keep separate canvases for separate jobs. Switch with one key.</p>
-    </a>
+    </div>
 
-    <a class="feature-card reveal" href="guide.html#placeholders">
+    <div class="feature-card reveal">
       <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Picks up where you left off</h3>
       <p>Your layout is saved to disk — it survives crashes and reboots.</p>
-    </a>
+    </div>
 
-    <a class="feature-card reveal" href="guide.html#capture">
+    <div class="feature-card reveal">
       <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Capture anything</h3>
       <p>Screenshot or record your screen, a window, or any framing — even see-through.</p>
-    </a>
+    </div>
 
-    <a class="feature-card reveal" href="guide.html#backdrop">
+    <div class="feature-card reveal">
       <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>A living backdrop</h3>
       <p>A gentle parallax scene drifts behind your work as you move.</p>
-    </a>
+    </div>
 
-    <a class="feature-card reveal" href="guide.html#launcher">
+    <div class="feature-card reveal">
       <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Open anything fast</h3>
       <p>A built-in launcher finds and starts your apps from the keyboard.</p>
-    </a>
+    </div>
 
-    <a class="feature-card reveal" href="guide.html#lockscreen">
+    <div class="feature-card reveal">
       <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>A beautiful lock screen</h3>
-      <p>A clean, beautiful lock screen with a real password prompt behind it.</p>
-    </a>
+      <p>A clean, beautiful lock screen.</p>
+    </div>
 
-    <a class="feature-card reveal" href="guide.html#mxmaster">
+    <div class="feature-card reveal">
       <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>MX Master gestures</h3>
       <p>Hold the gesture button, flick in any direction, and fly across the canvas.</p>
-    </a>
+    </div>
 
-    <a class="feature-card reveal" href="guide.html#shortcuts">
+    <div class="feature-card reveal">
       <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Shortcuts that just work</h3>
       <p>A small set of keys covers everything, comfortably — no setup needed.</p>
-    </a>
+    </div>
 
-    <a class="feature-card reveal" href="guide.html#install">
+    <div class="feature-card reveal">
       <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>One-command install</h3>
       <p>A single line on Fedora 44 and you're in. The guide holds your hand.</p>
-    </a>
+    </div>
 
-    <a class="feature-card reveal" href="guide.html#graphics">
+    <div class="feature-card reveal">
       <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Any graphics card</h3>
       <p>NVIDIA, Intel, or AMD — Nourish speaks to all of them.</p>
-    </a>
+    </div>
 
-    <a class="feature-card reveal" href="guide.html#renderer">
+    <div class="feature-card reveal">
       <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Stable Vulkan renderer</h3>
       <p>Drawn on Vulkan, today's GPU standard — with a GLES fallback for older hardware.</p>
-    </a>
+    </div>
 
-    <a class="feature-card reveal" href="guide.html#wayland">
+    <div class="feature-card reveal">
       <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Modern to the core</h3>
       <p>Built natively on Wayland, today's display standard — and older X11 apps run too.</p>
-    </a>
+    </div>
 
-    <a class="feature-card reveal" href="guide.html#opensource">
+    <div class="feature-card reveal">
       <span class="icon-ph" aria-hidden="true">&#10043;</span>      <h3>Free, forever</h3>
       <p>Open source under MIT / Apache-2.0. No account, no ads, no strings.</p>
-    </a>
+    </div>
+
+    <div class="feature-card feature-card--soon reveal">
+      <span class="icon-ph" aria-hidden="true">&#8230;</span>      <h3>And more…</h3>
+      <p>Zones, window navigation, personalization — and plenty more arriving in every release.</p>
+    </div>
   </div>
 </section>
 
@@ -246,8 +248,8 @@
     <a href="guide.html">Guide</a>
     <a href="https://github.com/y5-snowies/nourish" rel="noopener">GitHub</a>
     <a href="https://discord.gg/kasec5bYb" rel="noopener">Discord</a>
-    <a href="guide.html#opensource">Free forever</a>
-    <a href="guide.html#opensource">MIT / Apache-2.0</a>
+    <a href="https://github.com/y5-snowies/nourish" rel="noopener">Free forever</a>
+    <a href="https://github.com/y5-snowies/nourish" rel="noopener">MIT / Apache-2.0</a>
   </nav>
 </footer>
 

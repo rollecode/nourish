@@ -1,7 +1,7 @@
 # y5 CI/CD — GitLab (current self-hosted remote). This is a THIN mirror of the GitHub
 # Actions pipeline: every job delegates to a portable ci/scripts/*.sh so the two
 # platforms share exactly one copy of the real logic. See ci/README.md.
-stages: [image, discover, check, docs, review, promote, release]
+stages: [image, discover, docs, review, promote, release]
 
 variables:
   CI_IMAGE: "$CI_REGISTRY_IMAGE/ci:fedora44"
