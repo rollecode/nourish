@@ -617,6 +617,10 @@ impl IcedRegistry {
         output_size: Size<f64, Physical>,
     ) -> Option<HandleId> {
         for item in self.items.iter().rev() {
+            // Passthrough (tooltips) and hidden items never intercept input.
+            if item.is_passthrough() || !item.is_visible() {
+                continue;
+            }
             if item.contains_screen_point(point, transform, output_size) {
                 return Some(item.handle_id());
             }
@@ -664,7 +668,7 @@ impl IcedRegistry {
             .rev()
             .filter_map(|i| {
                 let in_layer = (i.layer & layer) != 0;
-                if !in_layer {
+                if !in_layer || !i.is_visible() {
                     return None;
                 }
 
@@ -715,7 +719,104 @@ impl IcedRegistry {
         transform: &Transform,
         output_size: Size<f64, Physical>,
     ) -> Option<IcedRenderElement> {
-        self.get(id).map(|item| item.element_in(transform, output_size))
+        self.get(id)
+            .filter(|item| item.is_visible())
+            .map(|item| item.element_in(transform, output_size))
+    }
+
+    // ── Visibility & passthrough ──────────────────────────────────
+
+    /// Whether the item currently renders and participates in hit-testing.
+    pub fn is_visible(&self, id: HandleId) -> bool {
+        self.get(id).map(|i| i.is_visible()).unwrap_or(false)
+    }
+
+    /// Show or hide an item without destroying it. Hidden items are skipped by
+    /// `elements`/`element_of` and never hit-tested. The texture is retained,
+    /// so showing again is free (no reallocation).
+    pub fn set_visible_by_id(&mut self, id: HandleId, visible: bool) -> bool {
+        match self.get_mut(id) {
+            Some(item) => {
+                item.set_visible(visible);
+                true
+            }
+            None => false,
+        }
+    }
+
+    pub fn is_passthrough(&self, id: HandleId) -> bool {
+        self.get(id).map(|i| i.is_passthrough()).unwrap_or(false)
+    }
+
+    /// Mark an item click-through: excluded from `hit_test` so it never
+    /// captures the pointer or steals events from what's behind it.
+    pub fn set_passthrough_by_id(&mut self, id: HandleId, passthrough: bool) -> bool {
+        match self.get_mut(id) {
+            Some(item) => {
+                item.set_passthrough(passthrough);
+                true
+            }
+            None => false,
+        }
+    }
+
+    // ── Tooltip surfaces ──────────────────────────────────────────
+
+    /// Create a tooltip-style surface: screen-space, click-through, and
+    /// initially hidden.
+    ///
+    /// A tooltip is a full iced instance like any other — you supply its
+    /// `U: IcedUi` (e.g. a small text view) — but it floats above everything at
+    /// an arbitrary screen position, independent of the surface it annotates,
+    /// and never intercepts pointer input. This is how a tip shows *outside*
+    /// the registered texture of the thing being hovered (e.g. a selection
+    /// menu): it is simply a separate surface positioned freely.
+    ///
+    /// Drive it with [`show_tooltip_by_id`](Self::show_tooltip_by_id) /
+    /// [`hide_tooltip_by_id`](Self::hide_tooltip_by_id). Update its content with
+    /// `dispatch_message` (or by mutating its `ui`), exactly as for any
+    /// instance. The `layer` bitmask must be one your per-frame `render_all`
+    /// call includes, placed in a band drawn above the annotated surface.
+    pub fn create_tooltip<U: IcedUi>(
+        &mut self,
+        render_node: &str,
+        ui: U,
+        gles: &mut GlesRenderer,
+        size: Size<i32, Physical>,
+        layer: u64,
+    ) -> Result<IcedHandle<U>, CreateError> {
+        let handle = self.create_screen(render_node, ui, gles, Point::from((0, 0)), size, layer)?;
+        if let Some(item) = self.get_mut(handle.id) {
+            item.set_passthrough(true);
+            item.set_visible(false);
+        }
+        Ok(handle)
+    }
+
+    /// Position a tooltip at a screen point, make it visible, and raise it to
+    /// the top of the draw order.
+    pub fn show_tooltip_by_id(&mut self, id: HandleId, at: Point<i32, Physical>) -> bool {
+        if !self.contains(id) {
+            return false;
+        }
+        self.set_location_by_id(id, at);
+        self.set_visible_by_id(id, true);
+        self.raise(id);
+        true
+    }
+
+    /// Hide a tooltip (does not destroy it; show it again later).
+    pub fn hide_tooltip_by_id(&mut self, id: HandleId) -> bool {
+        self.set_visible_by_id(id, false)
+    }
+
+    // ── Frame scheduling ──────────────────────────────────────────
+
+    /// True if any instance still wants to be rendered next frame — dirty or
+    /// mid-animation. The host's frame loop should schedule another redraw
+    /// while this is true so time-based animations keep advancing.
+    pub fn wants_frame(&self) -> bool {
+        self.items.iter().any(|i| i.wants_frame())
     }
 }
 // Add this to your compositor binary's keyboard handler module

@@ -11,7 +11,7 @@ pub fn default_presets(base: &BaseConfig, capture_encoder: &str) -> Vec<Preset> 
     let env = Env {
         renderer: "vulkan".to_string(),
         renderer_fallback: base.renderer_fallback,
-        renderer_sync: base.renderer_sync.clone(),
+        renderer_sync: String::new(),
         hdr: false,
         depth: base.depth,
         vrr: base.vrr,

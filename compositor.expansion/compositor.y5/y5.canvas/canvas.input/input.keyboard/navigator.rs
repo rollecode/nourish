@@ -16,6 +16,8 @@ use compositor_support_library_input_keyboard_base::keyboard::combo::KeyCombo;
 use compositor_support_library_input_keyboard_base::keyboard::handler::ShortcutHandler;
 use compositor_support_library_input_keyboard_base::keyboard::key::Key;
 use compositor_support_library_input_keyboard_base::shortcut;
+use compositor_support_library_input_keyboard_format::format;
+use compositor_developer_environment_keybinding_base::base::{KeyBindings, KeyRow};
 use compositor_y5_window_interface_draw::fullscreen::fullscreen_unset_focused;
 use compositor_y5_window_interface_record::window::LoopWindow;
 use compositor_y5_window_lifecycle_interface::interface::TransformUpdate;
@@ -38,7 +40,8 @@ pub fn input_received(
 
     // Build the vector manually using standard Rust struct initialization.
     // We only use the single `shortcut!` macro to generate the KeyCombo.
-    let handlers: Vec<ShortcutHandler<Loop>> = inline_shortcut_handlers(state.inner.storage.nested);
+    let handlers: Vec<ShortcutHandler<Loop>> =
+        inline_shortcut_handlers(state.inner.storage.nested, &state.inner.keybinding);
 
     // Iterate through the vector (Top to Bottom priority)
     for handler in handlers {
@@ -339,230 +342,61 @@ fn terminate(s: &mut Loop) {
     s.inner.status = Status::Terminate;
 }
 
-pub fn inline_shortcut_handlers(nosuper: bool) -> Vec<ShortcutHandler<Loop>> {
-    let mut handlers: Vec<ShortcutHandler<Loop>> = vec![
-        ShortcutHandler {
-            combo: shortcut!(Super + Alt + L), // <-- Terminates everything.
-            action: Box::new(move |s| {
-                terminate(s);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Super + N),
-            action: Box::new(move |s| {
-                launcher_delegate(s);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Super + S),
-            action: Box::new(move |s| {
-                // Open the capture setup overlay (consumes the current canvas
-                // window selection as the default target).
-                compositor_y5_graphic_capture_interface::interface::request_setup(s);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(F10),
-            action: Box::new(move |s| {
-                debug_delegate(s);
+struct Bind {
+    id: &'static str,
+    label: &'static str,
+    default: KeyCombo,
+    action: Box<dyn Fn(&mut Loop) -> bool>,
+}
 
-                true
-            }),
-        },
-        ShortcutHandler {
-            // F11: only exits fullscreen on the keyboard-focused window (if a
-            // client put it there via the protocol). Returns false when there
-            // is nothing to exit, so the key falls through to the client.
-            combo: shortcut!(F11),
-            action: Box::new(move |s| fullscreen_unset_focused(s)),
-        },
-        ShortcutHandler {
-            combo: shortcut!(F1),
-            action: Box::new(move |s| {
-                zone_delegate(s, "f1", false);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(F2),
-            action: Box::new(move |s| {
-                zone_delegate(s, "f2", false);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(F3),
-            action: Box::new(move |s| {
-                zone_delegate(s, "f3", false);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(F4),
-            action: Box::new(move |s| {
-                zone_delegate(s, "f4", false);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(F5),
-            action: Box::new(move |s| {
-                zone_delegate(s, "f5", false);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(F6),
-            action: Box::new(move |s| {
-                zone_delegate(s, "f6", false);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Shift + F1),
-            action: Box::new(move |s| {
-                zone_delegate(s, "f1", true);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Shift + F2),
-            action: Box::new(move |s| {
-                zone_delegate(s, "f2", true);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Shift + F3),
-            action: Box::new(move |s| {
-                zone_delegate(s, "f3", true);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Shift + F4),
-            action: Box::new(move |s| {
-                zone_delegate(s, "f4", true);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Shift + F5),
-            action: Box::new(move |s| {
-                zone_delegate(s, "f5", true);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Shift + F6),
-            action: Box::new(move |s| {
-                zone_delegate(s, "f6", true);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Super + Alt + G),
-            action: Box::new(move |s| {
-                group_delegate(s, true);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Super + G),
-            action: Box::new(move |s| {
-                group_delegate(s, false);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Super + Alt + F),
-            action: Box::new(move |s| {
-                zoom_delegate(s, false, false);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Super + F),
-            action: Box::new(move |s| {
-                zoom_delegate(s, true, false);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Super + Shift + Alt + F),
-            action: Box::new(move |s| {
-                zoom_delegate(s, true, true);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Super + Right),
-            action: Box::new(move |s| {
-                move_direction(s, Direction::Right, true);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Super + Left),
-            action: Box::new(move |s| {
-                move_direction(s, Direction::Left, true);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Super + Up),
-            action: Box::new(move |s| {
-                move_direction(s, Direction::Up, true);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Super + Down),
-            action: Box::new(move |s| {
-                move_direction(s, Direction::Down, true);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Super + Alt + Right),
-            action: Box::new(move |s| {
-                move_direction(s, Direction::Right, false);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Super + Alt + Left),
-            action: Box::new(move |s| {
-                move_direction(s, Direction::Left, false);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Super + Alt + Up),
-            action: Box::new(move |s| {
-                move_direction(s, Direction::Up, false);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Super + Alt + Down), // <-- should be alt but intellij seems to intercept(or something else)
-            action: Box::new(move |s| {
-                move_direction(s, Direction::Down, false);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Super + L),
-            action: Box::new(move |s| {
-                lock(s);
-                true
-            }),
-        },
-    ];
+/// Single source of truth for the canvas/navigation/zone/lock shortcuts.
+fn bindings() -> Vec<Bind> {
+    vec![
+        Bind { id: "quit", label: "Quit compositor", default: shortcut!(Super + Alt + L), action: Box::new(|s| { terminate(s); true }) },
+        Bind { id: "launcher", label: "Open launcher", default: shortcut!(Super + N), action: Box::new(|s| { launcher_delegate(s); true }) },
+        Bind { id: "capture", label: "Screen capture", default: shortcut!(Super + S), action: Box::new(|s| { compositor_y5_graphic_capture_interface::interface::request_setup(s); true }) },
+        Bind { id: "debug_dump", label: "Debug dump", default: shortcut!(F10), action: Box::new(|s| { debug_delegate(s); true }) },
+        Bind { id: "fullscreen_exit", label: "Exit fullscreen", default: shortcut!(F11), action: Box::new(|s| fullscreen_unset_focused(s)) },
+        Bind { id: "zone_1", label: "Zone 1", default: shortcut!(F1), action: Box::new(|s| { zone_delegate(s, "f1", false); true }) },
+        Bind { id: "zone_2", label: "Zone 2", default: shortcut!(F2), action: Box::new(|s| { zone_delegate(s, "f2", false); true }) },
+        Bind { id: "zone_3", label: "Zone 3", default: shortcut!(F3), action: Box::new(|s| { zone_delegate(s, "f3", false); true }) },
+        Bind { id: "zone_4", label: "Zone 4", default: shortcut!(F4), action: Box::new(|s| { zone_delegate(s, "f4", false); true }) },
+        Bind { id: "zone_5", label: "Zone 5", default: shortcut!(F5), action: Box::new(|s| { zone_delegate(s, "f5", false); true }) },
+        Bind { id: "zone_6", label: "Zone 6", default: shortcut!(F6), action: Box::new(|s| { zone_delegate(s, "f6", false); true }) },
+        Bind { id: "zone_set_1", label: "Set zone 1", default: shortcut!(Shift + F1), action: Box::new(|s| { zone_delegate(s, "f1", true); true }) },
+        Bind { id: "zone_set_2", label: "Set zone 2", default: shortcut!(Shift + F2), action: Box::new(|s| { zone_delegate(s, "f2", true); true }) },
+        Bind { id: "zone_set_3", label: "Set zone 3", default: shortcut!(Shift + F3), action: Box::new(|s| { zone_delegate(s, "f3", true); true }) },
+        Bind { id: "zone_set_4", label: "Set zone 4", default: shortcut!(Shift + F4), action: Box::new(|s| { zone_delegate(s, "f4", true); true }) },
+        Bind { id: "zone_set_5", label: "Set zone 5", default: shortcut!(Shift + F5), action: Box::new(|s| { zone_delegate(s, "f5", true); true }) },
+        Bind { id: "zone_set_6", label: "Set zone 6", default: shortcut!(Shift + F6), action: Box::new(|s| { zone_delegate(s, "f6", true); true }) },
+        Bind { id: "group_all", label: "Group (all)", default: shortcut!(Super + Alt + G), action: Box::new(|s| { group_delegate(s, true); true }) },
+        Bind { id: "group", label: "Group", default: shortcut!(Super + G), action: Box::new(|s| { group_delegate(s, false); true }) },
+        Bind { id: "zoom_fit", label: "Zoom: fit", default: shortcut!(Super + Alt + F), action: Box::new(|s| { zoom_delegate(s, false, false); true }) },
+        Bind { id: "zoom_focus", label: "Zoom: focus", default: shortcut!(Super + F), action: Box::new(|s| { zoom_delegate(s, true, false); true }) },
+        Bind { id: "zoom_focus_max", label: "Zoom: focus (max)", default: shortcut!(Super + Shift + Alt + F), action: Box::new(|s| { zoom_delegate(s, true, true); true }) },
+        Bind { id: "nav_right", label: "Navigate right", default: shortcut!(Super + Right), action: Box::new(|s| { move_direction(s, Direction::Right, true); true }) },
+        Bind { id: "nav_left", label: "Navigate left", default: shortcut!(Super + Left), action: Box::new(|s| { move_direction(s, Direction::Left, true); true }) },
+        Bind { id: "nav_up", label: "Navigate up", default: shortcut!(Super + Up), action: Box::new(|s| { move_direction(s, Direction::Up, true); true }) },
+        Bind { id: "nav_down", label: "Navigate down", default: shortcut!(Super + Down), action: Box::new(|s| { move_direction(s, Direction::Down, true); true }) },
+        Bind { id: "move_right", label: "Move window right", default: shortcut!(Super + Alt + Right), action: Box::new(|s| { move_direction(s, Direction::Right, false); true }) },
+        Bind { id: "move_left", label: "Move window left", default: shortcut!(Super + Alt + Left), action: Box::new(|s| { move_direction(s, Direction::Left, false); true }) },
+        Bind { id: "move_up", label: "Move window up", default: shortcut!(Super + Alt + Up), action: Box::new(|s| { move_direction(s, Direction::Up, false); true }) },
+        Bind { id: "move_down", label: "Move window down", default: shortcut!(Super + Alt + Down), action: Box::new(|s| { move_direction(s, Direction::Down, false); true }) },
+        Bind { id: "lock", label: "Lock screen", default: shortcut!(Super + L), action: Box::new(|s| { lock(s); true }) },
+    ]
+}
 
+/// Build the live handlers with keybinding.json overrides (parse-or-default;
+/// empty override = disabled) and the nested-mode Super→Ctrl remap.
+pub fn inline_shortcut_handlers(nosuper: bool, overrides: &KeyBindings) -> Vec<ShortcutHandler<Loop>> {
+    let mut handlers: Vec<ShortcutHandler<Loop>> = bindings()
+        .into_iter()
+        .filter_map(|b| match overrides.combo_for(b.id) {
+            Some("") => None,
+            Some(s) => Some(ShortcutHandler { combo: format::parse_combo(s).unwrap_or(b.default), action: b.action }),
+            None => Some(ShortcutHandler { combo: b.default, action: b.action }),
+        })
+        .collect();
     if nosuper {
         for w in &mut handlers {
             if w.combo.modifiers.logo {
@@ -571,6 +405,37 @@ pub fn inline_shortcut_handlers(nosuper: bool) -> Vec<ShortcutHandler<Loop>> {
             }
         }
     }
-
     handlers
+}
+
+/// All canvas shortcuts as Keys-tab rows (id, label, default, effective combo).
+pub fn registry(overrides: &KeyBindings) -> Vec<KeyRow> {
+    bindings()
+        .into_iter()
+        .map(|b| {
+            let default = format::combo_string(&b.default);
+            let combo = overrides.combo_for(b.id).map(str::to_string).unwrap_or_else(|| default.clone());
+            KeyRow { id: b.id.to_string(), label: b.label.to_string(), default, combo, editable: true }
+        })
+        .collect()
+}
+
+/// Built-in, NON-rebindable shortcuts surfaced read-only in the Keys tab: the
+/// Super-held canvas grab tools (modifier-only combos in `input::input_received`).
+pub fn fixed() -> Vec<KeyRow> {
+    let mk = |label: &str, logo: bool, ctrl: bool, alt: bool, shift: bool| {
+        let c = KeyCombo {
+            modifiers: ModifiersState { logo, ctrl, alt, shift, ..ModifiersState::default() },
+            key: None,
+        };
+        let s = format::combo_string(&c);
+        KeyRow { id: String::new(), label: label.to_string(), default: s.clone(), combo: s, editable: false }
+    };
+    vec![
+        mk("Move / pan window (hold + drag)", true, false, false, false),
+        mk("Scale window (hold + drag)", true, false, false, true),
+        mk("Select box (hold + drag)", true, false, true, false),
+        mk("Select box, add (hold + drag)", true, false, true, true),
+        mk("Hand tool — pan canvas (hold)", true, true, true, false),
+    ]
 }

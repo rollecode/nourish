@@ -244,6 +244,10 @@ pub fn execute(
     // renderer) and scan it out. The scene/lock blocks below are no-ops while the
     // picker is active (render_scene/render_lock are false).
     if render_picker {
+        // Advance an in-flight video capture: the scene `per_frame` encoder pump
+        // doesn't run while the picker owns the frame, so drive it here (the tap
+        // below refreshes the capture entry with the picker each frame).
+        compositor_y5_graphic_capture_interface::interface::overlay_per_frame(state);
         let picker_clear = [0.04f32, 0.05, 0.10, 1.0];
         let prepared = {
             let mut r = gles_renderer.borrow_mut();
@@ -257,17 +261,62 @@ pub fn execute(
                 )
             };
             let outputs: Vec<VkOutput> = scene.Element.into_iter().map(VkOutput::Scene).collect();
-            let vk = ctx_ref.vulkan.as_mut().expect("vulkan_mode without renderer");
-            vk.set_capture_targets(Vec::new());
-            match ctx_ref
-                .drm_output
-                .render_frame(&mut *vk, &outputs, picker_clear, frame_flags)
+            // Post-picker capture tap: keep an in-flight capture recording the
+            // world-picker overlay. Screen/full-screen captures blit the composed
+            // picker (capture targets set so submit copies it into the entry
+            // dmabufs); window/world-region captures render their windows directly.
+            let render_job = if tap_post_scene {
+                compositor_y5_graphic_capture_interface::render::window_render_job(state)
+            } else {
+                None
+            };
+            let targets: Vec<(
+                smithay::backend::allocator::dmabuf::Dmabuf,
+                Option<Rectangle<i32, Physical>>,
+            )> = if tap_post_scene && render_job.is_none() {
+                state
+                    .inner.kernel.get(&compositor_orchestration_driver_capture_base::base::CAPTURE_REGISTRY)
+                    .as_ref()
+                    .map(|r| r.entry_dmabufs_for_output(OutputId(0)))
+                    .unwrap_or_default()
+                    .into_iter()
+                    .map(|(_, dmabuf, _, src)| (dmabuf, src))
+                    .collect()
+            } else {
+                Vec::new()
+            };
             {
-                Ok(result) => {
-                    honor_needs_sync(&result);
-                    last_result_empty = result.is_empty;
+                let vk = ctx_ref.vulkan.as_mut().expect("vulkan_mode without renderer");
+                vk.set_capture_targets(targets);
+                match ctx_ref
+                    .drm_output
+                    .render_frame(&mut *vk, &outputs, picker_clear, frame_flags)
+                {
+                    Ok(result) => {
+                        honor_needs_sync(&result);
+                        last_result_empty = result.is_empty;
+                    }
+                    Err(e) => error!("native vulkan picker render_frame failed: {e:?}"),
                 }
-                Err(e) => error!("native vulkan picker render_frame failed: {e:?}"),
+            }
+            if let Some(job) = render_job {
+                let backdrop =
+                    compositor_y5_graphic_capture_interface::render::capture_backdrop(state, &job);
+                if let Some(mut dmabuf) = state
+                    .inner.kernel.get(&compositor_orchestration_driver_capture_base::base::CAPTURE_REGISTRY)
+                    .as_ref()
+                    .and_then(|r| r.entry_dmabuf(job.entry_id))
+                {
+                    let vk = ctx_ref.vulkan.as_mut().expect("vulkan_mode without renderer");
+                    compositor_y5_graphic_capture_interface::render::draw_windows_into_bg(
+                        vk,
+                        &mut dmabuf,
+                        job.size,
+                        &job.windows,
+                        job.scale,
+                        backdrop,
+                    );
+                }
             }
         } else {
             let scene = {
@@ -279,13 +328,67 @@ pub fn execute(
             let wrapped: Vec<GlesElementWrapper<_>> =
                 scene.Element.iter().map(GlesElementWrapper).collect();
             let mut r = gles_renderer.borrow_mut();
-            let result = ctx_ref
+            let picker_result = ctx_ref
                 .drm_output
                 .render_frame(&mut *r, &wrapped, picker_clear, frame_flags)
                 .unwrap();
-            honor_needs_sync(&result);
-            last_result_empty = result.is_empty;
-            drop(result);
+            honor_needs_sync(&picker_result);
+            last_result_empty = picker_result.is_empty;
+
+            // Post-picker capture tap (GLES): keep an in-flight capture recording
+            // the world-picker overlay. Same structure as the scene tap — window/
+            // world-region captures render their windows into the entry; screen/
+            // full-screen captures blit the composed picker framebuffer.
+            if tap_post_scene {
+                if let Some(job) =
+                    compositor_y5_graphic_capture_interface::render::window_render_job(state)
+                {
+                    if let Some(mut dmabuf) = state
+                        .inner.kernel.get(&compositor_orchestration_driver_capture_base::base::CAPTURE_REGISTRY)
+                        .as_ref()
+                        .and_then(|reg| reg.entry_dmabuf(job.entry_id))
+                    {
+                        compositor_y5_graphic_capture_interface::render::draw_windows_into(
+                            &mut *r,
+                            &mut dmabuf,
+                            job.size,
+                            &job.windows,
+                            job.scale,
+                        );
+                    }
+                } else if let Some(registry) = &mut state.inner.kernel.get(&compositor_orchestration_driver_capture_base::base::CAPTURE_REGISTRY) {
+                    let entries = registry.entries_for_output(OutputId(0));
+                    let full_src = Rectangle::<i32, Physical>::from_loc_and_size((0, 0), size);
+
+                    for (entry_id, mut entry_tex, entry_size, src_override) in entries {
+                        let src = src_override.unwrap_or(full_src);
+                        let blit: Result<(), _> = (|| {
+                            let mut entry_fb = r.bind(&mut entry_tex).map_err(
+                                compositor_y5_graphic_capture_registry::registry::BlitErr::Bind,
+                            )?;
+                            picker_result
+                                .blit_frame_result(
+                                    entry_size,
+                                    smithay::utils::Transform::Normal,
+                                    Scale::from(1.0),
+                                    &mut *r,
+                                    &mut entry_fb,
+                                    [src],
+                                    std::iter::empty::<Id>(),
+                                )
+                                .map(|_sync| ())
+                                .map_err(
+                                    compositor_y5_graphic_capture_registry::registry::BlitErr::Blit,
+                                )
+                        })();
+                        if let Err(e) = blit {
+                            warn!("capture blit failed: entry_id={entry_id:?} err={e:?}");
+                        }
+                    }
+                }
+            }
+
+            drop(picker_result);
             drop(r);
         }
     } else if ctx_ref.vulkan_mode {

@@ -64,3 +64,7 @@ pub use iced_core::{
     keyboard, mouse,
 };
 pub use iced_wgpu::Renderer;
+
+// Full re-export so callers can build custom widgets / construct events without
+// taking a direct `iced_core` dependency (keeps the DEPS-lint surface small).
+pub use iced_core;

@@ -43,6 +43,11 @@ node ../../workspace.link.js
 cd ..
 cd ..
 
+cd compositor.extension/compositor.configurator
+node ../../workspace.link.js
+cd ..
+cd ..
+
 cd compositor.support
 cd support.action
 node ../../workspace.link.js

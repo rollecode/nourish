@@ -1,4 +1,7 @@
 {
+  "compositor.orchestration/orchestration.driver/driver.selection/selection.base": [
+    "size"
+  ],
   "compositor.expansion/compositor.y5/y5.audio/audio.controller/controller.interface": [
     "size"
   ],
@@ -41,7 +44,9 @@
   "compositor.expansion/compositor.y5/y5.lock/lock.interface/interface.surface": [
     "size"
   ],
-  "compositor.expansion/compositor.y5/y5.lock/lock.scene/scene.frame": ["size"],
+  "compositor.expansion/compositor.y5/y5.lock/lock.scene/scene.frame": [
+    "size"
+  ],
   "compositor.expansion/compositor.y5/y5.lock/lock.seat/seat.input": [
     "flat",
     "size"
@@ -50,6 +55,9 @@
     "size"
   ],
   "compositor.expansion/compositor.y5/y5.navigator/navigator.travel/travel.machine": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.picker/picker.scene/scene.frame": [
     "size"
   ],
   "compositor.expansion/compositor.y5/y5.overlay/overlay.interface/interface.keyboard": [
@@ -65,7 +73,9 @@
     "flat",
     "size"
   ],
-  "compositor.expansion/compositor.y5/y5.select/select.box/box.base": ["size"],
+  "compositor.expansion/compositor.y5/y5.select/select.box/box.base": [
+    "size"
+  ],
   "compositor.expansion/compositor.y5/y5.select/select.state/state.base": [
     "size"
   ],
@@ -126,14 +136,18 @@
   "compositor.installer/installer.process/process.packages/packages.enumerate/enumerate.groups": [
     "size"
   ],
-  "compositor.kernel/kernel.drm/drm.edid/edid.parse/parse.base": ["size"],
+  "compositor.kernel/kernel.drm/drm.edid/edid.parse/parse.base": [
+    "size"
+  ],
   "compositor.kernel/kernel.drm/drm.mode/mode.synthesize/synthesize.base": [
     "size"
   ],
   "compositor.kernel/kernel.gles/gles.element/element.combined/combined.base": [
     "size"
   ],
-  "compositor.kernel/kernel.gles/gles.element/element.wrap/wrap.base": ["size"],
+  "compositor.kernel/kernel.gles/gles.element/element.wrap/wrap.base": [
+    "size"
+  ],
   "compositor.kernel/kernel.loader/loader.main/main.execute/execute.base": [
     "size"
   ],
@@ -149,8 +163,12 @@
   "compositor.kernel/kernel.native/native.render/render.execute/execute.base": [
     "size"
   ],
-  "compositor.kernel/kernel.native/native.wire/wire.entry/entry.base": ["size"],
-  "compositor.kernel/kernel.native/native.wire/wire.frame/frame.base": ["size"],
+  "compositor.kernel/kernel.native/native.wire/wire.entry/entry.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.native/native.wire/wire.frame/frame.base": [
+    "size"
+  ],
   "compositor.kernel/kernel.native/native.wire/wire.session/session.base": [
     "size"
   ],
@@ -194,12 +212,18 @@
   "compositor.kernel/kernel.winit/winit.scene/scene.compose/compose.base": [
     "size"
   ],
-  "compositor.kernel/kernel.winit/winit.wire/wire.entry/entry.base": ["size"],
-  "compositor.orchestration/orchestration.draw/draw.node/node.base": ["size"],
+  "compositor.kernel/kernel.winit/winit.wire/wire.entry/entry.base": [
+    "size"
+  ],
+  "compositor.orchestration/orchestration.draw/draw.node/node.base": [
+    "size"
+  ],
   "compositor.orchestration/orchestration.draw/draw.scene/scene.frame": [
     "size"
   ],
-  "compositor.orchestration/orchestration.core/core.state/state.base": ["size"],
+  "compositor.orchestration/orchestration.core/core.state/state.base": [
+    "size"
+  ],
   "compositor.orchestration/orchestration.seat/seat.keyboard/keyboard.input": [
     "size"
   ],
@@ -220,6 +244,36 @@
     "size"
   ],
   "compositor.developer/developer.environment/environment.config/config.base": [
+    "size"
+  ],
+  "compositor.extension/compositor.configurator/configurator.network/network.backend/backend.base": [
+    "size"
+  ],
+  "compositor.extension/compositor.configurator/configurator.bluetooth/bluetooth.backend/backend.base": [
+    "size"
+  ],
+  "compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.view": [
+    "size"
+  ],
+  "compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.chrome": [
+    "size"
+  ],
+  "compositor.extension/compositor.configurator/configurator.settings/settings.interface/interface.lifecycle": [
+    "size"
+  ],
+  "compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.environment": [
+    "size"
+  ],
+  "compositor.extension/compositor.monitor/monitor.overview/overview.ui/ui.base": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.overview/overview.interface/interface.surface": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.overview/overview.input/input.pointer": [
+    "size"
+  ],
+  "compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.control": [
     "size"
   ]
 }

@@ -1,0 +1,6 @@
+# Self-contained source clone materialized by prepare-source.sh (run in the sandbox)
+/.src
+# Per-distro cargo target cache (warm incremental rebuilds across clone changes)
+/.cache
+# Binaries extracted by build.sh
+/out

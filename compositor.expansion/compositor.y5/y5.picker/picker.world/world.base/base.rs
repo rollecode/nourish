@@ -26,6 +26,9 @@ pub fn create_world_with_id(state: &mut Loop, id: uuid::Uuid) -> uuid::Uuid {
         Box::new(compositor_y5_select_system_base::base::SelectSystem),
         Box::new(compositor_y5_select_overlay_system::base::SelectionOverlaySystem),
         Box::new(compositor_y5_group_system_base::base::GroupSystem),
+        // Spatial worlds can become the spawn-target, where `overview()` reads the
+        // OVERVIEW slot every frame — so every spatial world must seed it.
+        Box::new(compositor_y5_overview_system_base::base::OverviewSystem),
     ];
     let world = compositor_support_world_kind_build_base::base::spatial(id, "world", systems, &state.inner.kernel);
     let added = state.inner.worlds.add(world);

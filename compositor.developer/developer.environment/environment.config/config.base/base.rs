@@ -59,10 +59,10 @@ pub struct Environment {
     pub window_client_size_fallback: bool,
     /// `false` = fit only the root toplevel; `true` = fit the whole surface tree.
     pub window_subsurface_shrinks: bool,
-    /// `true` (default) = natural scrolling: invert the touchpad finger-axis
-    /// direction for canvas pan, window scroll, and multi-finger swipe navigation
-    /// (a discrete mouse wheel is unaffected). `false` = use the raw direction.
-    pub input_natural_scroll: bool,
+    // NOTE: live user preferences (cursor sensitivity, touchpad natural-scroll,
+    // per-EDID output modes) intentionally do NOT live here. They are not
+    // reboot-bound, so they live in `environment.preference` (preferences.json),
+    // which is reloaded inline instead of cached once at startup.
 }
 
 static ENV: OnceLock<Environment> = OnceLock::new();
@@ -153,6 +153,39 @@ pub fn default_settings() -> Environment {
         capture_variable_frame_rate: false,
         window_client_size_fallback: false,
         window_subsurface_shrinks: false,
-        input_natural_scroll: true,
     }
+}
+
+/// Re-read and parse the settings file from disk **right now** — NOT the cached
+/// startup snapshot from [`get`]. The in-compositor settings window calls this
+/// every time it opens so a settings file edited from the terminal (or by a
+/// previous settings session) is reflected on the next launch. Falls back to the
+/// startup snapshot, then the canonical defaults, if the file is missing/invalid
+/// (the window should still open with sane values).
+pub fn read_current() -> Environment {
+    let path = resolve_path();
+    std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|raw| serde_json::from_str::<Environment>(&raw).ok())
+        .or_else(|| ENV.get().cloned())
+        .unwrap_or_else(default_settings)
+}
+
+/// Persist `env` to the settings file atomically (write to a sibling `.tmp`, then
+/// rename over the target — a partial write can never replace a good file). Used
+/// by the settings window to save edits. This only updates the on-disk file:
+/// every `Environment` field is read once at startup, so a change takes effect at
+/// the next launch (the window surfaces a "reboot to apply" banner). Live,
+/// inline-reloaded settings live in `environment.preference`, not here.
+pub fn save(env: &Environment) -> Result<(), String> {
+    let path = resolve_path();
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| format!("create {}: {e}", dir.display()))?;
+    }
+    let json =
+        serde_json::to_string_pretty(env).map_err(|e| format!("serialize settings: {e}"))?;
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, json).map_err(|e| format!("write {}: {e}", tmp.display()))?;
+    std::fs::rename(&tmp, &path).map_err(|e| format!("rename {}: {e}", path.display()))?;
+    Ok(())
 }

@@ -5,6 +5,8 @@ use compositor_support_library_input_keyboard_base::keyboard::combo::KeyCombo;
 use compositor_support_library_input_keyboard_base::keyboard::handler::ShortcutHandler;
 use compositor_support_library_input_keyboard_base::keyboard::key::Key;
 use compositor_support_library_input_keyboard_base::shortcut;
+use compositor_support_library_input_keyboard_format::format;
+use compositor_developer_environment_keybinding_base::base::{KeyBindings, KeyRow};
 
 use compositor_orchestration_core_state_base::Loop;
 
@@ -25,9 +27,9 @@ pub fn input_received<I: InputBackend>(
         return false;
     }
 
-    // Build the vector manually using standard Rust struct initialization.
-    // We only use the single `shortcut!` macro to generate the KeyCombo.
-    let handlers: Vec<ShortcutHandler<Loop>> = inline_shortcut_handlers(state.inner.storage.nested);
+    // Build the handler vector, applying the user's keybinding.json overrides.
+    let handlers: Vec<ShortcutHandler<Loop>> =
+        inline_shortcut_handlers(state.inner.storage.nested, &state.inner.keybinding);
 
     for handler in handlers {
         if handler.combo.matches(modifiers, key) {
@@ -41,183 +43,42 @@ pub fn input_received<I: InputBackend>(
     return false;
 }
 
-// CHECK:
-// THe compositor process sets active kernal mode: K_OFF or similar, which causes it to not handle TTY switches.
-// It meants tty switches must be handled here if needed,
-// but kernel sends the TTY shortcuts under different keysyms.
-// Reference: ""One thing to verify in your handler — VT keysyms come through xkb as XKB_KEY_XF86Switch_VT_1 … XF86Switch_VT_12 when the Ctrl+Alt level is active, so it's often cleaner to match on those keysyms than to reconstruct "Ctrl+Alt+F1" from modifiers + F-key yourself. Match the XF86Switch_VT_N syms, extract N, call change_vt(N).
 const VOLUME_STEP: f64 = 0.05;
-pub fn inline_shortcut_handlers(nosuper: bool) -> Vec<ShortcutHandler<Loop>> {
-    let mut handlers: Vec<ShortcutHandler<Loop>> = vec![
-        // TEMPORARY (sanity test): switch the active/spawn-target world. Behaves as
-        // "upsert + change" against pre-created spatial test worlds, to exercise
-        // world delegation until real world selection lands.
-        ShortcutHandler {
-            combo: shortcut!(Super + Alt + Num1),
-            action: Box::new(move |s| switch_world(s, 0)),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Super + Alt + Num2),
-            action: Box::new(move |s| switch_world(s, 1)),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Super + Alt + Num3),
-            action: Box::new(move |s| switch_world(s, 2)),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Super + Alt + L),
-            action: Box::new(move |s| {
-                sleep(s);
-                true
-            }),
-        },
-        // World-selection screen: SUPER+K opens it (or cancels it if already up).
-        ShortcutHandler {
-            combo: shortcut!(Super + K),
-            action: Box::new(move |s| {
-                compositor_y5_picker_interface_entry::entry::toggle(s);
-                true
-            }),
-        },
-        // Escape cancels the picker — but only while it's showing, so the
-        // binding falls through (returns false) for every other world.
-        ShortcutHandler {
-            combo: shortcut!(Escape),
-            action: Box::new(move |s| {
-                if s.inner.worlds.active_id()
-                    == compositor_y5_picker_system_base::base::PICKER_WORLD
-                {
-                    compositor_y5_picker_interface_base::base::cancel(s);
-                    true // (cancel lives in interface.base)
-                } else {
-                    false
-                }
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Ctrl + Alt + SwitchVt1),
-            action: Box::new(move |s| {
-                tty(s, 1);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Ctrl + Alt + SwitchVt2),
-            action: Box::new(move |s| {
-                tty(s, 2);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Ctrl + Alt + SwitchVt3),
-            action: Box::new(move |s| {
-                tty(s, 3);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Ctrl + Alt + SwitchVt4),
-            action: Box::new(move |s| {
-                tty(s, 4);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Ctrl + Alt + SwitchVt5),
-            action: Box::new(move |s| {
-                tty(s, 5);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(Ctrl + Alt + SwitchVt6),
-            action: Box::new(move |s| {
-                tty(s, 6);
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(AudioRaiseVolume),
-            action: Box::new(|s| {
-                if let Some(audio) = s.inner.kernel.get_mut(&compositor_orchestration_driver_audio_base::base::AUDIO_MUT) {
-                    let _ = audio.adjust_volume(VOLUME_STEP);
-                }
-                true // consumed — do not forward to clients
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(AudioLowerVolume),
-            action: Box::new(|s: &mut Loop| {
-                if let Some(audio) = s.inner.kernel.get_mut(&compositor_orchestration_driver_audio_base::base::AUDIO_MUT) {
-                    let _ = audio.adjust_volume(-VOLUME_STEP);
-                }
 
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(AudioMute),
-            action: Box::new(|s: &mut Loop| {
-                if let Some(audio) = s.inner.kernel.get_mut(&compositor_orchestration_driver_audio_base::base::AUDIO_MUT) {
-                    let _ = audio.toggle_mute();
-                }
+/// One bindable shortcut: a stable id (referenced by keybinding.json + the
+/// settings Keys tab), a human label, the built-in default combo, and the action.
+struct Bind {
+    id: &'static str,
+    label: &'static str,
+    default: KeyCombo,
+    action: Box<dyn Fn(&mut Loop) -> bool>,
+}
 
-                true
-            }),
-        },
-        // Transport keys. These belong to your MPRIS layer (the deferred notch work).
-        // Until that exists, register them so they're consumed rather than leaking to
-        // the focused client; swap the bodies for `s.media.play_pause()` etc. later.
-        ShortcutHandler {
-            combo: shortcut!(AudioPlay), // single play key = play/pause toggle
-            action: Box::new(|s| {
-                if let Some(media) = s.inner.kernel.get_mut(&compositor_orchestration_driver_audio_base::base::MEDIA_MUT) {
-                    let _ = media.play_pause();
-                }
-                /* TODO: active_player.play_pause() */
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(AudioPause),
-            action: Box::new(|s| {
-                if let Some(media) = s.inner.kernel.get_mut(&compositor_orchestration_driver_audio_base::base::MEDIA_MUT) {
-                    let _ = media.pause();
-                }
+/// The single source of truth for every compositor shortcut. `inline_shortcut_handlers`
+/// turns these into live handlers (with overrides applied); `registry` exposes them
+/// to the settings Keys tab.
+fn bindings() -> Vec<Bind> {
+    vec![
+        Bind { id: "sleep", label: "Sleep", default: shortcut!(Super + Alt + L), action: Box::new(|s| { sleep(s); true }) },
+        Bind { id: "world_picker", label: "Open world picker", default: shortcut!(Super + K), action: Box::new(|s| { compositor_y5_picker_interface_entry::entry::toggle(s); true }) },
+        // (Settings has no global shortcut — reachable only via the overview Settings tab.)
+        // Removed (per request): world-switch test shortcuts, Escape/cancel-picker,
+        // VT switches, and all sink/media shortcuts — deactivated AND not listed.
+    ]
+}
 
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(AudioStop),
-            action: Box::new(|s| {
-                if let Some(media) = s.inner.kernel.get_mut(&compositor_orchestration_driver_audio_base::base::MEDIA_MUT) {
-                    let _ = media.stop();
-                }
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(AudioNext),
-            action: Box::new(|s| {
-                if let Some(media) = s.inner.kernel.get_mut(&compositor_orchestration_driver_audio_base::base::MEDIA_MUT) {
-                    let _ = media.next();
-                }
-
-                true
-            }),
-        },
-        ShortcutHandler {
-            combo: shortcut!(AudioPrev),
-            action: Box::new(|s| {
-                if let Some(media) = s.inner.kernel.get_mut(&compositor_orchestration_driver_audio_base::base::MEDIA_MUT) {
-                    let _ = media.previous();
-                }
-
-                true
-            }),
-        },
-    ];
+/// Build the live handlers, applying keybinding.json overrides (parse-or-default)
+/// and the nested-mode Super→Ctrl remap.
+pub fn inline_shortcut_handlers(nosuper: bool, overrides: &KeyBindings) -> Vec<ShortcutHandler<Loop>> {
+    let mut handlers: Vec<ShortcutHandler<Loop>> = bindings()
+        .into_iter()
+        .filter_map(|b| match overrides.combo_for(b.id) {
+            // Empty override string = explicitly disabled: no handler at all.
+            Some("") => None,
+            Some(s) => Some(ShortcutHandler { combo: format::parse_combo(s).unwrap_or(b.default), action: b.action }),
+            None => Some(ShortcutHandler { combo: b.default, action: b.action }),
+        })
+        .collect();
 
     if nosuper {
         for w in &mut handlers {
@@ -228,7 +89,114 @@ pub fn inline_shortcut_handlers(nosuper: bool) -> Vec<ShortcutHandler<Loop>> {
         }
     }
 
+    // Always-on, non-configurable system handlers (cannot be rebound or disabled
+    // — they are the escape hatches). Appended after the configurable bindings.
+    handlers.extend(fixed_handlers());
     handlers
+}
+
+/// Critical, non-rebindable handlers: TTY/VT switches (the compositor holds the
+/// VT in graphics mode, so without these Ctrl+Alt+F-keys do nothing) and the
+/// Escape-cancels-picker fall-through.
+fn fixed_handlers() -> Vec<ShortcutHandler<Loop>> {
+    fn vt(n: u32) -> Box<dyn Fn(&mut Loop) -> bool> {
+        Box::new(move |s| {
+            tty(s, n);
+            true
+        })
+    }
+    vec![
+        ShortcutHandler { combo: shortcut!(Ctrl + Alt + SwitchVt1), action: vt(1) },
+        ShortcutHandler { combo: shortcut!(Ctrl + Alt + SwitchVt2), action: vt(2) },
+        ShortcutHandler { combo: shortcut!(Ctrl + Alt + SwitchVt3), action: vt(3) },
+        ShortcutHandler { combo: shortcut!(Ctrl + Alt + SwitchVt4), action: vt(4) },
+        ShortcutHandler { combo: shortcut!(Ctrl + Alt + SwitchVt5), action: vt(5) },
+        ShortcutHandler { combo: shortcut!(Ctrl + Alt + SwitchVt6), action: vt(6) },
+        ShortcutHandler {
+            combo: shortcut!(Escape),
+            action: Box::new(|s| {
+                if s.inner.worlds.active_id() == compositor_y5_picker_system_base::base::PICKER_WORLD {
+                    compositor_y5_picker_interface_base::base::cancel(s);
+                    true
+                } else {
+                    false
+                }
+            }),
+        },
+        // Hardware media/volume keys — functional but not user-configurable.
+        ShortcutHandler { combo: shortcut!(AudioRaiseVolume), action: Box::new(|s| {
+            if let Some(a) = s.inner.kernel.get_mut(&compositor_orchestration_driver_audio_base::base::AUDIO_MUT) { let _ = a.adjust_volume(VOLUME_STEP); }
+            true
+        }) },
+        ShortcutHandler { combo: shortcut!(AudioLowerVolume), action: Box::new(|s| {
+            if let Some(a) = s.inner.kernel.get_mut(&compositor_orchestration_driver_audio_base::base::AUDIO_MUT) { let _ = a.adjust_volume(-VOLUME_STEP); }
+            true
+        }) },
+        ShortcutHandler { combo: shortcut!(AudioMute), action: Box::new(|s| {
+            if let Some(a) = s.inner.kernel.get_mut(&compositor_orchestration_driver_audio_base::base::AUDIO_MUT) { let _ = a.toggle_mute(); }
+            true
+        }) },
+        ShortcutHandler { combo: shortcut!(AudioPlay), action: Box::new(|s| {
+            if let Some(m) = s.inner.kernel.get_mut(&compositor_orchestration_driver_audio_base::base::MEDIA_MUT) { let _ = m.play_pause(); }
+            true
+        }) },
+        ShortcutHandler { combo: shortcut!(AudioPause), action: Box::new(|s| {
+            if let Some(m) = s.inner.kernel.get_mut(&compositor_orchestration_driver_audio_base::base::MEDIA_MUT) { let _ = m.pause(); }
+            true
+        }) },
+        ShortcutHandler { combo: shortcut!(AudioStop), action: Box::new(|s| {
+            if let Some(m) = s.inner.kernel.get_mut(&compositor_orchestration_driver_audio_base::base::MEDIA_MUT) { let _ = m.stop(); }
+            true
+        }) },
+        ShortcutHandler { combo: shortcut!(AudioNext), action: Box::new(|s| {
+            if let Some(m) = s.inner.kernel.get_mut(&compositor_orchestration_driver_audio_base::base::MEDIA_MUT) { let _ = m.next(); }
+            true
+        }) },
+        ShortcutHandler { combo: shortcut!(AudioPrev), action: Box::new(|s| {
+            if let Some(m) = s.inner.kernel.get_mut(&compositor_orchestration_driver_audio_base::base::MEDIA_MUT) { let _ = m.previous(); }
+            true
+        }) },
+    ]
+}
+
+/// Read-only rows for the always-on system handlers (shown under "Built-in").
+pub fn fixed() -> Vec<KeyRow> {
+    let mk = |label: &str, combo: &str| KeyRow {
+        id: String::new(),
+        label: label.to_string(),
+        default: combo.to_string(),
+        combo: combo.to_string(),
+        editable: false,
+    };
+    vec![
+        mk("Switch to VT 1", "Ctrl+Alt+F1"),
+        mk("Switch to VT 2", "Ctrl+Alt+F2"),
+        mk("Switch to VT 3", "Ctrl+Alt+F3"),
+        mk("Switch to VT 4", "Ctrl+Alt+F4"),
+        mk("Switch to VT 5", "Ctrl+Alt+F5"),
+        mk("Switch to VT 6", "Ctrl+Alt+F6"),
+        mk("Cancel picker", "Esc"),
+        mk("Volume up", "VolumeUp key"),
+        mk("Volume down", "VolumeDown key"),
+        mk("Mute", "Mute key"),
+        mk("Play / Pause", "Play key"),
+        mk("Pause media", "Pause key"),
+        mk("Stop media", "Stop key"),
+        mk("Next track", "Next key"),
+        mk("Previous track", "Prev key"),
+    ]
+}
+
+/// All shortcuts as `(id, label, default, effective)` rows for the settings Keys tab.
+pub fn registry(overrides: &KeyBindings) -> Vec<KeyRow> {
+    bindings()
+        .into_iter()
+        .map(|b| {
+            let default = format::combo_string(&b.default);
+            let combo = overrides.combo_for(b.id).map(str::to_string).unwrap_or_else(|| default.clone());
+            KeyRow { id: b.id.to_string(), label: b.label.to_string(), default, combo, editable: true }
+        })
+        .collect()
 }
 
 fn tty(state: &mut Loop, num: u32) {
@@ -242,7 +210,7 @@ fn tty(state: &mut Loop, num: u32) {
             return;
         }
 
-        let Some(tty) = &mut state.inner.worlds.get_mut(compositor_y5_lock_system_base::base::LOCK_WORLD).storage_mut().get_mut(&compositor_y5_lock_system_base::base::LOCK_MUT).tty else {
+        let Some(_tty) = &mut state.inner.worlds.get_mut(compositor_y5_lock_system_base::base::LOCK_WORLD).storage_mut().get_mut(&compositor_y5_lock_system_base::base::LOCK_MUT).tty else {
             error!("VT unavailable");
             return;
         };
@@ -250,17 +218,6 @@ fn tty(state: &mut Loop, num: u32) {
         if let Some(ses) = &mut state.state.seat.libseat {
             ses.change_vt(num as i32);
         }
-        // match tty.switch_to(num) {
-        //     Ok(()) => {
-        //         tracing::error!("VT switch request success");
-        //         state.inner.status_session =
-        //             compositor_orchestration_core_state_base::state::StatusSession::Paused;
-        //     }
-        //     Err(e) => {
-        //         tracing::error!("VT switch to {num} failed: {e:?}");
-        //         // Switch didn't happen, undo the pause flag.
-        //     }
-        // }
     });
 }
 
@@ -274,18 +231,14 @@ fn sleep(state: &mut Loop) {
 
 /// TEMPORARY (sanity test): make test-world `slot` (0=main, 1/2=pre-created
 /// spatial worlds) the active + spawn-target world, exercising world delegation.
-/// Maps the output into the target world's space on first entry so it renders.
 fn switch_world(state: &mut Loop, slot: usize) -> bool {
     let target = state.inner.kernel.get(&compositor_orchestration_core_state_base::state::TEST_WORLDS)[slot];
-    // The output handle lives on the current spawn-target space; grab it before switching.
     let output = state.inner.space_state().state.outputs().next().cloned();
 
     state.inner.worlds.switch(target, &state.inner.kernel);
     state.inner.worlds.set_spawn_target(target);
     info!("world switch -> slot {slot} (world {target})");
 
-    // First time we enter a test world its space has no output mapped; map it so
-    // the backend renders this world's windows.
     if let Some(output) = output {
         if state.inner.space_state().state.outputs().next().is_none() {
             state
@@ -297,17 +250,3 @@ fn switch_world(state: &mut Loop, slot: usize) -> bool {
     }
     true
 }
-
-// // // Executes both lock and sleep.
-// fn sleep(s: &mut Loop) {
-//     // There is an "inhibitor" way to way for lock which is better.
-//     lock(s);
-//     // s.wait_until_locked(Duration::from_millis(500));
-//
-//     let _ = Command::new("systemctl")
-//         .arg("suspend")
-//         .spawn(); // fire and forget; suspend doesn't return until resume
-// }
-//
-// // Completely terminate the session and all process within it.
-// // It needs to be like regular gnome logout.

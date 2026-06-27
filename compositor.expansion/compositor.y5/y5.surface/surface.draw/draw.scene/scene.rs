@@ -32,6 +32,7 @@ pub fn scene(
     // borrows the whole Orchestrator, so other inner fields must be read first.
     let camera_transform = _loop.inner.camera().transform.clone();
     let gpu = _loop.inner.environment.GPU.clone();
+    let mut wants_frame = false;
     if let Some(ref mut iced) = _loop.inner.surface_mut().registry {
         let transform = compositor_monitor_compositor_iced_base::Transform {
             zoom: camera_transform.zoom,
@@ -76,6 +77,16 @@ pub fn scene(
             )
             .unwrap_or_default();
         iced_elements_dim.extend(dim);
+
+        // Any instance still dirty or mid-animation wants another frame.
+        wants_frame = iced.wants_frame();
+    }
+
+    // Keep the vblank cycle alive while iced is animating, so time-based
+    // animations advance frame-to-frame (mirrors the parallax background's
+    // self-scheduling). Done after the registry borrow is released.
+    if wants_frame {
+        _loop.schedule_redraw_post_vblank();
     }
 
     return (iced_elements, iced_elements_screen, iced_elements_dim);

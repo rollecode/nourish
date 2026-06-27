@@ -28,6 +28,8 @@ environment.container/        # the containerized dev loop under nested Wayland
   entrypoint.sh       # in-container build+run (invoked by run.sh, not by hand)
   launch.sh           # launch a client app into the running container  [app]
   stop.sh             # stop/remove the dev container
+  distributions/      # build/run on different distros (Fedora/Ubuntu/Debian/Arch, version-
+                      #   suffixed); clones the local repo instead of COPYing — see its README.md
 ```
 
 The host scripts (`build.sh`, `build-release.sh`, `install-deps.sh`) are also what CI invokes;

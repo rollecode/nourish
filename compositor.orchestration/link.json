@@ -1,10 +1,11 @@
 [
-  "../compositor.introspection",
   "../compositor.developer",
   "../compositor.expansion/compositor.background",
   "../compositor.expansion/compositor.remote",
   "../compositor.expansion/compositor.y5",
+  "../compositor.extension/compositor.configurator",
   "../compositor.extension/compositor.monitor",
+  "../compositor.introspection",
   "../compositor.support/support.action",
   "../compositor.support/support.gpu",
   "../compositor.support/support.library",

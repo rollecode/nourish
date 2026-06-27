@@ -47,16 +47,25 @@ pub fn prepare(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Ph
         vec![]
     };
 
+    let mut iced_wants_frame = false;
     let surfaces = if let Some(reg) = state.inner.surface_mut().registry.as_mut() {
         let t = compositor_monitor_compositor_iced_base::Transform {
             zoom: 1.0,
             position: Point::new(0.0, 0.0),
         };
-        reg.render_all(&gpu, renderer, t, size.to_f64(), Layer::PICKER_SCENE.bits())
-            .unwrap_or_default()
+        let els = reg
+            .render_all(&gpu, renderer, t, size.to_f64(), Layer::PICKER_SCENE.bits())
+            .unwrap_or_default();
+        iced_wants_frame = reg.wants_frame();
+        els
     } else {
         vec![]
     };
+
+    // Keep the vblank cycle alive while iced is animating in the picker scene.
+    if iced_wants_frame {
+        state.schedule_redraw_post_vblank();
+    }
 
     PickerPrepared { bevy, background_two, surfaces }
 }

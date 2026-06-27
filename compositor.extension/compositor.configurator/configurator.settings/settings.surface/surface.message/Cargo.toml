@@ -1,0 +1,14 @@
+[package]
+name = "compositor_configurator_settings_surface_message"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+compositor_developer_environment_config_base = { workspace = true }
+compositor_orchestration_driver_output_base = { workspace = true }
+compositor_y5_audio_controller_interface = { workspace = true }
+compositor_configurator_network_backend_base = { workspace = true }
+compositor_configurator_bluetooth_backend_base = { workspace = true }
+
+[lib]
+path = "lib.rs"

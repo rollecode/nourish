@@ -5,6 +5,12 @@ use compositor_y5_surface_interface_base::hit::surface_under_filtered;
 use compositor_y5_window_interface_draw::visible::DrawWindow;
 
 pub fn button<I: InputBackend>(event: &<I as InputBackend>::PointerButtonEvent, _loop: &mut Loop) {
+    // Overview overlay open → the overview layer handles + swallows the click
+    // (menu bar / grid cell / globe); windows never receive it.
+    if compositor_y5_overview_input_pointer::pointer::button::<I>(event, _loop) {
+        return;
+    }
+
     let pointer = &_loop.state.seat.seat.get_pointer().unwrap();
     {
         // World input bus first (phase 3); Pass falls through to legacy routing.
@@ -31,9 +37,12 @@ pub fn button<I: InputBackend>(event: &<I as InputBackend>::PointerButtonEvent, 
     // window (the system cleared selection + declined to grab), so the click is
     // routed directly to that window here via `native_press`.
     if ButtonState::Pressed == button_state && !pointer.is_grabbed() {
+        // Overview overlay open → presentational: never deliver a click to a
+        // window (the bus already routes menu-bar iced clicks).
+        let overview_open = _loop.inner.overview().visible;
         if let Some(hit) = surface_under_filtered(_loop, pointer.current_location(), &|hit| {
             if let Some(window) = hit.window() {
-                return window.visible(_loop);
+                return !overview_open && window.visible(_loop);
             };
 
             true

@@ -28,6 +28,7 @@ pub fn scene(
     let scale = _loop.size_context().scale;
     let camera_transform = _loop.inner.camera().transform.clone();
     let gpu = _loop.inner.environment.GPU.clone();
+    let mut wants_frame = false;
     if let Some(ref mut iced) = _loop.inner.surface_mut().registry {
         let transform = compositor_monitor_compositor_iced_base::Transform {
             zoom: camera_transform.zoom,
@@ -46,9 +47,15 @@ pub fn scene(
                 compositor_orchestration_draw_layer_base::base::Layer::LOCK_SCENE.bits(),
             )
             .unwrap_or_default();
+        wants_frame = iced.wants_frame();
     } else {
         // iced_elements = vec![];
         // iced_elements_screen = vec![];
+    }
+
+    // Keep the vblank cycle alive while iced is animating in the lock scene.
+    if wants_frame {
+        _loop.schedule_redraw_post_vblank();
     }
 
     return iced_elements;

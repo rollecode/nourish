@@ -18,12 +18,6 @@ pub fn prompt_custom_env(base: &BaseConfig) -> Env {
         "Fall back to GLES if Vulkan init fails",
         base.renderer_fallback,
     );
-    let renderer_sync = choose(
-        "renderer_sync",
-        "Frame-sync strategy",
-        &["", "infence", "kms"],
-        &base.renderer_sync,
-    );
     let hdr = yes_no("hdr", "Enable HDR output (Vulkan only)", false);
     let depth = if yes_no("depth", "10-bit deep-color scanout (no = 8-bit)", base.depth == 10) {
         10
@@ -42,7 +36,7 @@ pub fn prompt_custom_env(base: &BaseConfig) -> Env {
     Env {
         renderer,
         renderer_fallback,
-        renderer_sync,
+        renderer_sync: String::new(),
         hdr,
         depth,
         vrr,

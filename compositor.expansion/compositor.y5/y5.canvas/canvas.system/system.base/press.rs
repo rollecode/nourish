@@ -61,10 +61,14 @@ pub(crate) fn press(cx: &mut SystemCx, button: u32, x: f64, y: f64) -> InputFlow
         _ => {}
     }
 
-    // Hit-test (press accepts a window only if visible; layers/iced pass).
+    // Hit-test (press accepts a window only if visible; layers/iced pass). While
+    // the overview overlay is open the view is presentational — reject every
+    // window hit so clicks never reach a window; iced (the menu bar) still routes.
+    let overview_open =
+        cx.storage.get(&compositor_y5_overview_state_base::base::OVERVIEW).visible;
     let over_surface = surface_under_filtered_cx(cx.storage, cursor, &|hit| {
         if let Some(window) = hit.window() {
-            return window_visible(cx.storage, window);
+            return !overview_open && window_visible(cx.storage, window);
         }
         true
     });

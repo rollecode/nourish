@@ -5,4 +5,5 @@ pub mod ui;
 pub mod app;
 pub mod diagnostic;
 pub mod selection;
+pub mod tip;
 pub mod zone;

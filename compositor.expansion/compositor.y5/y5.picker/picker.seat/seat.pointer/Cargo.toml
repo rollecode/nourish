@@ -13,6 +13,7 @@ compositor_y5_picker_three_constant = { workspace = true }
 compositor_y5_picker_three_scene = { workspace = true }
 compositor_y5_picker_command_base = { workspace = true }
 compositor_y5_picker_pick_base = { workspace = true }
+compositor_y5_picker_world_base = { workspace = true }
 compositor_y5_picker_seat_cursor = { workspace = true }
 compositor_y5_picker_seat_iced = { workspace = true }
 smithay = { workspace = true }

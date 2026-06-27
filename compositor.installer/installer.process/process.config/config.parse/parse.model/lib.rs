@@ -34,8 +34,6 @@ pub struct BaseConfig {
     pub depth: u8,
     pub vrr: bool,
     pub renderer_fallback: bool,
-    /// Default sync mode for the Y5 Desktop / Dev presets: "" | "infence" | "kms".
-    pub renderer_sync: String,
 }
 
 impl Default for BaseConfig {
@@ -47,7 +45,6 @@ impl Default for BaseConfig {
             depth: 10,
             vrr: true,
             renderer_fallback: false,
-            renderer_sync: "infence".to_string(),
         }
     }
 }

@@ -133,6 +133,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_developer_environment_keybinding_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_environment_config_base",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "compositor_developer_environment_preference_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_environment_config_base",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "compositor_developer_log_process_instance"
 version = "0.0.1"
 dependencies = [

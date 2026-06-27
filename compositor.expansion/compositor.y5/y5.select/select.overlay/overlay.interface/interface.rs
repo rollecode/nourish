@@ -16,22 +16,27 @@
 //! so when nothing is selected it captures no pointer/keyboard and draws no
 //! cursor — there is simply no surface.
 
+use std::process::Command;
 use std::sync::Once;
 
 use smithay::backend::renderer::gles::GlesRenderer;
+use smithay::desktop::Window;
+use smithay::reexports::wayland_server::{DisplayHandle, Resource};
+use smithay::wayland::seat::WaylandFocus;
 use smithay::utils::{Physical, Point, Rectangle, Size};
 
 use compositor_orchestration_core_state_base::Loop;
 use compositor_orchestration_core_state_base::state::CoordinateTrait;
 use compositor_orchestration_driver_selection_base::base::{
     BAR_H, BAR_W, Placement, SCREEN_BOTTOM_MARGIN, SELECTION_OVERLAY, SELECTION_OVERLAY_MUT,
-    SELECTION_OVERLAY_PLACEMENT, SELECTION_REANCHOR_MUT, world_loc_under_cursor, world_scale_factor,
-    world_size,
+    SELECTION_OVERLAY_PLACEMENT, SELECTION_REANCHOR_MUT, TIP_GAP, TIP_H, TIP_W, world_loc_under_cursor,
+    world_scale_factor, world_size,
 };
 use compositor_orchestration_draw_layer_base::base::Layer;
 use compositor_support_world_order_track_base::base::DrawLayer;
-use compositor_monitor_compositor_iced_base::{HandleId, IcedHandle, IcedSpace};
-use compositor_monitor_selection_scene_base::selection::SelectionAction;
+use compositor_monitor_compositor_iced_base::{HandleId, IcedHandle, IcedSpace, Transform};
+use compositor_monitor_selection_scene_base::selection::{CloseMode, SelectionAction};
+use compositor_monitor_selection_scene_base::tip::{TipMessage, TipUi};
 use compositor_monitor_selection_scene_base::ui::{Message, Overlay};
 use compositor_y5_surface_draw_handle::handle::load;
 use compositor_y5_surface_protocol_base::protocol::{
@@ -58,6 +63,80 @@ pub fn per_frame(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, 
     reanchor_if_pending(state);
     // Keep the on-screen size constant as the camera zoom changes.
     resize_on_zoom(state);
+    // Show/hide/position the hover tooltip for the currently-hovered button.
+    drive_tooltip(state, size);
+}
+
+/// Drive the companion tooltip surface each frame: read which button the bar's
+/// `Overlay` reports as hovered, and show the separate tip surface (a distinct
+/// texture) just above the bar with the matching, modifier-aware text — or hide
+/// it when nothing is hovered. Positioned in SCREEN space: for the world-space
+/// bar, the bar's stored world location is projected through the camera.
+fn drive_tooltip(state: &mut Loop, size: Size<i32, Physical>) {
+    let st = state.inner.kernel.get(&SELECTION_OVERLAY);
+    let (Some(toolbar_id), Some(tip_id)) = (st.handle, st.tip_handle) else {
+        return;
+    };
+    let last_tip = st.last_tip.clone();
+
+    let scale = state.size_context().scale;
+    let cam = state.inner.camera().transform.clone();
+    let cam_t = Transform {
+        zoom: cam.zoom,
+        position: Point::from((cam.position.x * scale, cam.position.y * scale)),
+    };
+    let output = size.to_f64();
+
+    let mut new_last_tip = last_tip.clone();
+
+    if let Some(reg) = state.inner.surface_mut().registry.as_mut() {
+        // Visible only while an actual button is hovered (`hovered_tip` is Some).
+        let tip = reg
+            .get(toolbar_id)
+            .and_then(|it| it.get::<Overlay>())
+            .and_then(|inst| inst.ui().hovered_tip());
+
+        match tip {
+            Some((text, alt, shift)) => {
+                let tb = reg.location_of(toolbar_id).unwrap_or_default();
+                // Bar's on-screen top-left (project the world-space bar).
+                let (sx, sy) = match SELECTION_OVERLAY_PLACEMENT {
+                    Placement::ScreenBottomCenter => (tb.x as f64, tb.y as f64),
+                    Placement::WorldAtCursor => {
+                        let s =
+                            cam_t.world_to_screen(output, Point::from((tb.x as f64, tb.y as f64)));
+                        (s.x, s.y)
+                    }
+                };
+                // Stuck to the bar's bottom-left: left edge aligned, just below it.
+                let pos = Point::from((
+                    sx.round() as i32,
+                    (sy + (BAR_H as f64) + (TIP_GAP as f64)).round() as i32,
+                ));
+
+                let content = (text, alt, shift);
+                if last_tip.as_ref() != Some(&content) {
+                    let _ = reg.dispatch_message(
+                        IcedHandle::<TipUi>::from_id(tip_id),
+                        TipMessage::Set {
+                            text: content.0.clone(),
+                            alt: content.1,
+                            shift: content.2,
+                        },
+                    );
+                    new_last_tip = Some(content);
+                }
+                reg.set_location_by_id(tip_id, pos);
+                reg.set_visible_by_id(tip_id, true);
+            }
+            None => {
+                reg.hide_tooltip_by_id(tip_id);
+                new_last_tip = None;
+            }
+        }
+    }
+
+    state.inner.kernel.get_mut(&SELECTION_OVERLAY_MUT).last_tip = new_last_tip;
 }
 
 /// Counter-scale the world toolbar when zoom changes so it keeps a constant
@@ -162,8 +241,31 @@ fn create(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Physica
         }
     }
 
+    // Companion hover-tooltip surface: a separate screen-space, click-through
+    // texture that floats above the bar (driven per-frame by `drive_tooltip`).
+    // Using its own texture is the whole point of the registry tooltip surface —
+    // the tip isn't clipped by the bar's texture and needs no headroom inside it.
+    let gpu = state.inner.environment.GPU.clone();
+    let tip_id = state
+        .inner
+        .surface_mut()
+        .registry
+        .as_mut()
+        .and_then(|reg| {
+            reg.create_tooltip(
+                &gpu.as_str(),
+                TipUi::new(),
+                renderer,
+                Size::from((TIP_W, TIP_H)),
+                Layer::SCENE.bits(),
+            )
+            .ok()
+        })
+        .map(|h| h.id);
+
     let st = state.inner.kernel.get_mut(&SELECTION_OVERLAY_MUT);
     st.handle = Some(untyped);
+    st.tip_handle = tip_id;
     st.count = count;
     st.prev_zoom = zoom;
 }
@@ -191,11 +293,17 @@ fn update(state: &mut Loop, id: HandleId, count: i32) {
 }
 
 fn destroy(state: &mut Loop, id: HandleId) {
+    let tip = state.inner.kernel.get(&SELECTION_OVERLAY).tip_handle;
     if let Some(reg) = state.inner.surface_mut().registry.as_mut() {
         reg.destroy_by_id(id); // also clears keyboard focus / pointer / grab
+        if let Some(tip) = tip {
+            reg.destroy_by_id(tip);
+        }
     }
     let st = state.inner.kernel.get_mut(&SELECTION_OVERLAY_MUT);
     st.handle = None;
+    st.tip_handle = None;
+    st.last_tip = None;
     st.count = 0;
 }
 
@@ -218,6 +326,104 @@ pub fn handle(state: &mut Loop, _renderer: &mut GlesRenderer, forward: Selection
                 state,
             );
         }
+        SelectionForward::CloseWindows(mode) => close_selected(state, mode),
+    }
+}
+
+// --- close selected windows -----------------------------------------------
+
+/// Dismiss every selected window at the chosen [`CloseMode`]. Three strengths:
+///
+/// - `Request` (no modifier): ask the window to close via the `xdg_toplevel.close`
+///   protocol event — the equivalent of clicking its title-bar X. This targets
+///   the *surface*, not the process, so windows that share one client process
+///   (Chrome's windows, a terminal's windows) close just the chosen one and the
+///   app runs its own teardown (save prompts, session save). Windows with no xdg
+///   toplevel (XWayland) have no such event, so we fall back to a graceful
+///   SIGTERM on the owning pid there.
+/// - `Terminate` (Alt): SIGTERM the owning process. The apps are launched by the
+///   compositor and best-effort adopted into a transient systemd user `.scope`
+///   under `app.slice` (see `introspection.execution.launch`); we prefer
+///   `systemctl --user stop <scope>` so the whole cgroup comes down cleanly via
+///   systemd's SIGTERM→SIGKILL sequence, falling back to a plain SIGTERM on the
+///   pid when the process isn't in such a scope.
+/// - `Kill` (Alt+Shift): SIGKILL the pid directly (`kill -9 <pid>`).
+///
+/// The signal paths target the exact pid that owns the window (resolved from the
+/// surface credentials) — never the command line, so other instances of the same
+/// app are left alone. All killers are spawned and detached (never waited on) so
+/// the render loop is not blocked — the compositor's SIGCHLD reaper collects them.
+fn close_selected(state: &Loop, mode: CloseMode) {
+    let display_handle = state.inner.loader.display_handle.clone();
+    let windows = state.inner.select().Selection.clone();
+    for window in &windows {
+        // Polite per-surface close: ask the client to dismiss just this window.
+        if mode == CloseMode::Request {
+            if let Some(toplevel) = window.toplevel() {
+                toplevel.send_close();
+                continue;
+            }
+            // No xdg toplevel (XWayland): no close event — fall through to a
+            // graceful SIGTERM on the owning pid.
+        }
+        let Some(pid) = window_pid(window, &display_handle) else {
+            warn!("close: selected window has no client pid; skipping");
+            continue;
+        };
+        if mode == CloseMode::Kill {
+            force_kill(pid);
+        } else {
+            graceful_close(pid);
+        }
+    }
+}
+
+/// The pid of a window's Wayland client, via the toplevel surface credentials.
+fn window_pid(window: &Window, display_handle: &DisplayHandle) -> Option<i32> {
+    let surface = window.wl_surface()?;
+    let client = surface.client()?;
+    client.get_credentials(display_handle).ok().map(|c| c.pid)
+}
+
+/// SIGKILL the exact pid that owns the window.
+fn force_kill(pid: i32) {
+    spawn_detached(Command::new("kill").args(["-9", &pid.to_string()]));
+}
+
+/// Gracefully stop the process: `systemctl --user stop <scope>` if it lives in a
+/// transient app scope, else SIGTERM the pid directly.
+fn graceful_close(pid: i32) {
+    match user_scope_of(pid) {
+        Some(scope) => {
+            spawn_detached(Command::new("systemctl").args(["--user", "stop", &scope]))
+        }
+        None => spawn_detached(Command::new("kill").args(["-TERM", &pid.to_string()])),
+    }
+}
+
+/// The leaf `*.scope` unit a pid belongs to, if it sits under `app.slice`
+/// (i.e. a window the compositor launched and adopted into systemd). Read from
+/// the cgroup-v2 unified line of `/proc/<pid>/cgroup` (`0::<path>`).
+fn user_scope_of(pid: i32) -> Option<String> {
+    let content = std::fs::read_to_string(format!("/proc/{pid}/cgroup")).ok()?;
+    for line in content.lines() {
+        let Some(path) = line.splitn(3, ':').nth(2) else { continue };
+        if !path.contains("app.slice") {
+            continue;
+        }
+        if let Some(leaf) = path.rsplit('/').next() {
+            if leaf.ends_with(".scope") {
+                return Some(leaf.to_string());
+            }
+        }
+    }
+    None
+}
+
+/// Spawn a killer command and detach; failures are logged, never fatal.
+fn spawn_detached(cmd: &mut Command) {
+    if let Err(e) = cmd.spawn() {
+        warn!("close: failed to spawn killer: {e}");
     }
 }
 
@@ -279,6 +485,7 @@ fn install_handler(state: &mut Loop, handle: IcedHandle<Overlay>) {
                         Some(SelectionForward::Execute(actions.clone(), *alt))
                     }
                     Message::ExecuteScaleToFit(opt) => Some(SelectionForward::ScaleToFit(*opt)),
+                    Message::CloseSelected(mode) => Some(SelectionForward::CloseWindows(*mode)),
                     _ => None,
                 };
                 if let Some(forward) = forward {

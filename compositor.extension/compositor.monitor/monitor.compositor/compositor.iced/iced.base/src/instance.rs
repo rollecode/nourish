@@ -72,9 +72,16 @@ pub(crate) trait IcedInstanceAny: Any {
     fn bump_commit(&mut self);
     fn location(&self) -> Point<i32, Physical>;
     fn size(&self) -> Size<i32, Physical>;
+    /// The iced viewport scale factor (logical = physical / scale_factor). For
+    /// `World` items this is the zoom counter-scale (`1/zoom`); for `Screen`
+    /// items it's the instance scale (currently always 1.0).
+    fn scale_factor(&self) -> f32;
     fn set_location(&mut self, p: Point<i32, Physical>);
     fn queue_event(&mut self, event: IcedEvent);
     fn tick(&mut self) -> bool;
+    /// True if the runtime still wants to be rendered next frame — dirty or
+    /// mid-animation. Drives the host's "keep scheduling frames" decision.
+    fn wants_frame(&self) -> bool;
     fn render(&mut self);
     fn texture_handle(&self) -> &smithay::backend::renderer::gles::GlesTexture;
     /// Strict read-only accessor for the surface's underlying dmabuf, so a
@@ -114,6 +121,9 @@ impl<U: IcedUi> IcedInstanceAny for IcedInstance<U> {
     fn size(&self) -> Size<i32, Physical> {
         self.surface.size
     }
+    fn scale_factor(&self) -> f32 {
+        self.scale_factor
+    }
     fn set_location(&mut self, p: Point<i32, Physical>) {
         if self.location != p {
             self.location = p;
@@ -130,6 +140,9 @@ impl<U: IcedUi> IcedInstanceAny for IcedInstance<U> {
             trace!("tick changed handle={:?}", self.id);
         }
         changed
+    }
+    fn wants_frame(&self) -> bool {
+        self.runtime.is_dirty()
     }
     fn render(&mut self) {
         let view = self.surface.create_render_view();
@@ -192,6 +205,14 @@ pub struct IcedItem {
     type_id: TypeId,
     space: IcedSpace,
     pub layer: u64,
+    /// When false the item is skipped by `elements`/`element_of` and never
+    /// hit-tested. Lets a surface (e.g. a tooltip) be toggled on/off without
+    /// reallocating its texture.
+    visible: bool,
+    /// When true the item is excluded from `hit_test`, so it floats above
+    /// without intercepting pointer input or stealing events from what's
+    /// behind it. Tooltips set this.
+    passthrough: bool,
 }
 
 impl IcedItem {
@@ -201,7 +222,38 @@ impl IcedItem {
             inner: Box::new(inst),
             space,
             layer,
+            visible: true,
+            passthrough: false,
         }
+    }
+
+    // ── Visibility & passthrough ──────────────────────────────────
+
+    pub fn is_visible(&self) -> bool {
+        self.visible
+    }
+
+    /// Show/hide without destroying. Bumps the commit counter so smithay
+    /// damages the item's rect on the transition.
+    pub fn set_visible(&mut self, visible: bool) {
+        if self.visible != visible {
+            self.visible = visible;
+            self.inner.bump_commit();
+        }
+    }
+
+    pub fn is_passthrough(&self) -> bool {
+        self.passthrough
+    }
+
+    pub fn set_passthrough(&mut self, passthrough: bool) {
+        self.passthrough = passthrough;
+    }
+
+    /// True if the runtime still wants to be rendered next frame (dirty or
+    /// mid-animation).
+    pub fn wants_frame(&self) -> bool {
+        self.inner.wants_frame()
     }
 
     // ── Identity ──────────────────────────────────────────────────
@@ -320,13 +372,27 @@ impl IcedItem {
             screen_point.x - r.loc.x as f64,
             screen_point.y - r.loc.y as f64,
         );
+        // Map the on-screen offset into the surface's iced LOGICAL space — the
+        // space iced lays out and hit-tests in (see `IcedRuntime::tick`, which
+        // builds the UI at `viewport.logical_size()`). The on-screen rect spans
+        // `screen_size` physical px (`size × zoom` for World) while the logical
+        // extent is `size / scale_factor`, so the offset scales by
+        // `logical / screen = 1 / (zoom × scale_factor)`.
+        //
+        // For a World surface the zoom counter-scale (`scale_factor = 1/zoom`,
+        // set via `request_resize_scaled_by_id`) cancels the projection zoom, so
+        // the on-screen size is held constant and the mapping is 1:1 at every
+        // zoom. For Screen, zoom is 1 and scale_factor is 1. Dividing by zoom
+        // ALONE (the previous code) mis-mapped a zoomed-out World surface — the
+        // selection toolbar received clicks at the wrong spot.
         let zoom = match self.space {
             IcedSpace::Screen => 1.0,
             IcedSpace::World => transform.zoom,
         };
+        let divisor = zoom * self.inner.scale_factor() as f64;
         Some(iced_core::Point::new(
-            (local.0 / zoom) as f32,
-            (local.1 / zoom) as f32,
+            (local.0 / divisor) as f32,
+            (local.1 / divisor) as f32,
         ))
     }
 

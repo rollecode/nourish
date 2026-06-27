@@ -16,8 +16,10 @@ use std::sync::Arc;
 use crate::shared::SharedEngine;
 use crate::ui::IcedUi;
 use iced_core::renderer::Style;
+use iced_core::time::Instant;
+use iced_core::window::{self, RedrawRequest};
 use iced_core::{Color, Event as IcedEvent, Size, mouse};
-use iced_runtime::user_interface::{Cache, UserInterface};
+use iced_runtime::user_interface::{Cache, State, UserInterface};
 use iced_wgpu::graphics::Viewport;
 use wgpu::PollType;
 
@@ -87,6 +89,14 @@ pub struct IcedRuntime<U: IcedUi> {
     /// `SharedEngine` dirty flags, so each instance redraws only its own
     /// activity.
     dirty: bool,
+
+    /// What iced asked us to redraw next, captured from the last
+    /// `UserInterface::update`. `Wait` means idle; `NextFrame`/`At(_)` means a
+    /// time-based animation is in progress and wants more frames. The runtime
+    /// keeps injecting `RedrawRequested(now)` and reporting dirty until a
+    /// widget settles back to `Wait`. Previously this value was discarded, so
+    /// animations never advanced.
+    redraw_request: RedrawRequest,
 }
 
 impl<U: IcedUi> std::fmt::Debug for IcedRuntime<U> {
@@ -124,6 +134,7 @@ impl<U: IcedUi> IcedRuntime<U> {
             // a freshly-created instance shows nothing until the user
             // interacts with it.
             dirty: true,
+            redraw_request: RedrawRequest::Wait,
         }
     }
 
@@ -179,15 +190,39 @@ impl<U: IcedUi> IcedRuntime<U> {
     ///      b. Call `ui.update(message)`.
     ///   6. Set `self.dirty = true` to ensure a render happens.
     pub fn tick(&mut self) -> bool {
-        if self.queued_events.is_empty() && self.queued_messages.is_empty() {
-            return self.dirty || self.engine.global_dirty.redraw_pending();
+        let now = Instant::now();
+        // A time-based animation frame is "due" when iced asked for the next
+        // frame, or the instant it asked for has arrived. The `RedrawRequested`
+        // event pushed below is the ONLY channel by which iced widgets receive
+        // "now" and advance an animation — without it, re-rendering just
+        // repaints the same frame.
+        let animation_due = match self.redraw_request {
+            RedrawRequest::NextFrame => true,
+            RedrawRequest::At(at) => now >= at,
+            RedrawRequest::Wait => false,
+        };
+
+        if self.queued_events.is_empty() && self.queued_messages.is_empty() && !animation_due {
+            // Nothing to process this frame. Still report whether a render is
+            // wanted — including while an animation is pending, so the host's
+            // dirty-driven loop keeps scheduling frames until it settles.
+            return self.dirty
+                || self.engine.global_dirty.redraw_pending()
+                || self.is_animating();
         }
 
         let bounds = self.viewport.logical_size();
         let bounds = Size::new(bounds.width, bounds.height);
 
-        let events = std::mem::take(&mut self.queued_events);
+        let mut events = std::mem::take(&mut self.queued_events);
         let mut messages = std::mem::take(&mut self.queued_messages);
+
+        // Feed the current time into the widget tree so time-based animations
+        // advance. Pushed before phase 0/1 so the event flows through the same
+        // update cycle as everything else.
+        if animation_due {
+            events.push(IcedEvent::Window(window::Event::RedrawRequested(now)));
+        }
 
         
         // ── Phase 0: subscribe + event_process ─────────────────────────
@@ -208,8 +243,10 @@ impl<U: IcedUi> IcedRuntime<U> {
         }
         // Events still flow into phase 1 as before — iced widgets see them.
 
-        // ── Phase 1 (unchanged): build UI, collect widget-produced msgs.
-        let new_cache = {
+        // ── Phase 1: build UI, collect widget-produced msgs, and capture the
+        // returned `State` (previously discarded) so we know what iced wants to
+        // redraw next — the basis for driving animation.
+        let (new_cache, state) = {
             let mut renderer_guard = self.engine.renderer_borrow();
             let cache = std::mem::take(&mut self.cache);
             let mut ui = UserInterface::build(
@@ -218,15 +255,23 @@ impl<U: IcedUi> IcedRuntime<U> {
                 cache,
                 &mut renderer_guard,
             );
-            let (_state, _statuses) = ui.update(
+            let (state, _statuses) = ui.update(
                 &events,
                 self.cursor,
                 &mut renderer_guard,
                 &mut messages,
             );
-            ui.into_cache()
+            (ui.into_cache(), state)
         };
         self.cache = new_cache;
+
+        // Record what iced wants next. `Outdated` => the cache is stale and a
+        // rebuild is needed (ask for a frame). `Updated` carries the widgets'
+        // redraw request, which is what keeps an animation going.
+        self.redraw_request = match state {
+            State::Updated { redraw_request, .. } => redraw_request,
+            State::Outdated => RedrawRequest::NextFrame,
+        };
 
         // ── Phase 2: handler + reducer + process derivations ───────────
         //
@@ -309,6 +354,18 @@ impl<U: IcedUi> IcedRuntime<U> {
         let cache = std::mem::take(&mut self.cache);
         let mut ui = UserInterface::build(self.ui.view(), bounds, cache, &mut renderer_guard);
 
+        // Re-establish the overlay layout before drawing. `UserInterface::draw`
+        // only renders an overlay (pick_list / combo_box dropdown, `tooltip`
+        // widget) when its `overlay` field is populated — and that field is set
+        // by `update`, NOT carried in the `Cache` (which holds only the widget
+        // tree). We build a FRESH `UserInterface` here, separate from the one
+        // `tick()` updated, so without this call `self.overlay` is `None` and
+        // `draw` early-returns: an *open* dropdown would never appear, even
+        // within the texture bounds. Empty events → overlay is laid out but no
+        // events are processed (tick already drained the queue); harmless when
+        // there is no overlay.
+        let _ = ui.update(&[], self.cursor, &mut renderer_guard, &mut Vec::new());
+
         ui.draw(
             &mut renderer_guard,
             &self.ui.theme(),
@@ -354,9 +411,25 @@ impl<U: IcedUi> IcedRuntime<U> {
 
     // ── State ──────────────────────────────────────────────────────────
 
-    /// Whether a redraw is pending.
+    /// Whether a redraw is pending — including while an animation is in
+    /// progress, so the host keeps this instance rendering until it settles.
     pub fn is_dirty(&self) -> bool {
-        self.dirty || self.engine.global_dirty.redraw_pending()
+        self.dirty || self.engine.global_dirty.redraw_pending() || self.is_animating()
+    }
+
+    /// True while a time-based animation is in progress: iced asked for a
+    /// future redraw (via `shell.request_redraw[_at]` inside some widget) and
+    /// hasn't settled back to `Wait`. The host should keep ticking + rendering
+    /// this instance until this returns false.
+    pub fn is_animating(&self) -> bool {
+        !matches!(self.redraw_request, RedrawRequest::Wait)
+    }
+
+    /// The redraw iced asked for after the last tick. Exposed for a host that
+    /// wants to honor `At(Instant)` precisely (sleep until then) rather than
+    /// re-tick every frame; the default dirty-driven loop does not consult it.
+    pub fn next_redraw(&self) -> RedrawRequest {
+        self.redraw_request
     }
 
     /// Force a redraw on the next render pass without queueing any event.

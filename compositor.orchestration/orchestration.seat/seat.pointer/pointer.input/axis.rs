@@ -3,6 +3,15 @@ use smithay::backend::input::{AxisSource, InputBackend, PointerAxisEvent as _};
 use compositor_orchestration_core_state_base::Loop;
 
 pub fn axis<I: InputBackend>(event: &<I as InputBackend>::PointerAxisEvent, _loop: &mut Loop) {
+    // Overview overlay open → axis is fully swallowed (before the world input
+    // bus, so the hidden world's camera never reacts). World tab: zoom the globe
+    // via the picker's handler. Otherwise: scroll the grid (positive vertical =
+    // wheel/finger down reveals lower rows; the render path clamps it).
+    // Overview open → the overview layer handles the axis (globe zoom / grid
+    // scroll) and swallows it.
+    if compositor_y5_overview_input_pointer::pointer::axis::<I>(event, _loop) {
+        return;
+    }
     {
         let location = _loop.state.seat.seat.get_pointer().unwrap().current_location();
         let h = smithay::backend::input::Axis::Horizontal;
@@ -17,7 +26,7 @@ pub fn axis<I: InputBackend>(event: &<I as InputBackend>::PointerAxisEvent, _loo
         // Natural scrolling: invert the finger-axis direction for canvas pan
         // (a discrete wheel is left alone). Mirrors the inversion native_axis
         // applies to the window-scroll path, so both agree.
-        if finger && compositor_developer_environment_config_base::base::get().input_natural_scroll {
+        if finger && _loop.inner.preference.input_natural_scroll {
             horizontal = -horizontal;
             vertical = -vertical;
         }

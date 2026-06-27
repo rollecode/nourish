@@ -13,7 +13,13 @@ pub fn input_received(
     state: &mut Loop,
 ) -> Option<bool> {
     let key = Key::from_keysym(keysym);
-    // println!("Handling key: {:?} {:?} {:?}", key_state, modifiers, keysym);
+
+    // Overview (Super+Tab) owns its keys: toggling from any state, and fully
+    // capturing the keyboard while open. The overview layer decides; if it
+    // consumed the key, windows get nothing.
+    if compositor_y5_overview_input_keyboard::keyboard::handle(key, key_state, modifiers, state) {
+        return Some(true);
+    }
 
     input::input_received(key_state, modifiers, state, key)?;
     navigator::input_received(key_state, modifiers, state, key)?;

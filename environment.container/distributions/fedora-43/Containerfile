@@ -1,0 +1,32 @@
+# y5_compositor — Fedora build/run image.
+# Installs the build deps, clones the committed tree from the local git repo (bind-mounted
+# at /repo — no COPY of the live workspace), and compiles the winit binary.
+FROM fedora:43 AS deps
+
+RUN --mount=type=cache,target=/var/cache/dnf \
+    --mount=type=cache,target=/var/cache/libdnf5 \
+    dnf -y install \
+        cargo rust git clang-devel pkgconf-pkg-config protobuf-compiler protobuf-devel pam-devel \
+        libdisplay-info-devel libinput-devel libseat-devel libxkbcommon-devel pixman-devel \
+        systemd-devel wayland-devel wayland-protocols-devel \
+        mesa-libEGL-devel mesa-libgbm-devel libglvnd-egl libglvnd-gles libglvnd-opengl \
+        vulkan-loader vulkan-loader-devel ffmpeg-free-devel \
+        dbus-devel pulseaudio-libs-devel \
+        foot dejavu-sans-mono-fonts
+
+# --- build stage: clone the local repo + compile winit ----------------------------------
+FROM deps AS build
+ARG PROFILE=debug
+WORKDIR /working.directory
+# Compile into the host-mounted cache (image.sh: -v <.cache>/<distro>:/y5-target) so a changed
+# clone rebuilds incrementally — the compiled dependency graph persists between builds.
+ENV Y5_TARGET_DIR=/y5-target
+
+# /repo is bind-mounted at build time from the prepared self-contained clone
+# (image.sh passes `-v <DIST_SRC>:/repo:ro`). Clone it into the image (offline; no network).
+RUN git clone /repo /working.directory
+
+# Compile via the repo's own build script (single source of backend/profile truth) and
+# stash the binary at a stable path for run.sh / build.sh.
+RUN BIN="$(environment/build.sh winit ${PROFILE})" \
+    && install -Dm755 "$BIN" /usr/local/bin/y5_compositor

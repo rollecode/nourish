@@ -49,7 +49,7 @@ pub fn swipe_end(loop_: &mut Loop, cancelled: bool) {
 
     // Natural scrolling: invert the swipe direction so a multi-finger flick moves
     // the view the same way a two-finger pan does (consistent with the axis path).
-    if compositor_developer_environment_config_base::base::get().input_natural_scroll {
+    if loop_.inner.preference.input_natural_scroll {
         ax = -ax;
         ay = -ay;
     }

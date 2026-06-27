@@ -18,14 +18,10 @@ pub fn interactive(base: Environment) -> Environment {
             "Fall back to GLES if Vulkan initialization fails.",
             base.renderer_fallback,
         ),
-        renderer_sync: choose(
-            "renderer_sync",
-            "Frame-sync strategy.",
-            &["", "infence", "kms"],
-            &base.renderer_sync,
-        ),
-        // Experimental — always disabled, never prompted (hdr, vk_diag, and the two
-        // window-sizing flags below are forced off regardless of the existing file).
+        // Experimental — always disabled, never prompted (renderer_sync, hdr, vk_diag,
+        // and the two window-sizing flags below are forced off regardless of the
+        // existing file).
+        renderer_sync: String::new(),
         hdr: false,
         depth: ask_u8(
             "depth",

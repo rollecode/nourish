@@ -4,7 +4,7 @@ use iced_core::{
     Alignment, Background, Border, Color, Element, Font, Length, Padding, Shadow, Theme, alignment,
 };
 use iced_wgpu::Renderer;
-use iced_widget::{Container, Row, Space, button, column, container, row, text};
+use iced_widget::{Container, Row, Space, button, column, container, mouse_area, row, text};
 use std::collections::HashSet;
 use compositor_monitor_selection_font_base::font::MATERIAL_FAMILY;
 use compositor_monitor_selection_font_base::font_map;
@@ -55,6 +55,40 @@ pub struct ScaleToFitOption {
     pub horizontal: bool
 }
 //
+
+/// How aggressively the close button should dismiss the selected windows,
+/// chosen by the modifiers held at click time:
+///
+/// - `Request` (no modifier): ask the window to close via the `xdg_toplevel.close`
+///   protocol event. Targets the *surface*, not the process, so windows that
+///   share a client process (Chrome windows, a terminal's windows) close just
+///   the chosen one and the app runs its own teardown.
+/// - `Terminate` (Alt): SIGTERM the owning process (systemd scope stop, else
+///   `kill -TERM`). The former default.
+/// - `Kill` (Alt+Shift): SIGKILL the owning process (`kill -9`). The former Alt.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CloseMode {
+    Request,
+    Terminate,
+    Kill,
+}
+
+impl CloseMode {
+    /// Derive the close strength from the modifier state held at click time.
+    pub fn from_modifiers(alt: bool, shift: bool) -> Self {
+        match (alt, shift) {
+            (false, _) => CloseMode::Request,
+            (true, false) => CloseMode::Terminate,
+            (true, true) => CloseMode::Kill,
+        }
+    }
+
+    /// Whether this mode kills the owning process (Alt held) rather than asking
+    /// the window to close — drives the destructive skull/red affordance.
+    pub fn is_destructive(self) -> bool {
+        !matches!(self, CloseMode::Request)
+    }
+}
 
 #[derive(Debug, Default, Clone)]
 pub struct SelectionState {
@@ -142,10 +176,10 @@ impl Overlay {
     pub fn selection(&self) -> Container<'_, Message> {
         let icon_button =
             |glyph: &'static str, action: Message| -> Element<'_, Message, Theme, Renderer> {
-                let is_active = if let Message::SelectionClicked(action) = action {
-                    self.selection.is_active(action)
-                } else {
-                    false
+                let kind = tip_kind(&action);
+                let is_active = match &action {
+                    Message::SelectionClicked(a) => self.selection.is_active(*a),
+                    _ => false,
                 };
 
                 let label = text(glyph)
@@ -156,7 +190,7 @@ impl Overlay {
                         color: Some(Color::from_rgb(0.15, 0.18, 0.24)),
                     });
 
-                button(
+                let btn = button(
                     container(label)
                         .center_x(Length::Fill)
                         .center_y(Length::Fill)
@@ -200,8 +234,16 @@ impl Overlay {
                         },
                         shadow: Shadow::default(),
                     }
-                })
-                .into()
+                });
+
+                let el: Element<'_, Message, Theme, Renderer> = btn.into();
+                match kind {
+                    Some(k) => mouse_area(el)
+                        .on_enter(Message::Hover(Some(k)))
+                        .on_exit(Message::Hover(None))
+                        .into(),
+                    None => el,
+                }
             };
 
         let press_action = |f| {
@@ -213,6 +255,53 @@ impl Overlay {
                 Message::ExecuteSelection(vec![f], self.selection.alt_held)
             }
         };
+
+        // --- Close: dismiss every selected window. The strength is chosen by
+        // the modifiers held at render time (baked into the message, since the
+        // view re-renders on Shift/AltChanged), each with its own glyph:
+        //   none      -> ask the window to close (xdg_toplevel.close protocol)  [door]
+        //   Alt       -> SIGTERM the owning process                             [power-off]
+        //   Alt+Shift -> SIGKILL the owning process                             [skull]
+        // Holding Alt (either process-killing variant) deepens the red to
+        // signal the destructive intent. ---
+        let mode = CloseMode::from_modifiers(self.selection.alt_held, self.selection.shift_held);
+        let destructive = mode.is_destructive();
+        let close_glyph = match mode {
+            CloseMode::Request => font_map::WindowClosed,
+            CloseMode::Terminate => font_map::PowerOff,
+            CloseMode::Kill => font_map::Skull,
+        };
+        let close_button: Element<'_, Message, Theme, Renderer> = button(
+            container(
+                text(close_glyph)
+                    .font(MATERIAL_FAMILY)
+                    .size(20)
+                    .center()
+                    .style(|_theme| text::Style { color: Some(Color::WHITE) }),
+            )
+            .center_x(Length::Fill)
+            .center_y(Length::Fill)
+            .width(Length::Fixed(36.0))
+            .height(Length::Fixed(36.0)),
+        )
+        .padding(0)
+        .on_press(Message::CloseSelected(mode))
+        .style(move |_theme, status| {
+            let bg = match (status, destructive) {
+                (button::Status::Hovered, _) => Color::from_rgb(0.86, 0.20, 0.22),
+                (button::Status::Pressed, _) => Color::from_rgb(0.74, 0.12, 0.14),
+                (_, true) => Color::from_rgb(0.80, 0.12, 0.14),
+                _ => Color::from_rgb(0.90, 0.32, 0.34),
+            };
+            button::Style {
+                snap: true,
+                background: Some(Background::Color(bg)),
+                text_color: Color::WHITE,
+                border: Border { radius: 6.0.into(), ..Default::default() },
+                shadow: Shadow::default(),
+            }
+        })
+        .into();
 
         let alignment_group = column![
             row![
@@ -342,6 +431,15 @@ impl Overlay {
             }
         }
 
+        // Destructive close action sits at the end of the toolbar, fenced off
+        // from the layout tools by a separator.
+        toolbar_left = toolbar_left.push(separator());
+        toolbar_left = toolbar_left.push(
+            mouse_area(close_button)
+                .on_enter(Message::Hover(Some(TipKind::Close)))
+                .on_exit(Message::Hover(None)),
+        );
+
         // The commit panel — only present when toggles exist.
         let commit_panel: Element<'_, Message, Theme, Renderer> = if self.selection.has_any_toggle()
         {
@@ -384,9 +482,12 @@ impl Overlay {
             });
 
             // Wrap in fixed-size container so it animates in cleanly.
-            container(commit_button)
+            let panel = container(commit_button)
                 .width(Length::Fixed(48.0))
-                .height(Length::Fixed(74.0)) // was 36.0
+                .height(Length::Fixed(74.0)); // was 36.0
+            mouse_area(panel)
+                .on_enter(Message::Hover(Some(TipKind::Commit)))
+                .on_exit(Message::Hover(None))
                 .into()
         } else {
             Space::new()
@@ -414,6 +515,21 @@ impl Overlay {
                 bottom: 0.0,
                 left: 16.0,
             })
+    }
+
+    /// The description + live modifier state for the currently-hovered button,
+    /// or `None` when nothing is hovered. The host pushes this into the separate
+    /// tooltip surface. Recomputed each frame, so the text swaps as Alt/Shift are
+    /// pressed while hovering.
+    pub fn hovered_tip(&self) -> Option<(String, bool, bool)> {
+        let kind = self.hovered?;
+        let (alt, shift) = (self.selection.alt_held, self.selection.shift_held);
+        let text = match kind {
+            TipKind::Action(a) => describe_action(a, shift),
+            TipKind::Close => describe_close(alt, shift).to_string(),
+            TipKind::Commit => "Apply batched actions".to_string(),
+        };
+        Some((text, alt, shift))
     }
 
     pub fn handle_shift_click(&mut self, action: SelectionAction) {
@@ -465,5 +581,67 @@ impl Overlay {
     }
 }
 
-//
-//
+/// Identifies which toolbar button the pointer is over, so the host can render
+/// the matching (modifier-aware) tooltip text in the separate tip surface.
+#[derive(Debug, Clone, Copy)]
+pub enum TipKind {
+    Action(SelectionAction),
+    Close,
+    Commit,
+}
+
+/// Derive the tip identity from a button's press message.
+fn tip_kind(action: &Message) -> Option<TipKind> {
+    match action {
+        Message::SelectionClicked(a) => Some(TipKind::Action(*a)),
+        Message::ExecuteSelection(actions, _) => actions.first().map(|a| TipKind::Action(*a)),
+        Message::ExecuteScaleToFit(o) => Some(TipKind::Action(SelectionAction::ScaleToFit(*o))),
+        Message::CloseSelected(_) => Some(TipKind::Close),
+        _ => None,
+    }
+}
+
+/// Action description, swapped when Shift is held (Shift turns the layout
+/// buttons into "add to batch" instead of execute-now).
+fn describe_action(a: SelectionAction, shift: bool) -> String {
+    use SelectionAction::*;
+    let (plain, batched) = match a {
+        AlignTop => ("Align top edges", "Add: align top"),
+        AlignBottom => ("Align bottom edges", "Add: align bottom"),
+        AlignVerticalCenter => ("Align vertical centers", "Add: align v-center"),
+        AlignLeft => ("Align left edges", "Add: align left"),
+        AlignHorizontalCenter => ("Align horizontal centers", "Add: align h-center"),
+        AlignRight => ("Align right edges", "Add: align right"),
+        DistributeVertical => ("Distribute vertically", "Add: distribute vertical"),
+        DistributeHorizontal => ("Distribute horizontally", "Add: distribute horizontal"),
+        StackVertical => ("Stack vertically (no gaps)", "Add: stack vertical"),
+        StackHorizontal => ("Stack horizontally (no gaps)", "Add: stack horizontal"),
+        ScaleToFit(o) => return describe_scale(o),
+    };
+    if shift { batched } else { plain }.to_string()
+}
+
+/// Scale-to-fit description; `perceived` (set from Alt at build time) swaps the
+/// suffix.
+fn describe_scale(o: ScaleToFitOption) -> String {
+    let what = match (o.vertical, o.horizontal) {
+        (true, true) => "Fit to aspect ratio",
+        (true, false) => "Fit to page height",
+        (false, true) => "Fit to page width",
+        _ => "Scale to fit",
+    };
+    if o.perceived {
+        format!("{what} (perceived size)")
+    } else {
+        what.to_string()
+    }
+}
+
+/// Close-button description, escalating with Alt / Alt+Shift.
+fn describe_close(alt: bool, shift: bool) -> &'static str {
+    match CloseMode::from_modifiers(alt, shift) {
+        CloseMode::Request => "Close window",
+        CloseMode::Terminate => "Terminate process (SIGTERM)",
+        CloseMode::Kill => "Force kill (SIGKILL)",
+    }
+}

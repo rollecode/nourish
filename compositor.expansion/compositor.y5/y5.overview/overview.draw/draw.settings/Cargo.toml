@@ -1,0 +1,32 @@
+[package]
+name = "compositor_y5_overview_draw_settings"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+smithay = { workspace = true }
+compositor_orchestration_core_state_base = { workspace = true }
+compositor_orchestration_draw_layer_base = { workspace = true }
+compositor_orchestration_driver_audio_base = { workspace = true }
+compositor_orchestration_driver_output_base = { workspace = true }
+compositor_orchestration_driver_settings_base = { workspace = true }
+compositor_monitor_compositor_iced_base = { workspace = true }
+compositor_configurator_network_backend_base = { workspace = true }
+compositor_configurator_bluetooth_backend_base = { workspace = true }
+compositor_configurator_settings_surface_message = { workspace = true }
+compositor_configurator_settings_surface_view = { workspace = true }
+compositor_y5_audio_controller_interface = { workspace = true }
+compositor_y5_surface_draw_handle = { workspace = true }
+compositor_y5_surface_protocol_base = { workspace = true }
+compositor_developer_environment_config_base = { workspace = true }
+compositor_developer_environment_preference_base = { workspace = true }
+compositor_developer_environment_keybinding_base = { workspace = true }
+compositor_y5_overview_state_base = { workspace = true }
+compositor_y5_overview_interface_base = { workspace = true }
+compositor_y5_overlay_interface_keyboard = { workspace = true }
+compositor_y5_canvas_input_keyboard = { workspace = true }
+# Developer logging — provides error!/warn!/info!/trace!/abort! (see lib.rs).
+compositor_developer_debug_instance_record = { workspace = true }
+
+[lib]
+path = "lib.rs"

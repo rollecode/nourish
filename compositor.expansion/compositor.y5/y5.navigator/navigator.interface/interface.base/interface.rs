@@ -190,6 +190,14 @@ pub fn fit(state: &mut Loop, zoom_1: bool, fit_1: bool) {
     );
 }
 
+/// Travel the camera to fit a single specific window (e.g. the overview cell the
+/// user clicked). Unlike `fit_window`, the target window is explicit rather than
+/// derived from the selection/focus.
+pub fn fit_to_window(state: &mut Loop, window: &Window) {
+    let result = view(state, vec![window], false);
+    travel(state, result.position, result.zoom);
+}
+
 /// Four-finger pinch IN: frame the focused window — or, if nothing is focused or
 /// selected, the most-centered visible window — like Super+Alt+F with a centered
 /// fallback. Eases there via the navigator (one-shot, like the swipe handler).

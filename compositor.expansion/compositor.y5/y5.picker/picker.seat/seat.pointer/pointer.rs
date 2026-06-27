@@ -1,5 +1,4 @@
-//! Picker pointer input: left-drag rotates the sphere anywhere (view-space
-//! trackball + release momentum); a click picks the cell under it; scroll zooms.
+//! Picker pointer input: drag rotates; click picks a cell (click again = enter); scroll zooms.
 use smithay::backend::input::{
     AbsolutePositionEvent, Axis, ButtonState, InputBackend, PointerAxisEvent, PointerButtonEvent,
     PointerMotionEvent,
@@ -13,9 +12,8 @@ use compositor_y5_picker_three_constant::{ROTATE_SENSITIVITY, ZOOM_MAX, ZOOM_MIN
 use compositor_y5_picker_three_orient::orient::IDENTITY;
 
 const BTN_LEFT: u32 = 0x110;
-/// A press→release that moves less than this (px) counts as a click, not a drag.
+/// A press→release moving less than this (px) is a click, not a drag.
 const CLICK_PX: f64 = 6.0;
-
 fn output_size(state: &mut Loop) -> (f64, f64) { state.size_context().screen_size_physical }
 
 fn active(state: &mut Loop) -> Option<&mut PickerActive> {
@@ -26,13 +24,11 @@ pub fn button<I: InputBackend>(event: &<I as InputBackend>::PointerButtonEvent, 
     if event.button_code() != BTN_LEFT {
         return;
     }
-    // Clicks on the details panel go to it (buttons + focus the name field).
     let pressed = event.state() == ButtonState::Pressed;
     if compositor_y5_picker_seat_iced::iced::route_button(state, event.button_code(), pressed) {
         return;
     }
     if !pressed {
-        // End the drag; a barely-moved press is a click → pick the cell under it.
         let info = active(state).and_then(|a| a.drag.take().map(|s| (s, a.pointer)));
         if let Some((start, pos)) = info
             && (pos.0 - start.0).hypot(pos.1 - start.1) < CLICK_PX
@@ -40,12 +36,15 @@ pub fn button<I: InputBackend>(event: &<I as InputBackend>::PointerButtonEvent, 
             let (w, h) = output_size(state);
             let q = active(state).map(|a| a.orientation).unwrap_or(IDENTITY);
             if let Some(c) = compositor_y5_picker_pick_base::base::pick_cell(pos, (w, h), q) {
-                compositor_y5_picker_command_base::base::set_selected(state, Some(c));
+                if active(state).and_then(|a| a.selected) == Some(c) {
+                    compositor_y5_picker_world_base::base::start(state);
+                } else {
+                    compositor_y5_picker_command_base::base::set_selected(state, Some(c));
+                }
             }
         }
         return;
     }
-    // Press anywhere: begin a drag (record the start) and stop any momentum.
     if let Some(a) = active(state) {
         a.drag = Some(a.pointer);
         a.spin = IDENTITY;
@@ -53,9 +52,10 @@ pub fn button<I: InputBackend>(event: &<I as InputBackend>::PointerButtonEvent, 
 }
 
 pub fn axis<I: InputBackend>(event: &<I as InputBackend>::PointerAxisEvent, state: &mut Loop) {
-    let delta = event.amount_v120(Axis::Vertical).map(|v| v / 120.0).or_else(|| event.amount(Axis::Vertical)).unwrap_or(0.0) as f32;
+    // Normalise to notches (wheel = v120/120; winit continuous = `amount`/8) + cap per event.
+    let delta = event.amount_v120(Axis::Vertical).map(|v| v / 120.0).or_else(|| event.amount(Axis::Vertical).map(|a| a / 8.0)).unwrap_or(0.0) as f32;
     if let Some(a) = active(state) {
-        a.zoom = (a.zoom - delta * ZOOM_STEP).clamp(ZOOM_MIN, ZOOM_MAX);
+        a.zoom = (a.zoom - (delta * ZOOM_STEP).clamp(-0.2, 0.2)).clamp(ZOOM_MIN, ZOOM_MAX);
     }
 }
 

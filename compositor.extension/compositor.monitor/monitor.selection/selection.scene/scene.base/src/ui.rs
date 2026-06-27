@@ -4,7 +4,7 @@ use iced_core::{
 };
 use iced_wgpu::Renderer;
 use iced_widget::{column, container};
-use crate::selection::{ScaleToFitOption, SelectionAction, SelectionState};
+use crate::selection::{CloseMode, ScaleToFitOption, SelectionAction, SelectionState, TipKind};
 use compositor_support_iced_core_engine_base::IcedUi;
 use compositor_support_iced_core_engine_base::ui::EventFlags;
 
@@ -14,6 +14,9 @@ pub struct Overlay {
     pub mode: Mode,
     pub selection_count: u32,
     pub selection: SelectionState,
+    /// Which button the pointer is currently over (drives the separate tooltip
+    /// surface). `None` when nothing is hovered.
+    pub hovered: Option<TipKind>,
 }
 
 pub enum Mode {
@@ -32,6 +35,11 @@ pub enum Message {
     AltChanged(bool),
     ExecuteSelection(Vec<SelectionAction>, bool),
     ExecuteScaleToFit(ScaleToFitOption),
+    /// Pointer entered (`Some`) or left (`None`) a button — drives the tooltip.
+    Hover(Option<TipKind>),
+    /// Close every selected window at the strength chosen by the modifiers held
+    /// at click time (none = protocol close, Alt = SIGTERM, Alt+Shift = SIGKILL).
+    CloseSelected(CloseMode),
 }
 
 impl Default for Overlay {
@@ -42,6 +50,7 @@ impl Default for Overlay {
             last_pressed: None,
             mode: Mode::None,
             selection: SelectionState::default(),
+            hovered: None,
         }
     }
 }
@@ -96,6 +105,7 @@ impl IcedUi for Overlay {
             Message::SelectNotify(size) => self.apply_count(size),
             Message::ShiftChanged(held) => self.selection.shift_held = held,
             Message::AltChanged(held) => self.selection.alt_held = held,
+            Message::Hover(kind) => self.hovered = kind,
             Message::SelectionClicked(action) => {
                 if self.selection.shift_held {
                     self.handle_shift_click(action);

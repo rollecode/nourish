@@ -54,6 +54,12 @@ pub(crate) fn motion(cx: &mut SystemCx, x: f64, y: f64, _screen_x: f64, _screen_
     // event; the start_cursor anchors are in the same space.
     let cursor = Point::<f64, Logical>::from((x, y));
 
+    // Overview overlay open → presentational: never transform a window. Pass so
+    // native motion still routes hover to the menu-bar iced surface.
+    if cx.storage.get(&compositor_y5_overview_state_base::base::OVERVIEW).visible {
+        return InputFlow::Pass;
+    }
+
     // Only an ACTIVE non-Hand grab is a transform. Hand / no-grab -> Pass (the
     // rim returned `false`; PAN is handled by CameraSystem, native_motion by the
     // rim).

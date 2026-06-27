@@ -77,6 +77,18 @@ pub struct Orchestrator {
 
     // audio/media are now driver data in `kernel` (compositor_orchestration_driver_audio_base).
     pub environment: Environment,
+    /// Live user preferences (cursor speed, touchpad natural-scroll, per-EDID
+    /// output modes) — the inline-reloaded counterpart to the read-once
+    /// `environment`. Seeded at startup from `preference::load()`, refreshed from
+    /// disk whenever the settings window opens, and written live by the settings
+    /// handler (which then persists it). Read per-event by motion.rs / axis.rs;
+    /// reachable from both the input path and the UI handler via `&mut Loop`.
+    pub preference: compositor_developer_environment_preference_base::base::Preference,
+    /// Live keyboard-shortcut overrides (keybinding.json). Seeded at startup,
+    /// refreshed whenever the settings window opens, written by the settings
+    /// handler. Read by the overlay shortcut path on every keypress (parse-or-
+    /// default). The inline-reloaded counterpart to the read-once settings.
+    pub keybinding: compositor_developer_environment_keybinding_base::base::KeyBindings,
 }
 
 pub struct StateDRMBinding {
@@ -137,6 +149,12 @@ impl Orchestrator {
     ) -> Self {
         let start_time = std::time::Instant::now();
 
+        // Live user preferences (cursor speed, touch natural-scroll) loaded fresh
+        // from preferences.json to seed the runtime cells below.
+        let prefs = compositor_developer_environment_preference_base::base::load();
+        // Keyboard-shortcut overrides loaded fresh from keybinding.json.
+        let keybinding = compositor_developer_environment_keybinding_base::base::load();
+
         // Audio/media are driver data: stored in the kernel/driver storage by
         // token, not as Orchestrator fields.
         kernel_data.insert(&compositor_orchestration_driver_audio_base::base::AUDIO, AudioController::new("y5.compositor").ok());
@@ -167,6 +185,15 @@ impl Orchestrator {
         // Selection-overlay driver: the align/distribute toolbar instance.
         kernel_data.insert(&compositor_orchestration_driver_selection_base::base::SELECTION_OVERLAY, Default::default());
 
+        // Output-mode driver: rim-issued mode request + kernel-written advertised
+        // modes snapshot and apply result (settings window ↔ DRM, like the lid).
+        kernel_data.insert(&compositor_orchestration_driver_output_base::base::OUTPUT_MODE_REQUEST, None);
+        kernel_data.insert(&compositor_orchestration_driver_output_base::base::OUTPUT_MODES_SNAPSHOT, Default::default());
+        kernel_data.insert(&compositor_orchestration_driver_output_base::base::OUTPUT_MODE_RESULT, None);
+
+        // Settings-window driver: the open/handle/dirty state for the Super+. surface.
+        kernel_data.insert(&compositor_orchestration_driver_settings_base::base::SETTINGS, Default::default());
+
         Self {
             environment,
             __set_lock: None,
@@ -181,6 +208,11 @@ impl Orchestrator {
             worlds,
             bus: compositor_orchestration_bus_legacy_base::legacy::LegacyBus::new(),
             pilot_tick: 0,
+            // Seed the live preference object from preferences.json (one disk read
+            // at startup; refreshed on each settings-window open). Missing file →
+            // sane defaults.
+            preference: prefs,
+            keybinding,
         }
     }
 
@@ -285,6 +317,17 @@ impl Orchestrator {
     pub fn surface_mut(&mut self) -> &mut compositor_y5_surface_state_base::state::SurfaceState {
         let target = self.worlds.spawn_target();
         self.worlds.get_mut(target).storage_mut().get_mut(&compositor_y5_surface_system_base::base::SURFACE_MUT)
+    }
+
+    /// FOCUS ACCESSOR: the focused world's overview-mode slot (Super+Tab overlay).
+    pub fn overview(&self) -> &compositor_y5_overview_state_base::base::Overview {
+        let target = self.worlds.spawn_target();
+        self.worlds.get(target).storage().get(&compositor_y5_overview_state_base::base::OVERVIEW)
+    }
+
+    pub fn overview_mut(&mut self) -> &mut compositor_y5_overview_state_base::base::Overview {
+        let target = self.worlds.spawn_target();
+        self.worlds.get_mut(target).storage_mut().get_mut(&compositor_y5_overview_state_base::base::OVERVIEW_MUT)
     }
 
     /// FOCUS ACCESSOR: the focused world's pointer slot (cursor world coords).

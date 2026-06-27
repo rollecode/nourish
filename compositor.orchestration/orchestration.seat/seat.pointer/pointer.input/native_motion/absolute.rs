@@ -10,6 +10,12 @@ pub fn input_received_normalized<I: InputBackend>(
     position_normalized: &Point<f64, Logical>,
     position_screen: &Point<f64, Logical>,
 ) {
+    // Overview World tab → the overview layer drives the globe (drag-rotate),
+    // unless over the menu bar (returns false → fall through for bar hover).
+    if compositor_y5_overview_input_pointer::pointer::absolute::<I>(event, _loop) {
+        return;
+    }
+
     let position_normalized = position_normalized.clone().into();
     let serial = SERIAL_COUNTER.next_serial();
     let pointer = _loop.state.seat.seat.get_pointer().unwrap();

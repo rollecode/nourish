@@ -56,10 +56,16 @@ impl FramePlan {
 /// ever reached from `Status::Running`, and the origin world is suspended). The
 /// caller passes it (rather than this crate knowing the PICKER world id) so the
 /// plan crate stays free of expansion dependencies.
+///
+/// The picker pass still carries the post-scene tap: an in-flight screen/
+/// full-screen capture keeps recording while the user navigates worlds, so the
+/// intermediate world-picker overlay shows up in the video instead of the frame
+/// freezing on the last desktop frame. (Window/world-region captures are
+/// screen-space-independent and simply keep tracking their windows.)
 pub fn plan(status: &Status, picker_active: bool) -> FramePlan {
     use PlanStep::*;
     if picker_active {
-        return FramePlan { steps: vec![Pass(FramePass::Picker)] };
+        return FramePlan { steps: vec![Pass(FramePass::Picker), Tap(POST_SCENE)] };
     }
     let steps = match status {
         Status::Running | Status::Unlock { .. } => {

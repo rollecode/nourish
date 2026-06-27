@@ -29,12 +29,6 @@ pub fn gather() -> Vec<cfg::Preset> {
             "Fall back to GLES if Vulkan init fails",
             defaults.renderer_fallback,
         ),
-        renderer_sync: prompt::choose(
-            "renderer_sync",
-            "Default frame-sync strategy",
-            &["", "infence", "kms"],
-            &defaults.renderer_sync,
-        ),
     };
 
     let encoder = pkg::capture_encoder_for(pkg::detect_gpu());

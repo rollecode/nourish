@@ -113,6 +113,13 @@ pub fn relative<I: InputBackend>(
     let dt = event.delta();
     let dt_unaccelerated = event.delta_unaccel();
 
+    // Live cursor-speed multiplier (settings window). Read before the
+    // `pointer_mut()` borrows below so the borrows stay disjoint. Applied ONLY to
+    // the on-screen cursor accumulator — NOT to `dt`/`dt_unaccelerated`, which are
+    // forwarded raw to clients via the relative-pointer protocol (games apply
+    // their own acceleration and expect unscaled hardware deltas).
+    let sensitivity = _loop.inner.preference.cursor_sensitivity;
+
     // Snapshot previous position in both spaces.
     let previous_phys = _loop.inner.pointer_mut().motion.clone();
     let previous_world: Point<f64, Logical> = {
@@ -121,9 +128,9 @@ pub fn relative<I: InputBackend>(
         t.into_storage_point_f64()
     };
 
-    // Accumulate the physical delta.
-    _loop.inner.pointer_mut().motion.x += dt.x;
-    _loop.inner.pointer_mut().motion.y += dt.y;
+    // Accumulate the physical delta, scaled by the live cursor sensitivity.
+    _loop.inner.pointer_mut().motion.x += dt.x * sensitivity;
+    _loop.inner.pointer_mut().motion.y += dt.y * sensitivity;
 
     // Candidate in world space.
     let candidate_world: Point<f64, Logical> = {

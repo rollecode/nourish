@@ -119,6 +119,23 @@ pub fn per_frame(state: &mut Loop, renderer: &mut GlesRenderer, _size: Size<i32,
     }
 }
 
+/// Per-frame pump for an active VIDEO capture while an OVERLAY world (e.g. the
+/// world picker) owns the frame, so the scene `per_frame` hook does not run.
+///
+/// Advances ONLY the encoder: the capture tap has already refreshed the entry
+/// dmabuf in the backend's picker pass, but `per_frame` (which would encode it)
+/// is wired into the scene hooks, which are skipped while the overlay is active —
+/// so without this the recording stalls on the last desktop frame and the picker
+/// never reaches the video. It deliberately skips `update_crop` (the overlay's
+/// camera is not the captured world, so it would mis-project region indicators)
+/// and `video_keepalive` (its dialog renders on the scene layer, hidden beneath
+/// the overlay).
+pub fn overlay_per_frame(state: &mut Loop) {
+    if state.inner.kernel.get_mut(&compositor_orchestration_driver_capture_base::base::CAPTURE_MUT).is_active() {
+        video_frame(state);
+    }
+}
+
 /// Dispatch a capture overlay message (routed here from the surface message
 /// pump). Selection/drag messages are handled inside the overlay UI itself;
 /// only the lifecycle ones act here.

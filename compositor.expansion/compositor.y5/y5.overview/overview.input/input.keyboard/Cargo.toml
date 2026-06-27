@@ -1,0 +1,18 @@
+[package]
+name = "compositor_y5_overview_input_keyboard"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+smithay = { workspace = true }
+compositor_orchestration_core_state_base = { workspace = true }
+compositor_support_library_input_keyboard_base = { workspace = true }
+compositor_y5_overview_interface_base = { workspace = true }
+compositor_y5_overview_interface_surface = { workspace = true }
+compositor_y5_overview_interface_activate = { workspace = true }
+compositor_y5_picker_interface_embed = { workspace = true }
+# Developer logging — provides error!/warn!/info!/trace!/abort! (see lib.rs).
+compositor_developer_debug_instance_record = { workspace = true }
+
+[lib]
+path = "lib.rs"

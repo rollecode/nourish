@@ -40,6 +40,18 @@ pub struct AudioState {
     pub description: Option<String>,
     pub volume: f64,
     pub muted: bool,
+    /// All output sinks (for the settings Audio tab); the default has `is_default`.
+    pub sinks: Vec<SinkInfo>,
+}
+
+/// One output sink for the Audio tab list.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct SinkInfo {
+    pub name: String,
+    pub description: String,
+    pub volume: f64,
+    pub muted: bool,
+    pub is_default: bool,
 }
 
 #[derive(Debug)]
@@ -162,11 +174,86 @@ impl AudioController {
         self.state.lock().unwrap().clone()
     }
 
-    /// Synchronously re-query the default sink, update the cache, and return it.
+    /// Synchronously re-query the default sink (+ the full sink list), update the
+    /// cache, and return it.
     pub fn refresh(&self) -> Result<AudioState, AudioError> {
-        let snap = self.query_default_sink()?;
+        let mut snap = self.query_default_sink()?;
+        let default = snap.sink_name.clone().unwrap_or_default();
+        snap.sinks = self.query_sinks(&default);
         *self.state.lock().unwrap() = snap.clone();
         Ok(snap)
+    }
+
+    /// Make `name` the default output sink.
+    pub fn set_default_sink(&self, name: &str) -> Result<AudioState, AudioError> {
+        self.mainloop.borrow_mut().lock();
+        let ml = Rc::clone(&self.mainloop);
+        let op = self.context.borrow_mut().set_default_sink(name, move |_ok| {
+            unsafe { (*ml.as_ptr()).signal(false) };
+        });
+        while op.get_state() == OpState::Running {
+            self.mainloop.borrow_mut().wait();
+        }
+        self.mainloop.borrow_mut().unlock();
+        self.refresh()
+    }
+
+    /// Set a specific sink's volume (fraction of NORMAL), preserving balance.
+    pub fn set_sink_volume(&self, name: &str, fraction: f64) -> Result<AudioState, AudioError> {
+        let target = fraction.clamp(0.0, self.max_volume);
+        let mut cv = self.query_sink_volumes(name)?;
+        let target_vol = Volume((target * Volume::NORMAL.0 as f64).round() as u32);
+        if cv.scale(target_vol).is_none() {
+            cv.set(cv.len().max(1), target_vol);
+        }
+        let name = name.to_string();
+        self.run(|introspect, done| introspect.set_sink_volume_by_name(&name, &cv, Some(done)))?;
+        self.refresh()
+    }
+
+    /// Per-channel volumes of a named sink (synchronous).
+    fn query_sink_volumes(&self, name: &str) -> Result<ChannelVolumes, AudioError> {
+        let out: Rc<RefCell<Option<ChannelVolumes>>> = Rc::new(RefCell::new(None));
+        let name = name.to_string();
+        {
+            let out = Rc::clone(&out);
+            let ml = Rc::clone(&self.mainloop);
+            self.run_op(move |introspect| {
+                introspect.get_sink_info_by_name(&name, move |res| match res {
+                    ListResult::Item(info) => *out.borrow_mut() = Some(info.volume),
+                    _ => unsafe { (*ml.as_ptr()).signal(false) },
+                })
+            });
+        }
+        let v = out.borrow_mut().take();
+        v.ok_or(AudioError::NoDefaultSink)
+    }
+
+    /// All sinks (synchronous), marking the one equal to `default_name`.
+    fn query_sinks(&self, default_name: &str) -> Vec<SinkInfo> {
+        let out: Rc<RefCell<Vec<SinkInfo>>> = Rc::new(RefCell::new(Vec::new()));
+        let dn = default_name.to_string();
+        {
+            let out = Rc::clone(&out);
+            let ml = Rc::clone(&self.mainloop);
+            self.run_op(move |introspect| {
+                introspect.get_sink_info_list(move |res| match res {
+                    ListResult::Item(info) => {
+                        let name = info.name.as_ref().map(|c| c.to_string()).unwrap_or_default();
+                        out.borrow_mut().push(SinkInfo {
+                            is_default: name == dn,
+                            name,
+                            description: info.description.as_ref().map(|c| c.to_string()).unwrap_or_default(),
+                            volume: info.volume.max().0 as f64 / Volume::NORMAL.0 as f64,
+                            muted: info.mute,
+                        });
+                    }
+                    _ => unsafe { (*ml.as_ptr()).signal(false) },
+                })
+            });
+        }
+        let v = out.borrow().clone();
+        v
     }
 
     /// Set absolute volume as a fraction of NORMAL (`0.0..=max_volume`). Balance
@@ -381,5 +468,6 @@ fn sink_info_to_state(info: &pulse::context::introspect::SinkInfo) -> AudioState
         description: info.description.as_ref().map(|c| c.to_string()),
         volume: info.volume.max().0 as f64 / Volume::NORMAL.0 as f64,
         muted: info.mute,
+        sinks: Vec::new(),
     }
 }

@@ -11,7 +11,7 @@ use smithay::desktop::{Window, layer_map_for_output};
 use smithay::utils::{Logical, Physical, Point, Scale, Size};
 use smithay::wayland::seat::WaylandFocus;
 use compositor_orchestration_draw_dispatch_frame::SceneDispatch;
-use compositor_orchestration_draw_scene_element::element::{PreImported, SceneElement};
+use compositor_orchestration_draw_scene_element::element::SceneElement;
 use compositor_orchestration_core_state_base::Loop;
 use compositor_orchestration_core_state_base::state::CoordinateTrait;
 use compositor_orchestration_draw_node_base::node::{DrawNode, Plan};
@@ -36,6 +36,8 @@ pub struct PreparedGles {
     pub surfaces_dim: Vec<compositor_monitor_compositor_iced_base::IcedRenderElement>,
     pub background_two: Option<compositor_background_two_draw_element::element::ParallaxBackground>,
     pub background_three: Vec<compositor_support_bevy_core_compositor_base::BevyRenderElement>,
+    /// The embedded picker globe for the overview's World tab (empty otherwise).
+    pub overview_world: Vec<compositor_support_bevy_core_compositor_base::BevyRenderElement>,
 }
 
 /// GLES-only preparation phase: runs the per-frame hooks and builds the iced /
@@ -105,12 +107,17 @@ pub fn prepare(
         compositor_y5_picker_interface_capture::capture::finish_arm_and_open(state, renderer, size);
     }
 
+    // Overview (Super+Tab): the freeze-backdrop capture + the World-tab globe are
+    // owned by the overview layer; this is its GLES-phase hook.
+    let overview_world = compositor_y5_overview_draw_frame::frame::prepare(state, renderer, size);
+
     PreparedGles {
         surfaces,
         surfaces_screen,
         surfaces_dim,
         background_two,
         background_three,
+        overview_world,
     }
 }
 
@@ -142,22 +149,34 @@ where
 
     plan.extend(layer::ICED_SCREEN, prepared.surfaces_screen.into_iter().map(DrawNode::Iced));
 
-    // CONTENT band: windows + world iced INTERLEAVED by the DrawOrder authority
-    // ("everything interleaves"). The canvas scene returns the ordered mix; we
-    // map each to its draw node at one layer. (World iced is no longer a
-    // separate below-windows band — it shares this band, ordered by DrawOrder.)
-    let (content, canvas_window) =
-        compositor_y5_canvas_draw_scene::scene::scene(state, renderer, size);
-    for item in content {
-        match item {
-            compositor_y5_canvas_draw_scene::scene::ContentItem::Canvas(e) => {
-                plan.push(layer::CANVAS, DrawNode::Canvas(e))
+    // CONTENT band. The overview overlay (Super+Tab) owns this band when open
+    // (backdrop + grid/globe) — its layer handles it and returns the windows it
+    // drew; otherwise draw the normal canvas: windows + world iced INTERLEAVED by
+    // the DrawOrder authority ("everything interleaves").
+    let canvas_window = match compositor_y5_overview_draw_frame::frame::band(
+        state,
+        renderer,
+        size,
+        &mut plan,
+        prepared.overview_world,
+    ) {
+        Some(windows) => windows,
+        None => {
+            let (content, cw) =
+                compositor_y5_canvas_draw_scene::scene::scene(state, renderer, size);
+            for item in content {
+                match item {
+                    compositor_y5_canvas_draw_scene::scene::ContentItem::Canvas(e) => {
+                        plan.push(layer::CANVAS, DrawNode::Canvas(e))
+                    }
+                    compositor_y5_canvas_draw_scene::scene::ContentItem::Iced(e) => {
+                        plan.push(layer::CANVAS, DrawNode::Iced(e))
+                    }
+                }
             }
-            compositor_y5_canvas_draw_scene::scene::ContentItem::Iced(e) => {
-                plan.push(layer::CANVAS, DrawNode::Iced(e))
-            }
+            cw
         }
-    }
+    };
 
     // Capture-dim backdrop: below the content band, above background.
     plan.extend(layer::CAPTURE_DIM, prepared.surfaces_dim.into_iter().map(DrawNode::Iced));

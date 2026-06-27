@@ -10,6 +10,12 @@ use smithay::utils::{Physical, Point, Size};
 pub struct SelectionOverlayState {
     /// The live toolbar instance, if one is currently shown.
     pub handle: Option<HandleId>,
+    /// Companion hover-tooltip surface (separate texture, floats above the bar,
+    /// click-through). Lives alongside `handle`.
+    pub tip_handle: Option<HandleId>,
+    /// Last tooltip content pushed to the tip surface — gates redundant
+    /// re-renders while the same button stays hovered.
+    pub last_tip: Option<(String, bool, bool)>,
     /// Last selection size pushed to the UI (avoids redundant dispatches).
     pub count: i32,
     /// Last camera zoom the world toolbar was counter-scaled for (NaN = unset).
@@ -18,7 +24,13 @@ pub struct SelectionOverlayState {
 
 impl Default for SelectionOverlayState {
     fn default() -> Self {
-        Self { handle: None, count: 0, prev_zoom: f64::NAN }
+        Self {
+            handle: None,
+            tip_handle: None,
+            last_tip: None,
+            count: 0,
+            prev_zoom: f64::NAN,
+        }
     }
 }
 
@@ -52,6 +64,13 @@ pub const SELECTION_OVERLAY_PLACEMENT: Placement = Placement::WorldAtCursor;
 /// ANY zoom (WorldAtCursor counter-scales the world surface to hold this).
 pub const BAR_W: i32 = 440;
 pub const BAR_H: i32 = 120;
+/// On-screen size of the hover-tooltip surface (a separate texture floating
+/// above the bar). Fixed screen-physical px; it's a screen-space passthrough
+/// surface, so it doesn't need the world counter-scale the bar uses.
+pub const TIP_W: i32 = 260;
+pub const TIP_H: i32 = 56;
+/// Gap between the tooltip's bottom and the bar's top, in screen px.
+pub const TIP_GAP: i32 = 8;
 /// Gap below the screen bottom (ScreenBottomCenter).
 pub const SCREEN_BOTTOM_MARGIN: i32 = 100;
 /// On-screen gap below the cursor, in physical px (WorldAtCursor).

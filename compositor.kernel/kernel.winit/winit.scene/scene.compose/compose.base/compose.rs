@@ -347,6 +347,10 @@ fn compose(
     // regardless of the compositing renderer, and winit always presents via
     // GLES), clearing to a dark backdrop behind it.
     if render_picker {
+        // Advance an in-flight video capture: the scene `per_frame` encoder pump
+        // doesn't run while the picker owns the frame, so drive it here (the tap
+        // below refreshes the capture entry with the picker each frame).
+        compositor_y5_graphic_capture_interface::interface::overlay_per_frame(state);
         let prepared =
             compositor_y5_picker_scene_frame::frame::prepare(state, gles_renderer, monitor_size);
         let scene = compositor_y5_picker_scene_frame::frame::scene::<GlesRenderer>(
@@ -376,6 +380,41 @@ fn compose(
             );
         }
         frame.finish().unwrap();
+
+        // Post-picker capture tap: keep an in-flight capture recording the
+        // world-picker overlay while the user navigates worlds. Window/world-
+        // region captures render their windows into the entry; screen/full-screen
+        // captures blit the just-rendered picker framebuffer.
+        if tap_post_scene {
+            if let Some(job) =
+                compositor_y5_graphic_capture_interface::render::window_render_job(state)
+            {
+                let backdrop =
+                    compositor_y5_graphic_capture_interface::render::capture_backdrop(state, &job);
+                if let Some(mut dmabuf) = state
+                    .inner.kernel.get(&compositor_orchestration_driver_capture_base::base::CAPTURE_REGISTRY)
+                    .as_ref()
+                    .and_then(|r| r.entry_dmabuf(job.entry_id))
+                {
+                    compositor_y5_graphic_capture_interface::render::draw_windows_into_bg(
+                        gles_renderer,
+                        &mut dmabuf,
+                        job.size,
+                        &job.windows,
+                        job.scale,
+                        backdrop,
+                    );
+                }
+            } else if let Some(registry) = &mut state.inner.kernel.get(&compositor_orchestration_driver_capture_base::base::CAPTURE_REGISTRY) {
+                registry.tick(
+                    &state.inner.environment.GPU.as_str(),
+                    gles_renderer,
+                    OutputId(0),
+                    &gles_framebuffer,
+                    monitor_size,
+                );
+            }
+        }
     }
 
     let _scene_lock = if render_lock {
