@@ -41,23 +41,30 @@ pub fn plan(state: &mut Loop, size: Size<i32, Physical>) -> Vec<(Window, Rectang
         })
         .collect();
 
-    let (mode_h, mm_h) = match state.inner.space_state().state.outputs().next() {
-        Some(o) => (
-            o.current_mode().map(|m| m.size.h).unwrap_or(size.h),
-            o.physical_properties().size.h,
-        ),
-        None => (size.h, 0),
-    };
     let area = Rectangle::new(
         Point::from((0, MENU_BAR_HEIGHT)),
         Size::from((size.w, (size.h - MENU_BAR_HEIGHT).max(1))),
     );
     let inner_h = (area.size.h - 2 * GRID_MARGIN).max(1);
-    let cell_h = grid::cell_height(area.size.h, mode_h, mm_h);
+    let inner_w = (area.size.w - 2 * GRID_MARGIN).max(1);
+    // Fill the screen: the LARGEST cell height whose packed block fits the height
+    // (rows capped at 5 cells). Bounded so no single cell exceeds the width.
+    let max_aspect = aspects.iter().cloned().fold(0.05_f64, f64::max);
+    let h_cap = ((inner_w as f64 / max_aspect) as i32).min(inner_h).max(1);
+    let mut cell_h = (inner_h / 4).max(1);
+    let mut probe = h_cap;
+    while probe >= 80 {
+        let (_, block) = grid::layout(area, &aspects, GridParams { gap: GRID_GAP, cell_height: probe, margin: GRID_MARGIN, max_cols: 5 });
+        if block <= inner_h {
+            cell_h = probe;
+            break;
+        }
+        probe -= 20;
+    }
     let (cells, content_h) = grid::layout(
         area,
         &aspects,
-        GridParams { gap: GRID_GAP, cell_height: cell_h, margin: GRID_MARGIN },
+        GridParams { gap: GRID_GAP, cell_height: cell_h, margin: GRID_MARGIN, max_cols: 5 },
     );
 
     // Clamp scroll to the overflow; write it back so the axis handler accumulates

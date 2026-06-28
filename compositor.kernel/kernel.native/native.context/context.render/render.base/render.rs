@@ -11,6 +11,8 @@ use compositor_kernel_graphic_draw_plan_tap::tap::TapSubscriptions;
 use compositor_kernel_graphic_preference_enable_safety::safety::SafetyEnable;
 use smithay::backend::renderer::damage::OutputDamageTracker;
 use smithay::output::{Mode, Output};
+use smithay::reexports::calloop::RegistrationToken;
+use smithay::reexports::drm::control::Mode as DrmMode;
 use smithay::reexports::input::Libinput;
 use smithay::reexports::wayland_server::DisplayHandle;
 use std::cell::RefCell;
@@ -50,4 +52,16 @@ pub struct NativeRenderContext {
     /// (smithay's DrmCompositor doesn't expose colorspace / HDR metadata).
     pub drm_fd: smithay::backend::drm::DrmDeviceFd,
     pub connector: smithay::reexports::drm::control::connector::Handle,
+    /// The mode currently driving the pipe. Seeded at wire time and updated on
+    /// every successful live mode change (`native.context/context.display/
+    /// display.mode`) — the baseline an auto-revert restores to.
+    pub current_drm_mode: DrmMode,
+    /// The connector's advertised modes (from EDID), so the live mode-change
+    /// drain can resolve a requested width/height/refresh to a `DrmMode` without
+    /// re-probing the connector.
+    pub modes: Vec<DrmMode>,
+    /// Armed confirm/revert watchdog for a provisionally-applied mode:
+    /// `(previous_mode, one_shot_timer)`. `Some` while awaiting the user's Keep;
+    /// cleared on Confirm, on Revert, or when the timer reverts. See `display.mode`.
+    pub mode_revert: Option<(DrmMode, RegistrationToken)>,
 }

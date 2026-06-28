@@ -3593,6 +3593,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_kernel_native_context_display_mode"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_kernel_gles_element_wrap_base",
+ "compositor_kernel_native_context_render_base",
+ "compositor_kernel_scanout_surface_reconfigure_base",
+ "compositor_orchestration_core_state_base",
+ "compositor_orchestration_draw_scene_element",
+ "compositor_orchestration_driver_output_base",
+ "smithay",
+]
+
+[[package]]
 name = "compositor_kernel_native_context_render_base"
 version = "0.0.1"
 dependencies = [
@@ -3725,6 +3739,7 @@ dependencies = [
  "compositor_orchestration_draw_state_lifecycle",
  "compositor_orchestration_driver_lid_base",
  "compositor_orchestration_driver_logind_base",
+ "compositor_orchestration_driver_output_base",
  "compositor_support_smithay_dispatch_state_base",
  "compositor_support_smithay_state_dmabuf_dispatch",
  "smithay",
@@ -3758,6 +3773,7 @@ dependencies = [
  "compositor_developer_debug_instance_record",
  "compositor_kernel_input_loop_libinput_base",
  "compositor_kernel_native_context_display_apply",
+ "compositor_kernel_native_context_display_mode",
  "compositor_kernel_native_context_render_base",
  "compositor_orchestration_core_state_base",
  "compositor_orchestration_draw_state_lifecycle",
@@ -3949,6 +3965,16 @@ version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
  "compositor_developer_debug_instance_record",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_kernel_scanout_surface_reconfigure_base"
+version = "0.0.1"
+dependencies = [
+ "bitflags 2.13.0",
+ "compositor_developer_debug_instance_record",
+ "compositor_kernel_scanout_surface_output_base",
  "smithay",
 ]
 

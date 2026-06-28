@@ -197,7 +197,30 @@ pub fn wire(
         hdr_signalled: false,
         drm_fd: display.drm_fd.clone(),
         connector: display.connector.handle(),
+        current_drm_mode: display.drm_mode,
+        modes: display.connector.modes().to_vec(),
+        mode_revert: None,
     }));
+
+    // ---- Advertised-mode snapshot for the settings Display panel (kernel → rim).
+    //      The UI reads OUTPUT_MODES_SNAPSHOT directly. mHz = vrefresh*1000.
+    {
+        use compositor_orchestration_driver_output_base::base::{ModeInfo, OutputModesSnapshot};
+        let to_info = |m: &smithay::reexports::drm::control::Mode| ModeInfo {
+            width: m.size().0,
+            height: m.size().1,
+            refresh_mhz: m.vrefresh() * 1000,
+        };
+        *_loop
+            .inner
+            .kernel
+            .get_mut(&compositor_orchestration_driver_output_base::base::OUTPUT_MODES_SNAPSHOT_MUT) =
+            OutputModesSnapshot {
+                edid_key: display.identity.key(),
+                current: Some(to_info(&display.drm_mode)),
+                available: display.connector.modes().iter().map(to_info).collect(),
+            };
+    }
 
     // ---- Topology bookkeeping for the device authority.
     let registry = Rc::new(RefCell::new(

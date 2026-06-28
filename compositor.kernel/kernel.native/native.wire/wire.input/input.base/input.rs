@@ -47,6 +47,9 @@ pub fn register(
             // queued a display request; perform it now — here so it runs even
             // when the render loop is gated (DPMS-off) or about to be.
             compositor_kernel_native_context_display_apply::apply::drain(state, &ctx_rc);
+            // Live output-mode change requests from the settings window (apply /
+            // confirm / revert), drained here for the same reason as the lid.
+            compositor_kernel_native_context_display_mode::mode::drain(state, &ctx_rc);
             state.schedule_redraw();
         })
         .unwrap();

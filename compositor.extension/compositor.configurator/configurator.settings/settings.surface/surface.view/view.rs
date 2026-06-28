@@ -3,7 +3,7 @@
 //! the optimistic `current`/confirm state are handled locally.
 use compositor_developer_environment_config_base::base::Environment;
 use compositor_developer_environment_keybinding_base::base::KeyRow;
-use compositor_orchestration_driver_output_base::base::{ModeInfo, OutputModesSnapshot};
+use compositor_orchestration_driver_output_base::base::{ApplyResult, ModeInfo, OutputModesSnapshot};
 use compositor_support_iced_core_engine_base::{IcedUi, Renderer};
 use compositor_y5_audio_controller_interface::interface::AudioState;
 use compositor_configurator_network_backend_base::base::WifiSnapshot;
@@ -74,6 +74,19 @@ impl IcedUi for Settings {
         match message {
             SettingsMessage::Tab(t) => self.tab = t,
             SettingsMessage::Fps(f) => self.fps = f,
+            // Kernel outcome of the provisional apply: commit on Confirmed, drop
+            // the confirm + restore the shown mode otherwise.
+            SettingsMessage::ModeResult(r) => match r {
+                ApplyResult::Confirmed => {
+                    self.baseline = self.current;
+                    self.confirming = false;
+                }
+                ApplyResult::Reverted | ApplyResult::Failed => {
+                    self.current = self.baseline;
+                    self.confirming = false;
+                }
+                ApplyResult::Provisional => {}
+            },
             SettingsMessage::Cursor(v) => self.cursor_sensitivity = v,
             SettingsMessage::NaturalScroll(b) => self.natural_scroll = b,
             SettingsMessage::Env(e) => {

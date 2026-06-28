@@ -10,14 +10,24 @@ use compositor_installer_process_packages_enumerate_base::NvidiaDriver;
 const MESA_VA_FREEWORLD: &str = "mesa-va-drivers-freeworld";
 /// Intel iHD VA-API driver (RPM Fusion nonfree) — for Gen8+ Intel iGPUs (e.g. Kaby Lake).
 const INTEL_MEDIA_DRIVER: &str = "intel-media-driver";
+/// Fedora's codec-stripped FFmpeg runtime libs carried by the `runtime` group. When the
+/// user opts into full FFmpeg these are dropped from the base install: the swap below
+/// pulls the full libav stack and erases Fedora's preinstalled `-free` packages in ONE
+/// pass, so installing them here first would only get them immediately erased again.
+const FFMPEG_FREE_LIBS: &[&str] = &[
+    "libavutil-free", "libavcodec-free", "libavformat-free", "libavfilter-free", "libswscale-free",
+];
 
-/// Detect the GPU vendor, prompt every package group (Enter keeps the default), and run
-/// dnf over the selection. STRICT: a real install failure (incl. a package the enabled
-/// repos lack) returns `Err` so the caller aborts; the RPM-Fusion VA-API drivers are
-/// never in the base set — they're the explicit prompts below.
+/// Detect the GPU vendor, prompt every package group AND the RPM-Fusion capture/VA-API
+/// options, then run dnf over the resolved selection. All prompts run BEFORE the first
+/// dnf, so the base transaction already targets the final package set — when full FFmpeg
+/// is chosen the `-free` libs are never installed-then-swapped. STRICT: a real install
+/// failure (incl. a package the enabled repos lack) returns `Err` so the caller aborts.
 pub fn select_and_install(dry_run: bool) -> Result<(), String> {
     let gpu = pkg::detect_gpu();
     println!("\nDetected GPU vendor: {gpu:?}");
+
+    // 1) Package groups.
     let mut selected_packages: Vec<String> = Vec::new();
     println!("\n-- Package groups (Enter keeps the [default]) --");
     for group in pkg::groups() {
@@ -30,6 +40,23 @@ pub fn select_and_install(dry_run: bool) -> Result<(), String> {
             selected_packages.extend(group.packages.iter().map(|s| s.to_string()));
         }
     }
+
+    // 2) RPM-Fusion capture / VA-API choices — prompted up front (before any dnf) so the
+    // base install targets the final set. These are RPM-Fusion-only (the base group set
+    // never references them), enabling the repo(s) on demand below.
+    println!("\n-- Screen capture / VA-API (RPM Fusion) --");
+    let intel = gpu == pkg::Gpu::Intel;
+    let want_ffmpeg = prompt::yes_no("Full FFmpeg (RPM Fusion)", "Swap Fedora's codec-stripped ffmpeg-free for the full ffmpeg — REQUIRED for screen capture on every machine (NVENC + VAAPI both encode through it). Enables RPM Fusion (free).", true);
+    let want_mesa_va = prompt::yes_no("mesa-va-drivers-freeworld (RPM Fusion)", "Mesa VAAPI driver — REQUIRED by the compositor's Vulkan renderer + VA-API capture. Enables RPM Fusion (free). Recommended.", true);
+    let want_intel_media = prompt::yes_no("intel-media-driver (RPM Fusion)", "Intel iHD VA-API driver — Gen8+ Intel iGPUs (e.g. Kaby Lake) need it for the Vulkan renderer + capture. Enables RPM Fusion (nonfree). Recommended on Intel only.", intel);
+
+    // 3) When swapping to full FFmpeg, drop the `-free` libs from the base install so they
+    // are never installed only to be erased by the swap (no double-install of ffmpeg).
+    if want_ffmpeg {
+        selected_packages.retain(|p| !FFMPEG_FREE_LIBS.contains(&p.as_str()));
+    }
+
+    // 4) Base install.
     if selected_packages.is_empty() {
         println!("No package groups selected — skipping dnf.");
     } else {
@@ -38,18 +65,15 @@ pub fn select_and_install(dry_run: bool) -> Result<(), String> {
             .map_err(|e| format!("package install failed: {e}"))?;
     }
 
-    // RPM-Fusion capture / VA-API support — REQUIRED for screen capture (full FFmpeg) and
-    // the Vulkan renderer (VA-API driver), but RPM-Fusion-only, so explicit prompts that
-    // enable the repo(s) on demand (keeping the strict base install above clean).
-    let intel = gpu == pkg::Gpu::Intel;
-    if prompt::yes_no("Full FFmpeg (RPM Fusion)", "Swap Fedora's codec-stripped ffmpeg-free for the full ffmpeg — REQUIRED for screen capture on every machine (NVENC + VAAPI both encode through it). Enables RPM Fusion (free).", true) {
+    // 5) Apply the RPM-Fusion choices collected in step 2.
+    if want_ffmpeg {
         pkg::enable_rpmfusion_free(dry_run).map_err(|e| format!("RPM Fusion (free) failed: {e}"))?;
         pkg::swap_ffmpeg_full(dry_run).map_err(|e| format!("ffmpeg swap failed: {e}"))?;
     }
-    if prompt::yes_no("mesa-va-drivers-freeworld (RPM Fusion)", "Mesa VAAPI driver — REQUIRED by the compositor's Vulkan renderer + VA-API capture. Enables RPM Fusion (free). Recommended.", true) {
+    if want_mesa_va {
         install_va(&[MESA_VA_FREEWORLD.to_string()], false, dry_run)?;
     }
-    if prompt::yes_no("intel-media-driver (RPM Fusion)", "Intel iHD VA-API driver — Gen8+ Intel iGPUs (e.g. Kaby Lake) need it for the Vulkan renderer + capture. Enables RPM Fusion (nonfree). Recommended on Intel only.", intel) {
+    if want_intel_media {
         install_va(&[INTEL_MEDIA_DRIVER.to_string()], true, dry_run)?;
     }
 

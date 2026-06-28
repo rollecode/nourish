@@ -4,7 +4,7 @@ use compositor_monitor_compositor_iced_base::{HandleId, IcedHandle, IcedSpace};
 use compositor_orchestration_core_state_base::Loop;
 use compositor_orchestration_draw_layer_base::base::Layer;
 use compositor_orchestration_driver_audio_base::base::AUDIO;
-use compositor_orchestration_driver_output_base::base::OUTPUT_MODES_SNAPSHOT;
+use compositor_orchestration_driver_output_base::base::{OutputModeRequest, OUTPUT_MODES_SNAPSHOT, OUTPUT_MODE_REQUEST_MUT, OUTPUT_MODE_RESULT_MUT};
 use compositor_orchestration_driver_settings_base::base::{SETTINGS, SETTINGS_MUT};
 use compositor_configurator_network_backend_base::base::{self as wifi, WifiCmd, WifiSnapshot};
 use compositor_configurator_bluetooth_backend_base::base::{self as bt, BtCmd, BtSnapshot};
@@ -45,6 +45,14 @@ fn sync(state: &mut Loop, id: HandleId) {
             let _ = reg.dispatch_message(IcedHandle::<Settings>::from_id(id), SettingsMessage::SyncSystem(cur.0, cur.1, cur.2));
         }
     }
+    // One-shot mode-apply result → UI (drops the confirm bar; restores the shown
+    // mode on auto-revert / failure, commits on Keep).
+    let result = state.inner.kernel.get_mut(&OUTPUT_MODE_RESULT_MUT).take();
+    if let Some(r) = result {
+        if let Some(reg) = state.inner.surface_mut().registry.as_mut() {
+            let _ = reg.dispatch_message(IcedHandle::<Settings>::from_id(id), SettingsMessage::ModeResult(r));
+        }
+    }
 }
 
 fn create(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Physical>) {
@@ -74,6 +82,9 @@ fn create(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Physica
 }
 
 fn destroy(state: &mut Loop, id: HandleId) {
+    // Closing settings (Esc / overview-tab switch / overview close) abandons any
+    // provisional mode change → revert it (no-op if nothing is pending).
+    *state.inner.kernel.get_mut(&OUTPUT_MODE_REQUEST_MUT) = Some(OutputModeRequest::Revert);
     if let Some(reg) = state.inner.surface_mut().registry.as_mut() { reg.destroy_by_id(id); reg.set_keyboard_focus(None); }
     bt::command(BtCmd::Scan(false));
     let st = state.inner.kernel.get_mut(&SETTINGS_MUT);

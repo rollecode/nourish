@@ -1,7 +1,7 @@
 //! The settings-window message type, shared by the view + tab builders + the
 //! surface protocol/handler. iced-free so the protocol crate can name it.
 use compositor_developer_environment_config_base::base::Environment;
-use compositor_orchestration_driver_output_base::base::ModeInfo;
+use compositor_orchestration_driver_output_base::base::{ApplyResult, ModeInfo};
 use compositor_y5_audio_controller_interface::interface::AudioState;
 use compositor_configurator_network_backend_base::base::WifiSnapshot;
 use compositor_configurator_bluetooth_backend_base::base::BtSnapshot;
@@ -10,7 +10,6 @@ use compositor_configurator_bluetooth_backend_base::base::BtSnapshot;
 /// `Input` merges the former Cursor + Keys; `System` is the Environment editor.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Tab {
-    World,
     Display,
     Audio,
     Input,
@@ -26,6 +25,9 @@ pub enum SettingsMessage {
     Tab(Tab),
     /// Live frames-per-second, pushed by the embed (UI-only, not forwarded).
     Fps(u32),
+    /// Kernel result of the last mode Apply, pushed by the embed (UI-only): drops
+    /// the confirm bar + restores the shown mode when a mode wasn't kept.
+    ModeResult(ApplyResult),
     /// Live cursor speed multiplier (forwarded: applied + persisted at once).
     Cursor(f32),
     /// Live touchpad natural-scroll (forwarded).

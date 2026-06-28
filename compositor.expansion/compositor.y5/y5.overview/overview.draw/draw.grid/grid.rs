@@ -3,21 +3,6 @@
 
 use smithay::utils::{Physical, Point, Rectangle, Size};
 
-/// The shared cell height (px), sized to a roughly constant *physical* height
-/// (small on a big low-DPI display, bigger on a high-DPI laptop) via EDID mm when
-/// known, else a resolution fraction; floored at `MIN_PX`.
-pub fn cell_height(area_h: i32, mode_h_px: i32, physical_mm_h: i32) -> i32 {
-    const TARGET_MM: f64 = 50.0;
-    const MIN_PX: i32 = 150;
-    let by_physical = if physical_mm_h > 0 && mode_h_px > 0 {
-        Some((TARGET_MM * mode_h_px as f64 / physical_mm_h as f64).round() as i32)
-    } else {
-        None
-    };
-    let px = by_physical.unwrap_or((area_h as f64 * 0.30).round() as i32);
-    px.clamp(MIN_PX, (area_h as f64 * 0.6).round() as i32).max(1)
-}
-
 /// One placed grid cell, paired with the index of the item that fills it.
 pub struct Cell {
     pub index: usize,
@@ -29,6 +14,8 @@ pub struct GridParams {
     pub gap: i32,
     pub cell_height: i32,
     pub margin: i32,
+    /// Maximum cells per row (a row also breaks earlier if it runs out of width).
+    pub max_cols: usize,
 }
 
 /// Lay `aspects` (each = width/height) into a centered grid inside `area`.
@@ -60,7 +47,7 @@ pub fn layout(
     let mut row_w = 0;
     for (i, &w) in widths.iter().enumerate() {
         let extra = if row.is_empty() { w } else { params.gap + w };
-        if !row.is_empty() && row_w + extra > inner_w {
+        if !row.is_empty() && (row.len() >= params.max_cols.max(1) || row_w + extra > inner_w) {
             rows.push(std::mem::take(&mut row));
             row_w = 0;
         }

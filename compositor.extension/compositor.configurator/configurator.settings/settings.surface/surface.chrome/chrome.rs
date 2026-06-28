@@ -37,7 +37,6 @@ fn module<'a>(icon: &'a str, label: &'a str, t: Tab, sel: Tab) -> El<'a> {
 fn sidebar<'a>(sel: Tab) -> El<'a> {
     let list = column![
         text("CONFIG MODULES").size(10).color(style::MUTED),
-        module("◇", "CURRENT WORLD", Tab::World, sel),
         module("▦", "DISPLAY", Tab::Display, sel),
         module("♪", "AUDIO", Tab::Audio, sel),
         module("⌨", "INPUT", Tab::Input, sel),
@@ -56,13 +55,6 @@ fn titlebar<'a>(dirty: bool) -> El<'a> {
         text(sub).size(10).color(style::MUTED),
     ].spacing(3);
     container(title).style(style::strip).width(Length::Fill).padding(Padding::from([14, 22])).into()
-}
-
-fn world<'a>(env: &'a Environment) -> El<'a> {
-    let name = if env.desktop_name.is_empty() { "y5" } else { &env.desktop_name };
-    let cell = container(column![text("DESKTOP").size(11).color(style::MUTED), text(name.to_string()).size(16)].spacing(6).padding(16))
-        .style(style::card).width(Length::Fill);
-    column![text("CURRENT WORLD").size(16).color(style::ACCENT), text("The active world / session.").size(11).color(style::MUTED), cell].spacing(12).into()
 }
 
 fn performance<'a>(fps: u32) -> El<'a> {
@@ -88,7 +80,6 @@ pub fn render<'a>(
     wifi_selected: Option<&'a str>, wifi_password: &'a str, devices: &'a [RenderDevice], fps: u32,
 ) -> El<'a> {
     let body: El<'a> = match tab {
-        Tab::World => world(env),
         Tab::Display => display::build(modes, current),
         Tab::Audio => audio_tab::build(audio),
         Tab::Input => row![

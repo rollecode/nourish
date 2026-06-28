@@ -86,12 +86,14 @@ pub fn relative<I: InputBackend>(event: &<I as InputBackend>::PointerMotionEvent
     if !(state.inner.overview().visible && state.inner.overview().is_world()) {
         return false;
     }
+    // Drive globe rotation while over the globe, but NEVER consume motion: the seat
+    // cursor must keep tracking the pointer. Consuming it froze the cursor over the
+    // globe, so it jumped when the pointer reached the header.
     let loc = cursor(state);
-    if over_bar(state, loc) {
-        return false;
+    if !over_bar(state, loc) {
+        compositor_y5_picker_seat_pointer::pointer::relative::<I>(event, state);
     }
-    compositor_y5_picker_seat_pointer::pointer::relative::<I>(event, state);
-    true
+    false
 }
 
 pub fn absolute<I: InputBackend>(event: &<I as InputBackend>::PointerMotionAbsoluteEvent, state: &mut Loop) -> bool {
@@ -99,9 +101,8 @@ pub fn absolute<I: InputBackend>(event: &<I as InputBackend>::PointerMotionAbsol
         return false;
     }
     let loc = cursor(state);
-    if over_bar(state, loc) {
-        return false;
+    if !over_bar(state, loc) {
+        compositor_y5_picker_seat_pointer::pointer::absolute::<I>(event, state);
     }
-    compositor_y5_picker_seat_pointer::pointer::absolute::<I>(event, state);
-    true
+    false
 }

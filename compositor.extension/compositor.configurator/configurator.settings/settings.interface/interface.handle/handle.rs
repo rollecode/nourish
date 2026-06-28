@@ -79,8 +79,14 @@ pub fn handle(state: &mut Loop, _renderer: &mut GlesRenderer, m: SettingsMessage
         // live-FPS push on the Performance tab being open.
         SettingsMessage::Tab(t) => {
             state.inner.kernel.get_mut(&SETTINGS_MUT).fps_wanted = matches!(t, Tab::Performance);
+            // Leaving Display abandons any provisional mode change → revert it
+            // (no-op in the kernel if nothing is pending).
+            if !matches!(t, Tab::Display) {
+                *state.inner.kernel.get_mut(&OUTPUT_MODE_REQUEST_MUT) = Some(OutputModeRequest::Revert);
+            }
         }
         SettingsMessage::Fps(_)
+        | SettingsMessage::ModeResult(_)
         | SettingsMessage::SyncSystem(..)
         | SettingsMessage::WifiSelect(_)
         | SettingsMessage::WifiPassword(_) => {}
