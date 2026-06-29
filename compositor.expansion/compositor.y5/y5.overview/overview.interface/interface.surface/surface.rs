@@ -71,6 +71,13 @@ pub fn open(state: &mut Loop, renderer: &mut GlesRenderer) {
         .set_message_handler(move |message: &OverviewMessage| dispatch(message, &tx));
 
     state.inner.overview_mut().menu = Some(handle.id);
+
+    // Explicitly sync the menu-bar highlight to the active tab — it persists for
+    // the session, but a freshly-created `OverviewMenu` defaults to Layout.
+    let tab = state.inner.overview().tab;
+    if let Some(reg) = state.inner.surface_mut().registry.as_mut() {
+        let _ = reg.dispatch_message(IcedHandle::<OverviewMenu>::from_id(handle.id), OverviewMessage::Select(section_of(tab)));
+    }
 }
 
 pub fn close(state: &mut Loop) {

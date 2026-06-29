@@ -1725,6 +1725,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_configurator_bluetooth_backend_base"
+version = "0.0.1"
+dependencies = [
+ "zbus",
+]
+
+[[package]]
+name = "compositor_configurator_network_backend_base"
+version = "0.0.1"
+dependencies = [
+ "zbus",
+]
+
+[[package]]
+name = "compositor_configurator_settings_surface_message"
+version = "0.0.1"
+dependencies = [
+ "compositor_configurator_bluetooth_backend_base",
+ "compositor_configurator_network_backend_base",
+ "compositor_developer_environment_config_base",
+ "compositor_orchestration_driver_output_base",
+ "compositor_y5_audio_controller_interface",
+]
+
+[[package]]
 name = "compositor_developer_debug_instance_channel"
 version = "0.0.1"
 dependencies = [
@@ -1751,6 +1776,24 @@ dependencies = [
 name = "compositor_developer_environment_config_base"
 version = "0.0.1"
 dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "compositor_developer_environment_keybinding_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_environment_config_base",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "compositor_developer_environment_preference_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_environment_config_base",
  "serde",
  "serde_json",
 ]
@@ -2669,6 +2712,8 @@ version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
  "compositor_developer_debug_instance_record",
+ "compositor_developer_environment_keybinding_base",
+ "compositor_developer_environment_preference_base",
  "compositor_introspection_sampler_window_base",
  "compositor_orchestration_bus_legacy_base",
  "compositor_orchestration_driver_audio_base",
@@ -2676,9 +2721,11 @@ dependencies = [
  "compositor_orchestration_driver_introspection_base",
  "compositor_orchestration_driver_lid_base",
  "compositor_orchestration_driver_logind_base",
+ "compositor_orchestration_driver_output_base",
  "compositor_orchestration_driver_remote_base",
  "compositor_orchestration_driver_resume_base",
  "compositor_orchestration_driver_selection_base",
+ "compositor_orchestration_driver_settings_base",
  "compositor_orchestration_environment_type_base",
  "compositor_orchestration_seat_gesture_state",
  "compositor_orchestration_seat_pointer_state",
@@ -2713,6 +2760,7 @@ dependencies = [
  "compositor_y5_lock_state_base",
  "compositor_y5_lock_system_base",
  "compositor_y5_navigator_state_base",
+ "compositor_y5_overview_state_base",
  "compositor_y5_placeholder_state_base",
  "compositor_y5_placeholder_system_base",
  "compositor_y5_select_state_base",
@@ -2804,6 +2852,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_orchestration_driver_output_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_storage_token_base",
+]
+
+[[package]]
 name = "compositor_orchestration_driver_remote_base"
 version = "0.0.1"
 dependencies = [
@@ -2826,6 +2881,14 @@ dependencies = [
  "compositor_monitor_compositor_iced_base",
  "compositor_support_system_storage_token_base",
  "smithay",
+]
+
+[[package]]
+name = "compositor_orchestration_driver_settings_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_monitor_compositor_iced_base",
+ "compositor_support_system_storage_token_base",
 ]
 
 [[package]]
@@ -4708,6 +4771,7 @@ dependencies = [
  "compositor_y5_canvas_state_base",
  "compositor_y5_group_protocol_base",
  "compositor_y5_group_state_base",
+ "compositor_y5_overview_state_base",
  "compositor_y5_placeholder_system_base",
  "compositor_y5_select_state_base",
  "compositor_y5_surface_interface_core",
@@ -4941,6 +5005,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_y5_overview_state_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_monitor_compositor_iced_base",
+ "compositor_support_bevy_core_alloc_base",
+ "compositor_support_system_storage_token_base",
+ "compositor_y5_graphic_capture_registry",
+ "smithay",
+ "uuid",
+]
+
+[[package]]
 name = "compositor_y5_picker_surface_view"
 version = "0.0.1"
 dependencies = [
@@ -5100,12 +5177,14 @@ name = "compositor_y5_surface_protocol_base"
 version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
+ "compositor_configurator_settings_surface_message",
  "compositor_monitor_selection_scene_base",
  "compositor_y5_graphic_capture_session",
  "compositor_y5_group_protocol_base",
  "compositor_y5_group_surface_base",
  "compositor_y5_launcher_protocol_message",
  "compositor_y5_lock_interface_surface",
+ "compositor_y5_overview_state_base",
  "compositor_y5_picker_surface_view",
  "compositor_y5_placeholder_protocol_base",
  "smithay",

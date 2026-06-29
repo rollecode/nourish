@@ -9,7 +9,7 @@
 use smithay::backend::renderer::gles::GlesRenderer;
 use compositor_orchestration_core_state_base::Loop;
 use compositor_y5_overview_interface_surface::surface;
-use compositor_y5_overview_state_base::base::{OverviewSurfaceMessage, Tab};
+use compositor_y5_overview_state_base::base::OverviewSurfaceMessage;
 use compositor_y5_surface_protocol_base::protocol::{SurfaceMessage, SurfaceMessageType};
 
 /// Super+Tab: flip the overlay on/off. Defers the menu-bar surface op.
@@ -17,10 +17,8 @@ pub fn toggle(state: &mut Loop) {
     let now = !state.inner.overview().visible;
     state.inner.overview_mut().visible = now;
     if now {
-        // Always open on the Layout tab, freshly scrolled.
-        let ov = state.inner.overview_mut();
-        ov.tab = Tab::Layout;
-        ov.scroll = 0.0;
+        // Reopen on the last-used tab (persists for the session), freshly scrolled.
+        state.inner.overview_mut().scroll = 0.0;
     }
     defer_reconcile(state);
 }

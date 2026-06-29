@@ -105,7 +105,7 @@ else
     log "building xwayland-satellite"
     ( cd "$HERE/component/xwayland-satellite/xwayland-fixes" && cargo build --release )
     install -m755 "$HERE/component/xwayland-satellite/xwayland-fixes/target/release/xwayland-satellite" "$BIN/xwayland-satellite"
-    install -m644 "$HERE/component/xwayland-satellite/xwayland.service" "$TPL/xwayland/xwayland.service"
+    install -m644 "$HERE/component/xwayland-satellite/xwayland-fixes/xwayland.service" "$TPL/xwayland/xwayland.service"
 fi
 
 # 5b) Settings tool — installed to /usr/bin/y5.compositor.settings, the only supported

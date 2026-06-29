@@ -2624,6 +2624,7 @@ version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
  "compositor_developer_debug_instance_record",
+ "compositor_developer_environment_preference_base",
  "smithay",
 ]
 

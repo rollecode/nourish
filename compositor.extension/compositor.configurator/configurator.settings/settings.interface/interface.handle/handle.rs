@@ -78,7 +78,9 @@ pub fn handle(state: &mut Loop, _renderer: &mut GlesRenderer, m: SettingsMessage
         // Tab IS forwarded (so the compositor knows the visible module): gate the
         // live-FPS push on the Performance tab being open.
         SettingsMessage::Tab(t) => {
-            state.inner.kernel.get_mut(&SETTINGS_MUT).fps_wanted = matches!(t, Tab::Performance);
+            let st = state.inner.kernel.get_mut(&SETTINGS_MUT);
+            st.fps_wanted = matches!(t, Tab::Performance);
+            st.tab = t.to_index(); // remember the module for the session (restored on reopen)
             // Leaving Display abandons any provisional mode change → revert it
             // (no-op in the kernel if nothing is pending).
             if !matches!(t, Tab::Display) {

@@ -1,14 +1,26 @@
-//! `y5.compositor.settings` — interactive editor for the compositor's settings
-//! file. Writes a COMPLETE `~/.config/y5.compositor/settings.json` (every field;
-//! the compositor has no defaults and panics on a missing/partial file).
+//! `y5.compositor.settings` — interactive setup tool for the compositor.
 //!
-//!   y5.compositor.settings                  # interactive, default path
-//!   y5.compositor.settings --config-file=P  # interactive, path P
+//! A normal run shows a menu:
+//!   1. Settings        — edit ~/.config/y5.compositor/settings.json (every field;
+//!                        the compositor has no defaults and panics on a partial file)
+//!   2. Set preferences — pick a per-monitor preferred mode (preferences.json)
+//! Escape navigates back; Escape at the menu exits.
+//!
+//!   y5.compositor.settings                  # interactive menu
+//!   y5.compositor.settings --config-file=P  # interactive, settings path P
+//!   y5.compositor.settings --installer      # installer setup: Settings only, no menu,
+//!                                           #   no preferences
 //!   y5.compositor.settings --write-default  # non-interactive, write the template
 
+mod drm_probe;
 mod edit;
+mod menu;
+mod persist;
+mod preferences;
 mod prompt;
+mod select;
 mod template;
+mod term;
 
 use compositor_developer_environment_config_base::base::{resolve_path, Environment};
 use std::path::Path;
@@ -20,6 +32,7 @@ fn main() {
         return;
     }
     let write_default = args.iter().any(|a| a == "--write-default");
+    let installer = args.iter().any(|a| a == "--installer");
 
     // `resolve_path` is the same logic the compositor uses (honors --config-file=,
     // else $XDG_CONFIG_HOME/.config), so the tool and compositor never disagree.
@@ -28,20 +41,22 @@ fn main() {
     // Pre-fill from an existing file when present; fall back to the template.
     let base = load_existing(&path).unwrap_or_else(template::default_settings);
 
-    let settings = if write_default {
-        template::default_settings()
-    } else {
-        edit::interactive(base)
-    };
-
-    let json = serde_json::to_string_pretty(&settings).expect("Environment serializes to JSON");
-    match atomic_write(&path, json.as_bytes()) {
-        Ok(()) => println!("\nWrote {} ✓", path.display()),
-        Err(e) => {
-            eprintln!("\nfailed to write {}: {e}", path.display());
-            std::process::exit(1);
-        }
+    if write_default {
+        // Non-interactive: write the canonical template and exit.
+        persist::write_settings(&path, &template::default_settings());
+        return;
     }
+
+    if installer {
+        // Initial setup driven by the installer: straight into Settings, no menu, no
+        // preferences.
+        let settings = edit::interactive(base);
+        persist::write_settings(&path, &settings);
+        return;
+    }
+
+    // Normal interactive run: the menu owns the Settings + preferences loop.
+    menu::run(&path, base);
 }
 
 /// Load and parse an existing settings file, or `None` if absent/unreadable/invalid.
@@ -56,30 +71,19 @@ fn load_existing(path: &Path) -> Option<Environment> {
     }
 }
 
-/// Write `bytes` to `path` atomically: create parent dirs, write a sibling temp
-/// file, then rename over the target so a reader never sees a partial file.
-fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    use std::io::Write;
-    if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir)?;
-    }
-    let tmp = path.with_extension("json.tmp");
-    {
-        let mut f = std::fs::File::create(&tmp)?;
-        f.write_all(bytes)?;
-        f.sync_all()?;
-    }
-    std::fs::rename(&tmp, path)
-}
-
 const USAGE: &str = "\
-y5.compositor.settings — author ~/.config/y5.compositor/settings.json
+y5.compositor.settings — set up the compositor
 
 USAGE:
     y5.compositor.settings [OPTIONS]
 
+A normal run shows a menu: Settings (author settings.json) and Set preferences
+(per-monitor preferred mode -> preferences.json). Escape navigates back.
+
 OPTIONS:
-    --config-file=<PATH>   Write to PATH instead of the default location.
+    --config-file=<PATH>   Use PATH for settings.json instead of the default location.
+    --installer            Installer setup: go straight to Settings (no menu, no
+                           preferences).
     --write-default        Non-interactive: write the canonical default settings.
     -h, --help             Show this help.
 ";

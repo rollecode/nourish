@@ -441,6 +441,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_monitor_overview_ui_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_iced_core_engine_base",
+ "iced_core",
+ "iced_widget",
+]
+
+[[package]]
 name = "compositor_monitor_runtime_surface_base"
 version = "0.1.0"
 dependencies = [

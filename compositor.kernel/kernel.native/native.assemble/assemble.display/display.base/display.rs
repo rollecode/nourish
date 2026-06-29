@@ -105,13 +105,14 @@ pub fn assemble() -> DisplayAssembly {
     let (drm, drm_notifier) = compositor_kernel_drm_device_open_base::open::open(drm_fd.clone());
     let gbm = compositor_kernel_drm_gbm_device_base::device::create(drm_fd.clone());
 
-    // 5. Connector: scan, select (first connected; profiles narrow when keyed).
+    // 5. Connector: scan, select (preference default-output identity, else first
+    //    connected). `profiles` are priority-ordered; the first is the default.
     let res = compositor_kernel_drm_connector_scan_base::scan::resources(&drm);
     let connectors = compositor_kernel_drm_connector_scan_base::scan::connectors(&drm, &res);
     let profiles = compositor_kernel_graphic_preference_output_profile::profile::get();
     let initial_snapshot = ConnectorSnapshot::take(&connectors);
     let connector =
-        compositor_kernel_drm_connector_select_base::select::select(connectors, &profiles)
+        compositor_kernel_drm_connector_select_base::select::select(&drm, connectors, &profiles)
             .expect("No connected monitor found");
     let kind = compositor_kernel_drm_connector_kind_base::kind::classify(&connector);
     info!("selected connector classified: {kind:?}");

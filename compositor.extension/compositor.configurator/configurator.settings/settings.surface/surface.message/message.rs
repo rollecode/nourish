@@ -19,6 +19,23 @@ pub enum Tab {
     System,
 }
 
+impl Tab {
+    /// Stable index for session persistence in the driver `SettingsState`
+    /// (orchestration can't name `Tab`, so the selected module round-trips as a `u8`).
+    pub fn to_index(self) -> u8 {
+        match self {
+            Tab::Display => 0, Tab::Audio => 1, Tab::Input => 2, Tab::Network => 3,
+            Tab::Bluetooth => 4, Tab::Performance => 5, Tab::System => 6,
+        }
+    }
+    pub fn from_index(i: u8) -> Self {
+        match i {
+            1 => Tab::Audio, 2 => Tab::Input, 3 => Tab::Network, 4 => Tab::Bluetooth,
+            5 => Tab::Performance, 6 => Tab::System, _ => Tab::Display,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum SettingsMessage {
     /// Switch the visible tab (UI-only, not forwarded).

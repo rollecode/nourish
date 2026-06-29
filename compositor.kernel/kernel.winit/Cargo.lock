@@ -1880,6 +1880,206 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_configurator_audio_tab_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_configurator_settings_surface_control",
+ "compositor_configurator_settings_surface_message",
+ "compositor_configurator_settings_surface_style",
+ "compositor_support_iced_core_engine_base",
+ "compositor_y5_audio_controller_interface",
+ "iced_core",
+ "iced_widget",
+]
+
+[[package]]
+name = "compositor_configurator_bluetooth_backend_base"
+version = "0.0.1"
+dependencies = [
+ "zbus",
+]
+
+[[package]]
+name = "compositor_configurator_bluetooth_tab_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_configurator_bluetooth_backend_base",
+ "compositor_configurator_settings_surface_control",
+ "compositor_configurator_settings_surface_message",
+ "compositor_configurator_settings_surface_style",
+ "compositor_support_iced_core_engine_base",
+ "iced_core",
+ "iced_widget",
+]
+
+[[package]]
+name = "compositor_configurator_hardware_gpu_base"
+version = "0.0.1"
+
+[[package]]
+name = "compositor_configurator_network_backend_base"
+version = "0.0.1"
+dependencies = [
+ "zbus",
+]
+
+[[package]]
+name = "compositor_configurator_network_tab_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_configurator_network_backend_base",
+ "compositor_configurator_settings_surface_control",
+ "compositor_configurator_settings_surface_message",
+ "compositor_configurator_settings_surface_style",
+ "compositor_support_iced_core_engine_base",
+ "iced_core",
+ "iced_widget",
+]
+
+[[package]]
+name = "compositor_configurator_settings_interface_handle"
+version = "0.0.1"
+dependencies = [
+ "compositor_configurator_bluetooth_backend_base",
+ "compositor_configurator_network_backend_base",
+ "compositor_configurator_settings_surface_message",
+ "compositor_developer_environment_config_base",
+ "compositor_developer_environment_keybinding_base",
+ "compositor_developer_environment_preference_base",
+ "compositor_orchestration_core_state_base",
+ "compositor_orchestration_driver_audio_base",
+ "compositor_orchestration_driver_output_base",
+ "compositor_orchestration_driver_settings_base",
+ "compositor_y5_audio_controller_interface",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_configurator_settings_surface_chrome"
+version = "0.0.1"
+dependencies = [
+ "compositor_configurator_audio_tab_base",
+ "compositor_configurator_bluetooth_backend_base",
+ "compositor_configurator_bluetooth_tab_base",
+ "compositor_configurator_hardware_gpu_base",
+ "compositor_configurator_network_backend_base",
+ "compositor_configurator_network_tab_base",
+ "compositor_configurator_settings_surface_control",
+ "compositor_configurator_settings_surface_cursor",
+ "compositor_configurator_settings_surface_display",
+ "compositor_configurator_settings_surface_environment",
+ "compositor_configurator_settings_surface_keys",
+ "compositor_configurator_settings_surface_message",
+ "compositor_configurator_settings_surface_style",
+ "compositor_developer_environment_config_base",
+ "compositor_developer_environment_keybinding_base",
+ "compositor_orchestration_driver_output_base",
+ "compositor_support_iced_core_engine_base",
+ "compositor_y5_audio_controller_interface",
+ "iced_core",
+ "iced_widget",
+]
+
+[[package]]
+name = "compositor_configurator_settings_surface_control"
+version = "0.0.1"
+dependencies = [
+ "compositor_configurator_settings_surface_style",
+ "compositor_developer_debug_instance_record",
+ "iced_core",
+ "iced_widget",
+]
+
+[[package]]
+name = "compositor_configurator_settings_surface_cursor"
+version = "0.0.1"
+dependencies = [
+ "compositor_configurator_settings_surface_control",
+ "compositor_configurator_settings_surface_message",
+ "compositor_configurator_settings_surface_style",
+ "compositor_support_iced_core_engine_base",
+ "iced_core",
+ "iced_widget",
+]
+
+[[package]]
+name = "compositor_configurator_settings_surface_display"
+version = "0.0.1"
+dependencies = [
+ "compositor_configurator_settings_surface_control",
+ "compositor_configurator_settings_surface_message",
+ "compositor_configurator_settings_surface_style",
+ "compositor_orchestration_driver_output_base",
+ "compositor_support_iced_core_engine_base",
+ "iced_core",
+ "iced_widget",
+]
+
+[[package]]
+name = "compositor_configurator_settings_surface_environment"
+version = "0.0.1"
+dependencies = [
+ "compositor_configurator_hardware_gpu_base",
+ "compositor_configurator_settings_surface_control",
+ "compositor_configurator_settings_surface_message",
+ "compositor_configurator_settings_surface_style",
+ "compositor_developer_environment_config_base",
+ "compositor_support_iced_core_engine_base",
+ "iced_core",
+ "iced_widget",
+]
+
+[[package]]
+name = "compositor_configurator_settings_surface_keys"
+version = "0.0.1"
+dependencies = [
+ "compositor_configurator_settings_surface_control",
+ "compositor_configurator_settings_surface_message",
+ "compositor_configurator_settings_surface_style",
+ "compositor_developer_environment_keybinding_base",
+ "compositor_support_iced_core_engine_base",
+ "iced_core",
+ "iced_widget",
+]
+
+[[package]]
+name = "compositor_configurator_settings_surface_message"
+version = "0.0.1"
+dependencies = [
+ "compositor_configurator_bluetooth_backend_base",
+ "compositor_configurator_network_backend_base",
+ "compositor_developer_environment_config_base",
+ "compositor_orchestration_driver_output_base",
+ "compositor_y5_audio_controller_interface",
+]
+
+[[package]]
+name = "compositor_configurator_settings_surface_style"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_iced_core_engine_base",
+ "iced_core",
+ "iced_widget",
+]
+
+[[package]]
+name = "compositor_configurator_settings_surface_view"
+version = "0.0.1"
+dependencies = [
+ "compositor_configurator_bluetooth_backend_base",
+ "compositor_configurator_hardware_gpu_base",
+ "compositor_configurator_network_backend_base",
+ "compositor_configurator_settings_surface_chrome",
+ "compositor_configurator_settings_surface_message",
+ "compositor_developer_environment_config_base",
+ "compositor_developer_environment_keybinding_base",
+ "compositor_orchestration_driver_output_base",
+ "compositor_support_iced_core_engine_base",
+ "compositor_y5_audio_controller_interface",
+ "iced_core",
+]
+
+[[package]]
 name = "compositor_developer_debug_instance_channel"
 version = "0.0.1"
 dependencies = [
@@ -1906,6 +2106,24 @@ dependencies = [
 name = "compositor_developer_environment_config_base"
 version = "0.0.1"
 dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "compositor_developer_environment_keybinding_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_environment_config_base",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "compositor_developer_environment_preference_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_environment_config_base",
  "serde",
  "serde_json",
 ]
@@ -3222,6 +3440,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_monitor_overview_ui_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_iced_core_engine_base",
+ "iced_core",
+ "iced_widget",
+]
+
+[[package]]
 name = "compositor_monitor_runtime_surface_base"
 version = "0.1.0"
 dependencies = [
@@ -3286,6 +3514,8 @@ version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
  "compositor_developer_debug_instance_record",
+ "compositor_developer_environment_keybinding_base",
+ "compositor_developer_environment_preference_base",
  "compositor_introspection_sampler_window_base",
  "compositor_orchestration_bus_legacy_base",
  "compositor_orchestration_driver_audio_base",
@@ -3293,9 +3523,11 @@ dependencies = [
  "compositor_orchestration_driver_introspection_base",
  "compositor_orchestration_driver_lid_base",
  "compositor_orchestration_driver_logind_base",
+ "compositor_orchestration_driver_output_base",
  "compositor_orchestration_driver_remote_base",
  "compositor_orchestration_driver_resume_base",
  "compositor_orchestration_driver_selection_base",
+ "compositor_orchestration_driver_settings_base",
  "compositor_orchestration_environment_type_base",
  "compositor_orchestration_seat_gesture_state",
  "compositor_orchestration_seat_pointer_state",
@@ -3330,6 +3562,7 @@ dependencies = [
  "compositor_y5_lock_state_base",
  "compositor_y5_lock_system_base",
  "compositor_y5_navigator_state_base",
+ "compositor_y5_overview_state_base",
  "compositor_y5_placeholder_state_base",
  "compositor_y5_placeholder_system_base",
  "compositor_y5_select_state_base",
@@ -3451,6 +3684,7 @@ dependencies = [
  "compositor_y5_lock_interface_base",
  "compositor_y5_lock_system_base",
  "compositor_y5_navigator_state_base",
+ "compositor_y5_overview_draw_frame",
  "compositor_y5_picker_interface_capture",
  "compositor_y5_placeholder_interface_base",
  "compositor_y5_select_overlay_interface",
@@ -3528,6 +3762,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_orchestration_driver_output_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_storage_token_base",
+]
+
+[[package]]
 name = "compositor_orchestration_driver_remote_base"
 version = "0.0.1"
 dependencies = [
@@ -3550,6 +3791,14 @@ dependencies = [
  "compositor_monitor_compositor_iced_base",
  "compositor_support_system_storage_token_base",
  "smithay",
+]
+
+[[package]]
+name = "compositor_orchestration_driver_settings_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_monitor_compositor_iced_base",
+ "compositor_support_system_storage_token_base",
 ]
 
 [[package]]
@@ -3703,6 +3952,7 @@ dependencies = [
  "compositor_y5_canvas_input_keyboard",
  "compositor_y5_canvas_system_base",
  "compositor_y5_lock_system_base",
+ "compositor_y5_overview_input_pointer",
  "compositor_y5_surface_interface_base",
  "compositor_y5_surface_system_base",
  "compositor_y5_window_interface_draw",
@@ -4701,6 +4951,15 @@ dependencies = [
 name = "compositor_support_library_input_keyboard_enum"
 version = "0.0.1"
 dependencies = [
+ "smithay",
+]
+
+[[package]]
+name = "compositor_support_library_input_keyboard_format"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_library_input_keyboard_combo",
+ "compositor_support_library_input_keyboard_enum",
  "smithay",
 ]
 
@@ -6192,12 +6451,14 @@ name = "compositor_y5_canvas_input_keyboard"
 version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
+ "compositor_developer_environment_keybinding_base",
  "compositor_introspection_extraction_window_base",
  "compositor_orchestration_core_state_base",
  "compositor_support_action_camera_find_base",
  "compositor_support_action_camera_fit_aspect",
  "compositor_support_action_camera_fit_element",
  "compositor_support_library_input_keyboard_base",
+ "compositor_support_library_input_keyboard_format",
  "compositor_y5_camera_state_base",
  "compositor_y5_camera_system_base",
  "compositor_y5_camera_zone_state",
@@ -6212,6 +6473,7 @@ dependencies = [
  "compositor_y5_navigator_travel_machine",
  "compositor_y5_navigator_travel_state",
  "compositor_y5_overlay_interface_keyboard",
+ "compositor_y5_overview_input_keyboard",
  "compositor_y5_select_system_base",
  "compositor_y5_window_interface_draw",
  "compositor_y5_window_interface_record",
@@ -6267,6 +6529,7 @@ dependencies = [
  "compositor_y5_canvas_state_base",
  "compositor_y5_group_protocol_base",
  "compositor_y5_group_state_base",
+ "compositor_y5_overview_state_base",
  "compositor_y5_placeholder_system_base",
  "compositor_y5_select_state_base",
  "compositor_y5_surface_interface_core",
@@ -6925,10 +7188,12 @@ version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
  "compositor_developer_debug_instance_record",
+ "compositor_developer_environment_keybinding_base",
  "compositor_orchestration_core_state_base",
  "compositor_orchestration_driver_audio_base",
  "compositor_orchestration_world_manager_base",
  "compositor_support_library_input_keyboard_base",
+ "compositor_support_library_input_keyboard_format",
  "compositor_y5_lock_system_base",
  "compositor_y5_picker_interface_base",
  "compositor_y5_picker_interface_entry",
@@ -6936,6 +7201,247 @@ dependencies = [
  "smithay",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "compositor_y5_overview_draw_backdrop"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_orchestration_core_state_base",
+ "compositor_orchestration_driver_capture_base",
+ "compositor_y5_graphic_capture_registry",
+ "compositor_y5_overview_draw_blur",
+ "compositor_y5_overview_state_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_y5_overview_draw_blur"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_bevy_core_alloc_base",
+ "compositor_y5_graphic_capture_registry",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_y5_overview_draw_fit"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_y5_canvas_draw_element",
+ "compositor_y5_window_draw_element",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_y5_overview_draw_frame"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_orchestration_core_state_base",
+ "compositor_orchestration_draw_dispatch_frame",
+ "compositor_orchestration_draw_node_base",
+ "compositor_orchestration_draw_scene_element",
+ "compositor_support_bevy_core_compositor_base",
+ "compositor_support_system_world_frame_base",
+ "compositor_y5_overview_draw_backdrop",
+ "compositor_y5_overview_draw_scene",
+ "compositor_y5_overview_draw_settings",
+ "compositor_y5_overview_draw_status",
+ "compositor_y5_overview_draw_world",
+ "compositor_y5_overview_state_base",
+ "compositor_y5_picker_interface_embed",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_y5_overview_draw_grid"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_y5_overview_draw_plan"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_orchestration_core_state_base",
+ "compositor_y5_overview_draw_grid",
+ "compositor_y5_overview_state_base",
+ "compositor_y5_window_interface_record",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_y5_overview_draw_scene"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_orchestration_core_state_base",
+ "compositor_y5_canvas_draw_element",
+ "compositor_y5_overview_draw_fit",
+ "compositor_y5_overview_draw_plan",
+ "compositor_y5_window_interface_record",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_y5_overview_draw_settings"
+version = "0.0.1"
+dependencies = [
+ "compositor_configurator_bluetooth_backend_base",
+ "compositor_configurator_network_backend_base",
+ "compositor_configurator_settings_surface_message",
+ "compositor_configurator_settings_surface_view",
+ "compositor_developer_debug_instance_record",
+ "compositor_developer_environment_config_base",
+ "compositor_developer_environment_keybinding_base",
+ "compositor_developer_environment_preference_base",
+ "compositor_monitor_compositor_iced_base",
+ "compositor_orchestration_core_state_base",
+ "compositor_orchestration_draw_layer_base",
+ "compositor_orchestration_driver_audio_base",
+ "compositor_orchestration_driver_output_base",
+ "compositor_orchestration_driver_settings_base",
+ "compositor_y5_audio_controller_interface",
+ "compositor_y5_canvas_input_keyboard",
+ "compositor_y5_overlay_interface_keyboard",
+ "compositor_y5_overview_interface_base",
+ "compositor_y5_overview_state_base",
+ "compositor_y5_surface_draw_handle",
+ "compositor_y5_surface_protocol_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_y5_overview_draw_status"
+version = "0.0.1"
+dependencies = [
+ "compositor_configurator_settings_surface_message",
+ "compositor_configurator_settings_surface_view",
+ "compositor_developer_debug_instance_record",
+ "compositor_monitor_compositor_iced_base",
+ "compositor_monitor_overview_ui_base",
+ "compositor_orchestration_core_state_base",
+ "compositor_orchestration_driver_settings_base",
+ "libc",
+]
+
+[[package]]
+name = "compositor_y5_overview_draw_world"
+version = "0.0.1"
+dependencies = [
+ "compositor_background_three_system_base",
+ "compositor_developer_debug_instance_record",
+ "compositor_orchestration_core_state_base",
+ "compositor_orchestration_draw_layer_base",
+ "compositor_support_bevy_core_compositor_base",
+ "compositor_y5_picker_command_base",
+ "compositor_y5_picker_interface_embed",
+ "compositor_y5_picker_scene_create",
+ "compositor_y5_picker_system_base",
+ "compositor_y5_picker_three_constant",
+ "compositor_y5_picker_three_orient",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_y5_overview_input_keyboard"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_orchestration_core_state_base",
+ "compositor_support_library_input_keyboard_base",
+ "compositor_y5_overview_interface_activate",
+ "compositor_y5_overview_interface_base",
+ "compositor_y5_overview_interface_surface",
+ "compositor_y5_picker_interface_embed",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_y5_overview_input_pointer"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_monitor_compositor_iced_base",
+ "compositor_orchestration_core_state_base",
+ "compositor_orchestration_driver_settings_base",
+ "compositor_y5_camera_transform_translate",
+ "compositor_y5_overview_interface_activate",
+ "compositor_y5_picker_seat_embed",
+ "compositor_y5_picker_seat_pointer",
+ "compositor_y5_surface_interface_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_y5_overview_interface_activate"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_orchestration_core_state_base",
+ "compositor_y5_navigator_interface_base",
+ "compositor_y5_overview_interface_base",
+ "compositor_y5_overview_interface_surface",
+ "compositor_y5_picker_interface_embed",
+ "compositor_y5_window_interface_record",
+ "smithay",
+ "uuid",
+]
+
+[[package]]
+name = "compositor_y5_overview_interface_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_orchestration_core_state_base",
+ "compositor_y5_overview_interface_surface",
+ "compositor_y5_overview_state_base",
+ "compositor_y5_surface_protocol_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_y5_overview_interface_surface"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_monitor_compositor_iced_base",
+ "compositor_monitor_overview_ui_base",
+ "compositor_orchestration_core_state_base",
+ "compositor_orchestration_draw_layer_base",
+ "compositor_y5_overview_state_base",
+ "compositor_y5_surface_draw_handle",
+ "compositor_y5_surface_protocol_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_y5_overview_state_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_monitor_compositor_iced_base",
+ "compositor_support_bevy_core_alloc_base",
+ "compositor_support_system_storage_token_base",
+ "compositor_y5_graphic_capture_registry",
+ "smithay",
+ "uuid",
+]
+
+[[package]]
+name = "compositor_y5_overview_system_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_support_system_trait_system_base",
+ "compositor_y5_overview_state_base",
 ]
 
 [[package]]
@@ -6981,6 +7487,22 @@ dependencies = [
  "compositor_y5_picker_state_base",
  "compositor_y5_picker_system_base",
  "smithay",
+]
+
+[[package]]
+name = "compositor_y5_picker_interface_embed"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_orchestration_core_state_base",
+ "compositor_support_system_persist_mark_base",
+ "compositor_y5_picker_command_base",
+ "compositor_y5_picker_scene_destroy",
+ "compositor_y5_picker_state_base",
+ "compositor_y5_picker_system_base",
+ "compositor_y5_picker_three_orient",
+ "compositor_y5_picker_world_base",
+ "uuid",
 ]
 
 [[package]]
@@ -7132,6 +7654,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_y5_picker_seat_embed"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_orchestration_core_state_base",
+ "compositor_y5_picker_seat_pointer",
+ "compositor_y5_picker_system_base",
+ "smithay",
+]
+
+[[package]]
 name = "compositor_y5_picker_seat_iced"
 version = "0.0.1"
 dependencies = [
@@ -7176,6 +7709,7 @@ dependencies = [
  "compositor_y5_picker_three_constant",
  "compositor_y5_picker_three_orient",
  "compositor_y5_picker_three_scene",
+ "compositor_y5_picker_world_base",
  "smithay",
 ]
 
@@ -7352,6 +7886,7 @@ dependencies = [
  "compositor_y5_group_system_base",
  "compositor_y5_launcher_system_base",
  "compositor_y5_navigator_system_base",
+ "compositor_y5_overview_system_base",
  "compositor_y5_picker_interface_base",
  "compositor_y5_picker_state_base",
  "compositor_y5_picker_system_base",
@@ -7647,6 +8182,7 @@ name = "compositor_y5_surface_draw_hook"
 version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
+ "compositor_configurator_settings_interface_handle",
  "compositor_developer_debug_instance_record",
  "compositor_monitor_compositor_iced_base",
  "compositor_monitor_runtime_surface_base",
@@ -7657,6 +8193,7 @@ dependencies = [
  "compositor_y5_launcher_protocol_interface",
  "compositor_y5_lock_protocol_base",
  "compositor_y5_lock_system_base",
+ "compositor_y5_overview_interface_base",
  "compositor_y5_placeholder_interface_base",
  "compositor_y5_select_overlay_interface",
  "compositor_y5_surface_protocol_base",
@@ -7743,12 +8280,14 @@ name = "compositor_y5_surface_protocol_base"
 version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
+ "compositor_configurator_settings_surface_message",
  "compositor_monitor_selection_scene_base",
  "compositor_y5_graphic_capture_session",
  "compositor_y5_group_protocol_base",
  "compositor_y5_group_surface_base",
  "compositor_y5_launcher_protocol_message",
  "compositor_y5_lock_interface_surface",
+ "compositor_y5_overview_state_base",
  "compositor_y5_picker_surface_view",
  "compositor_y5_placeholder_protocol_base",
  "smithay",

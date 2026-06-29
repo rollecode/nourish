@@ -43,9 +43,9 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub fn new(env: Environment, cursor: f32, natural: bool, snap: OutputModesSnapshot, keys: Vec<KeyRow>) -> Self {
+    pub fn new(env: Environment, cursor: f32, natural: bool, snap: OutputModesSnapshot, keys: Vec<KeyRow>, tab: Tab) -> Self {
         Self {
-            tab: Tab::Display,
+            tab,
             cursor_sensitivity: cursor,
             natural_scroll: natural,
             env,

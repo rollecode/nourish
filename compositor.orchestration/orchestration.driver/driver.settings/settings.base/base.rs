@@ -17,6 +17,10 @@ pub struct SettingsState {
     /// True only while the Performance tab is the visible settings module — the
     /// gate for pushing live FPS (so other tabs don't buffer per-frame updates).
     pub fps_wanted: bool,
+    /// Last selected settings module, kept across reopens for the session so the
+    /// panel restores the tab the user left on. Stored as the `Tab::to_index`
+    /// value (orchestration can't name the configurator `Tab`); 0 = Display.
+    pub tab: u8,
 }
 
 pub static SETTINGS: Token<SettingsState> = Token::new();

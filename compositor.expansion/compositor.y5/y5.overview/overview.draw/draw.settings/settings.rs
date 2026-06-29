@@ -21,6 +21,16 @@ use std::cell::RefCell;
 thread_local! {
     /// Last snapshot pushed — only re-dispatch (re-render) the UI when it changes.
     static LAST: RefCell<Option<(AudioState, WifiSnapshot, BtSnapshot)>> = const { RefCell::new(None) };
+    /// Output size the surface was last sized to. The settings surface is
+    /// screen-space and spans the output, so a mode/resolution change invalidates
+    /// its rect — re-size only when this drifts (resizes reallocate a texture).
+    static SIZED: RefCell<Option<Size<i32, Physical>>> = const { RefCell::new(None) };
+}
+
+/// Screen rect for the settings surface at the given output size: full width,
+/// below the menu bar. Single source of truth for `create` and the resize check.
+fn settings_rect(size: Size<i32, Physical>) -> Rectangle<i32, Physical> {
+    Rectangle::new(Point::from((0, MENU_BAR_HEIGHT)), Size::from((size.w, (size.h - MENU_BAR_HEIGHT).max(1))))
 }
 
 pub fn per_frame(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Physical>) {
@@ -30,13 +40,24 @@ pub fn per_frame(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, 
     match (shown, state.inner.kernel.get(&SETTINGS).handle, state.inner.kernel.get(&SETTINGS).open) {
         (true, None, _) => create(state, renderer, size),
         (true, Some(id), false) => { destroy(state, id); compositor_y5_overview_interface_base::base::request_close(state); } // panel Close
-        (true, Some(id), true) => sync(state, id),
+        (true, Some(id), true) => sync(state, id, size),
         (false, Some(id), _) => destroy(state, id),
         (false, None, _) => {}
     }
 }
 
-fn sync(state: &mut Loop, id: HandleId) {
+fn sync(state: &mut Loop, id: HandleId, size: Size<i32, Physical>) {
+    // Output size can change while settings is open (mode/resolution change). The
+    // surface is screen-space and was sized to the output at create, so re-derive
+    // the rect and resize/move when the output size drifts.
+    let resized = SIZED.with(|s| { let mut s = s.borrow_mut(); if *s != Some(size) { *s = Some(size); true } else { false } });
+    if resized {
+        let rect = settings_rect(size);
+        if let Some(reg) = state.inner.surface_mut().registry.as_mut() {
+            reg.request_resize_by_id(id, rect.size);
+            reg.set_location_by_id(id, rect.loc);
+        }
+    }
     let audio = state.inner.kernel.get(&AUDIO).as_ref().map(|a| a.state()).unwrap_or_default();
     let cur = (audio, wifi::snapshot(), bt::snapshot());
     let changed = LAST.with(|l| { let mut l = l.borrow_mut(); if l.as_ref() != Some(&cur) { *l = Some(cur.clone()); true } else { false } });
@@ -56,7 +77,8 @@ fn sync(state: &mut Loop, id: HandleId) {
 }
 
 fn create(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Physical>) {
-    let rect = Rectangle::new(Point::from((0, MENU_BAR_HEIGHT)), Size::from((size.w, (size.h - MENU_BAR_HEIGHT).max(1))));
+    let rect = settings_rect(size);
+    SIZED.with(|s| *s.borrow_mut() = Some(size));
     let env = compositor_developer_environment_config_base::base::read_current();
     state.inner.preference = compositor_developer_environment_preference_base::base::load();
     state.inner.keybinding = compositor_developer_environment_keybinding_base::base::load();
@@ -67,7 +89,8 @@ fn create(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Physica
     keys.extend(compositor_y5_canvas_input_keyboard::navigator::registry(&state.inner.keybinding));
     keys.extend(compositor_y5_canvas_input_keyboard::navigator::fixed());
     keys.extend(compositor_y5_overlay_interface_keyboard::keyboard::fixed());
-    let ui = Settings::new(env, cursor, natural, snap, keys);
+    let tab = compositor_configurator_settings_surface_message::message::Tab::from_index(state.inner.kernel.get(&SETTINGS).tab);
+    let ui = Settings::new(env, cursor, natural, snap, keys, tab);
     let handle = load(state, renderer, ui, rect, IcedSpace::Screen, Layer::SCENE.bits());
     install_handler(state, handle);
     let untyped = handle.untyped();

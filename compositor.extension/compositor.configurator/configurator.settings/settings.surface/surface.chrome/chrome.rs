@@ -83,8 +83,8 @@ pub fn render<'a>(
         Tab::Display => display::build(modes, current),
         Tab::Audio => audio_tab::build(audio),
         Tab::Input => row![
-            container(cursor::build(cursor_sensitivity, natural)).width(Length::FillPortion(3)).height(Length::Fill),
-            container(keybinds::build(keys)).width(Length::FillPortion(2)).height(Length::Fill),
+            container(cursor::build(cursor_sensitivity, natural)).width(Length::FillPortion(5)).height(Length::Fill),
+            container(keybinds::build(keys)).width(Length::FillPortion(4)).height(Length::Fill),
         ].spacing(24).height(Length::Fill).into(),
         Tab::Network => network_tab::build(wifi, wifi_selected, wifi_password),
         Tab::Bluetooth => bluetooth_tab::build(bt),
