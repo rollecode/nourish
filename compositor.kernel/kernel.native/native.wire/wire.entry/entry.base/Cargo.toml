@@ -21,6 +21,7 @@ compositor_kernel_input_loop_libinput_base.workspace = true
 compositor_kernel_native_assemble_display_base.workspace = true
 compositor_kernel_native_assemble_renderer_base.workspace = true
 compositor_kernel_native_context_display_base.workspace = true
+compositor_kernel_native_context_display_enumerate.workspace = true
 compositor_kernel_native_context_render_base.workspace = true
 compositor_kernel_native_context_topology_base.workspace = true
 compositor_kernel_native_render_execute_base.workspace = true

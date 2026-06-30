@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 compositor_kernel_native_context_display_mode.workspace = true
+compositor_kernel_native_context_display_switch.workspace = true
 compositor_developer_debug_instance_record.workspace = true
 bitflags.workspace = true
 smithay.workspace = true
@@ -15,6 +16,8 @@ compositor_kernel_native_context_render_base.workspace = true
 compositor_kernel_native_context_display_apply.workspace = true
 compositor_orchestration_core_state_base.workspace = true
 compositor_orchestration_draw_state_lifecycle.workspace = true
+compositor_orchestration_driver_lid_base.workspace = true
+compositor_y5_lock_interface_base.workspace = true
 
 [lib]
 path = "lib.rs"

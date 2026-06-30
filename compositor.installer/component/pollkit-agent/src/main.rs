@@ -32,6 +32,44 @@ struct Subject {
     subject_details: HashMap<String, zbus::zvariant::OwnedValue>,
 }
 
+// ---- logind (login1) Proxies for session discovery ----
+
+#[proxy(
+    interface = "org.freedesktop.login1.Manager",
+    default_service = "org.freedesktop.login1",
+    default_path = "/org/freedesktop/login1"
+)]
+trait LoginManager {
+    /// Returns (session_id, uid, user_name, seat_id, object_path) per session.
+    fn list_sessions(
+        &self,
+    ) -> zbus::Result<Vec<(String, u32, String, String, zbus::zvariant::OwnedObjectPath)>>;
+
+    fn get_user(&self, uid: u32) -> zbus::Result<zbus::zvariant::OwnedObjectPath>;
+}
+
+#[proxy(
+    interface = "org.freedesktop.login1.User",
+    default_service = "org.freedesktop.login1"
+)]
+trait LoginUser {
+    /// The user's "display" (graphical) session: (session_id, object_path).
+    #[zbus(property)]
+    fn display(&self) -> zbus::Result<(String, zbus::zvariant::OwnedObjectPath)>;
+}
+
+#[proxy(
+    interface = "org.freedesktop.login1.Session",
+    default_service = "org.freedesktop.login1"
+)]
+trait LoginSession {
+    #[zbus(property)]
+    fn active(&self) -> zbus::Result<bool>;
+
+    #[zbus(property, name = "Type")]
+    fn type_(&self) -> zbus::Result<String>;
+}
+
 // ---- Background D-Bus Daemon ----
 
 struct PolkitAgent;
@@ -109,7 +147,6 @@ impl PolkitAgent {
                 let mut helper =
                     tokio::process::Command::new("/usr/lib/polkit-1/polkit-agent-helper-1")
                         .arg(&target_user)
-                        .env("POLKIT_AGENT_HELPER_1_COOKIE", cookie)
                         .stdin(std::process::Stdio::piped())
                         .stdout(std::process::Stdio::piped()) // Capture stdout to sequence the prompt
                         .stderr(std::process::Stdio::inherit())
@@ -118,31 +155,35 @@ impl PolkitAgent {
                             zbus::fdo::Error::Failed(format!("Failed to spawn helper: {}", e))
                         })?;
 
-                if let (Some(mut helper_out), Some(mut helper_in)) =
+                if let (Some(helper_out), Some(mut helper_in)) =
                     (helper.stdout.take(), helper.stdin.take())
                 {
-                    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+                    use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
-                    let mut buf = [0u8; 1024];
+                    // polkit-agent-helper-1 protocol (the helper reads from stdin, NOT an
+                    // env var): the FIRST line on stdin must be the cookie, then a PAM
+                    // conversation follows line-by-line, ending in SUCCESS/FAILURE on stdout.
+                    let _ = helper_in
+                        .write_all(format!("{}\n", cookie).as_bytes())
+                        .await;
+                    let _ = helper_in.flush().await;
 
-                    // 1. Wait for PAM to initialize and prompt for the password.
-                    // This ensures the input buffer isn't flushed after we write to it.
-                    if let Ok(bytes_read) = helper_out.read(&mut buf).await {
-                        let output_str = String::from_utf8_lossy(&buf[..bytes_read]);
-
-                        if output_str.contains("PAM_PROMPT_ECHO_OFF") {
-                            // 2. Now that PAM is actively listening, send the password
+                    let mut lines = BufReader::new(helper_out).lines();
+                    while let Ok(Some(line)) = lines.next_line().await {
+                        let line = line.trim();
+                        if line.starts_with("PAM_PROMPT_ECHO_OFF")
+                            || line.starts_with("PAM_PROMPT_ECHO_ON")
+                        {
+                            // PAM is asking for input — feed it the collected password.
                             let _ = helper_in
                                 .write_all(format!("{}\n", password).as_bytes())
                                 .await;
                             let _ = helper_in.flush().await;
+                        } else if line == "SUCCESS" || line == "FAILURE" {
+                            break; // helper reports its verdict and exits.
                         }
+                        // PAM_ERROR_MSG / PAM_TEXT_INFO lines are informational — ignore.
                     }
-
-                    // 3. Keep reading the remaining output so the helper doesn't stall,
-                    // and keep stdin alive until PAM finishes processing.
-                    let mut final_output = String::new();
-                    let _ = helper_out.read_to_string(&mut final_output).await;
                 }
 
                 let helper_status = helper
@@ -168,6 +209,82 @@ impl PolkitAgent {
         Ok(())
     }
 }
+/// Real uid of this process, parsed from `/proc/self/status` (no libc dep).
+fn current_uid() -> Option<u32> {
+    let status = std::fs::read_to_string("/proc/self/status").ok()?;
+    for line in status.lines() {
+        if let Some(rest) = line.strip_prefix("Uid:") {
+            // "Uid:\t<real>\t<effective>\t<saved>\t<fs>" — take the real uid.
+            return rest.split_whitespace().next()?.parse().ok();
+        }
+    }
+    None
+}
+
+/// Ask logind for the active graphical session of the current user.
+///
+/// Preference order:
+///   1. The user's `Display` (graphical) session — login1 already tracks this.
+///   2. Scan all sessions: the one owned by our uid that is `Active` and of a
+///      graphical type (wayland/x11/mir), or failing that any active one.
+async fn discover_active_session(conn: &connection::Connection) -> Option<String> {
+    let manager = LoginManagerProxy::new(conn).await.ok()?;
+    let uid = current_uid();
+
+    // 1. The user object's Display property is exactly the active graphical session.
+    if let Some(uid) = uid {
+        if let Ok(user_path) = manager.get_user(uid).await {
+            if let Ok(builder) = LoginUserProxy::builder(conn).path(user_path) {
+                if let Ok(user) = builder.build().await {
+                    if let Ok((sid, _path)) = user.display().await {
+                        if !sid.is_empty() {
+                            return Some(sid);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Fall back to scanning every session for an active graphical one.
+    let sessions = manager.list_sessions().await.ok()?;
+    let mut active_any: Option<String> = None;
+    for (sid, suid, _user, _seat, path) in sessions {
+        if let Some(uid) = uid {
+            if suid != uid {
+                continue;
+            }
+        }
+        let Ok(builder) = LoginSessionProxy::builder(conn).path(path) else {
+            continue;
+        };
+        let Ok(session) = builder.build().await else {
+            continue;
+        };
+        let active = session.active().await.unwrap_or(false);
+        if !active {
+            continue;
+        }
+        let stype = session.type_().await.unwrap_or_default();
+        if matches!(stype.as_str(), "wayland" | "x11" | "mir") {
+            return Some(sid); // active + graphical — the one we want.
+        }
+        active_any.get_or_insert(sid); // remember as a weaker fallback.
+    }
+    active_any
+}
+
+/// Resolve the logind session to register the agent for, preferring live
+/// logind discovery and degrading gracefully to cgroup/env heuristics.
+async fn resolve_session_id(conn: &connection::Connection) -> String {
+    if let Some(sid) = discover_active_session(conn).await {
+        println!("[Daemon] Discovered active graphical session via logind: {sid}");
+        return sid;
+    }
+    eprintln!("[Daemon] logind discovery failed; falling back to cgroup/env.");
+    get_true_session_id()
+}
+
 fn get_true_session_id() -> String {
     // Attempt to extract the true logind session from the cgroup v2 tree
     if let Ok(cgroup) = std::fs::read_to_string("/proc/self/cgroup") {
@@ -197,8 +314,8 @@ async fn run_daemon() -> Result<(), Box<dyn Error>> {
         .at(agent_path, PolkitAgent)
         .await?;
 
-    // Get the guaranteed session ID
-    let session_id = get_true_session_id();
+    // Discover the active graphical session automatically (no env var needed).
+    let session_id = resolve_session_id(&connection).await;
     println!("Registering agent under logind session: {}", session_id);
 
     let mut details = HashMap::new();

@@ -7,17 +7,13 @@ use compositor_orchestration_core_state_base::state::Status;
 use compositor_y5_surface_protocol_base::protocol::SurfaceMessageType;
 
 pub fn hook(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Physical>) {
-    let Status::Locked { pending, time, .. } = state.inner.status else {
+    let Status::Locked { pending, .. } = state.inner.status else {
         abort!();
     };
-    if pending {
-        // CHECK: Instead of doing this inside a render hook- insert timer to calloop
-        if time.elapsed()
-            > Duration::from_secs_f64(compositor_y5_lock_state_transition::transition::PERIOD)
-        {
-            compositor_y5_lock_interface_base::interface::lock_done(state, renderer, size);
-        }
-    } else {
+    // The pending→done transition is now a calloop `Timer` armed in
+    // `lock_logical` (renderer-free, so it progresses even when dark). Here we only
+    // drain the lock-screen auth messages once the lock is complete.
+    if !pending {
         load_incoming_buffer(state, renderer, size);
     }
 }

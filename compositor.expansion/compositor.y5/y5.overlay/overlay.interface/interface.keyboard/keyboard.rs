@@ -223,10 +223,17 @@ fn tty(state: &mut Loop, num: u32) {
 
 fn sleep(state: &mut Loop) {
     error!("Sleep");
-    state.loop_handle.insert_idle(move |state| {
-        state.inner.__set_lock =
-            Some(compositor_orchestration_core_state_base::state::SetLockRequest { sleep: true });
-    });
+    if matches!(state.inner.status, compositor_orchestration_core_state_base::state::Status::Locked { .. }) {
+        return; // already locked
+    }
+    // Status set SYNCHRONOUSLY (sleep lock); the renderer-free engage runs off-frame
+    // — `wire.input` drains `lock_engage` and schedules `lock_logical` on an idle.
+    state.inner.status = compositor_orchestration_core_state_base::state::Status::Locked {
+        pending: true,
+        sleep: true,
+        time: std::time::Instant::now(),
+    };
+    state.inner.lock_engage = true;
 }
 
 /// TEMPORARY (sanity test): make test-world `slot` (0=main, 1/2=pre-created

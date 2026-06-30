@@ -24,7 +24,12 @@ pub struct NativeRenderContext {
     pub mode: Mode,
     pub output: Output,
     pub damage_tracker: OutputDamageTracker,
-    pub drm_output: NativeDrmOutput,
+    /// The live pipe. `Option` because a live monitor switch tears the current
+    /// output DOWN before building the target (single-output hardware can't light
+    /// two at once — the atomic modeset of a second output fails). It is `None`
+    /// only transiently inside `display.switch` between teardown and rebuild;
+    /// every render path treats `None` as "skip this frame".
+    pub drm_output: Option<NativeDrmOutput>,
     pub drm_output_manager: Rc<RefCell<NativeDrmOutputManager>>,
     pub gpu_binding: Rc<RefCell<StateDRMBinding>>,
     pub libinput_context: Libinput,
@@ -64,4 +69,25 @@ pub struct NativeRenderContext {
     /// `(previous_mode, one_shot_timer)`. `Some` while awaiting the user's Keep;
     /// cleared on Confirm, on Revert, or when the timer reverts. See `display.mode`.
     pub mode_revert: Option<(DrmMode, RegistrationToken)>,
+    /// Armed confirm/revert state for a provisionally-applied active-output
+    /// SWITCH: the original pipe (kept alive on its own CRTC) plus the metadata to
+    /// restore. `Some` while awaiting the user's Keep; cleared on Confirm (old
+    /// dropped), on Revert, or when the timer reverts. See `display.switch`.
+    pub output_revert: Option<OutputSwitchBaseline>,
+    /// The dark control-plane timer (`Timer` re-arming every ~100 ms) while the
+    /// compositor has no output: pumps the important renderer-free drains so they
+    /// progress with no rendering. `Some` only while dark — armed on the `WentDark`
+    /// transition, removed on `Recovered`. See `wire.plugin` + `pump.dark`.
+    pub dark_tick: Option<RegistrationToken>,
+}
+
+/// What to restore on a switch revert: the original connector (by its unique name,
+/// e.g. "DisplayPort-1") and the mode it was driving, plus the auto-revert
+/// watchdog. The original output is torn DOWN on apply (single-output scanout —
+/// only one pipe active at a time), so a revert REBUILDS it rather than
+/// re-activating a kept-alive pipe.
+pub struct OutputSwitchBaseline {
+    pub connector_name: String,
+    pub mode: compositor_orchestration_driver_output_base::base::ModeInfo,
+    pub timer: RegistrationToken,
 }

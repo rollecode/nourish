@@ -1,6 +1,6 @@
 //! Live GPU node registry: appearance/removal. One node populated today.
 
-use smithay::backend::drm::DrmNode;
+use smithay::backend::drm::{DrmNode, NodeType};
 use std::collections::HashMap;
 
 #[derive(Debug, Default)]
@@ -34,6 +34,21 @@ impl NodeRegistry {
 
     pub fn primary(&self) -> Option<DrmNode> {
         self.primary
+    }
+
+    /// Does `dev_id` (from a udev event) identify the primary GPU? udev reports the
+    /// CARD (primary) node's dev_t for connector hotplug, but `primary` is stored as
+    /// the RENDER node — so match against BOTH the render dev_id and its card node's
+    /// dev_id. Without this, hotplug events are dismissed as "non-driven device".
+    pub fn is_primary_dev(&self, dev_id: u64) -> bool {
+        let Some(p) = self.primary else { return false };
+        if p.dev_id() == dev_id {
+            return true;
+        }
+        p.node_with_type(NodeType::Primary)
+            .and_then(|r| r.ok())
+            .map(|card| card.dev_id() == dev_id)
+            .unwrap_or(false)
     }
 
     pub fn nodes(&self) -> impl Iterator<Item = (&u64, &DrmNode)> {

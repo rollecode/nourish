@@ -21,8 +21,6 @@ pub struct OutputProfile {
     /// `None` = applies to any output (single-output era default).
     pub identity: Option<String>,
     pub mode: Option<ModeRequest>,
-    pub position: (i32, i32),
-    pub scale: Option<f64>,
 }
 
 /// Load the per-monitor profiles from `preferences.json`, mapped onto the kernel's
@@ -37,12 +35,20 @@ pub fn get() -> Vec<OutputProfile> {
 }
 
 fn map_profile(p: compositor_developer_environment_preference_base::base::OutputProfile) -> OutputProfile {
-    OutputProfile {
-        identity: p.identity,
-        mode: p.mode.map(map_mode),
-        position: p.position,
-        scale: p.scale,
-    }
+    OutputProfile { identity: p.identity, mode: p.mode.map(map_mode) }
+}
+
+/// The hand-set fallback mode for monitors lacking a per-output profile, as an
+/// `Advertised` request (mHz refresh, already normalized on load). `None` when
+/// unset — callers fall back to the default mode-selection policy.
+pub fn default_mode() -> Option<ModeRequest> {
+    compositor_developer_environment_preference_base::base::load()
+        .outputs_default_mode
+        .map(|m| ModeRequest::Advertised {
+            width: m.width,
+            height: m.height,
+            refresh_mhz: m.refresh_mhz,
+        })
 }
 
 fn map_mode(m: compositor_developer_environment_preference_base::base::ModeRequest) -> ModeRequest {

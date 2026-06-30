@@ -423,6 +423,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_kernel_scanout_pipe_claim_free"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "smithay",
+]
+
+[[package]]
 name = "compositor_kernel_scanout_plane_assign_base"
 version = "0.0.1"
 dependencies = [

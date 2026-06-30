@@ -42,10 +42,26 @@ fn place(dest: &Path, source: &Source, mode: u32, root: bool, am_root: bool, dry
         }
     };
 
-    // `install -D` creates parent dirs and sets the mode atomically.
+    // Stage the file next to its final destination, then atomically rename it into
+    // place. Two reasons this beats writing `dest` directly:
+    //   * Atomic: a crash mid-copy never leaves a half-written/truncated binary.
+    //   * No ETXTBSY: writing over a *running* executable (the compositor, the polkit
+    //     agent, the mx daemon — any of which may be live during a re-install) fails
+    //     with "Text file busy". rename(2) just swaps the directory entry; the running
+    //     process keeps the old inode while new launches pick up the new one.
+    // The temp lives in the same directory as `dest` so the rename stays on one
+    // filesystem (cross-FS rename would fall back to a non-atomic copy).
     let mode_s = format!("{:o}", mode);
-    let args = svec(&["-D", "-m", &mode_s, &src_path.to_string_lossy(), &dest.to_string_lossy()]);
-    run("install", &args, root, am_root, dry_run)
+    let file = dest.file_name().and_then(|s| s.to_str()).unwrap_or("file");
+    let tmp_dest = dest.with_file_name(format!(".{file}.y5-install-tmp"));
+    let tmp_s = tmp_dest.to_string_lossy().to_string();
+
+    // `install -D` creates parent dirs and sets the mode on the staged temp file.
+    let stage_args = svec(&["-D", "-m", &mode_s, &src_path.to_string_lossy(), &tmp_s]);
+    run("install", &stage_args, root, am_root, dry_run)?;
+
+    // `mv -f` is rename(2): atomic, and immune to ETXTBSY on a running target.
+    run("mv", &svec(&["-f", &tmp_s, &dest.to_string_lossy()]), root, am_root, dry_run)
 }
 
 /// Run a command, prefixing `sudo` when the action needs root and we are not root.

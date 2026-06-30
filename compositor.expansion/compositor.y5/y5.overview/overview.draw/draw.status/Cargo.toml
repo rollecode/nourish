@@ -5,7 +5,9 @@ edition = "2024"
 
 [dependencies]
 libc = { workspace = true }
+smithay = { workspace = true }
 compositor_orchestration_core_state_base = { workspace = true }
+compositor_y5_overview_state_base = { workspace = true }
 compositor_monitor_compositor_iced_base = { workspace = true }
 compositor_monitor_overview_ui_base = { workspace = true }
 compositor_configurator_settings_surface_message = { workspace = true }

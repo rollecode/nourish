@@ -1,5 +1,26 @@
 {
+  "compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.display": [
+    "size"
+  ],
   "compositor.orchestration/orchestration.driver/driver.selection/selection.base": [
+    "size"
+  ],
+  "compositor.orchestration/orchestration.driver/driver.output/output.base": [
+    "size"
+  ],
+  "compositor.extension/compositor.configurator/configurator.settings/settings.interface/interface.handle": [
+    "size"
+  ],
+  "compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.message": [
+    "size"
+  ],
+  "compositor.kernel/kernel.native/native.context/context.display/display.build": [
+    "size"
+  ],
+  "compositor.kernel/kernel.native/native.context/context.display/display.mode": [
+    "size"
+  ],
+  "compositor.kernel/kernel.native/native.context/context.display/display.switch": [
     "size"
   ],
   "compositor.expansion/compositor.y5/y5.audio/audio.controller/controller.interface": [
@@ -142,6 +163,12 @@
   "compositor.kernel/kernel.drm/drm.mode/mode.synthesize/synthesize.base": [
     "size"
   ],
+  "compositor.kernel/kernel.native/native.wire/wire.plugin/plugin.base": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.overview/overview.draw/draw.status": [
+    "size"
+  ],
   "compositor.kernel/kernel.gles/gles.element/element.combined/combined.base": [
     "size"
   ],
@@ -244,6 +271,9 @@
     "size"
   ],
   "compositor.developer/developer.environment/environment.config/config.base": [
+    "size"
+  ],
+  "compositor.developer/developer.environment/environment.preference/preference.base": [
     "size"
   ],
   "compositor.extension/compositor.configurator/configurator.network/network.backend/backend.base": [

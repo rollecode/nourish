@@ -3,12 +3,14 @@
 //! throttles keep the iced surfaces from re-rendering every frame.
 use std::cell::RefCell;
 use std::time::Instant;
+use smithay::utils::{Physical, Size};
 use compositor_orchestration_core_state_base::Loop;
 use compositor_monitor_compositor_iced_base::IcedHandle;
 use compositor_monitor_overview_ui_base::base::{OverviewMenu, OverviewMessage};
 use compositor_configurator_settings_surface_message::message::SettingsMessage;
 use compositor_configurator_settings_surface_view::Settings;
 use compositor_orchestration_driver_settings_base::base::SETTINGS;
+use compositor_y5_overview_state_base::base::MENU_BAR_HEIGHT;
 
 const DOW: [&str; 7] = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const MON: [&str; 12] = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
@@ -16,12 +18,29 @@ const MON: [&str; 12] = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG",
 thread_local! {
     static CLOCK_MIN: RefCell<i64> = const { RefCell::new(-1) };
     static FPS: RefCell<(Option<Instant>, f32, u64)> = const { RefCell::new((None, 0.0, 0)) };
+    /// Output width the menu bar was last sized to — re-size the full-width header
+    /// when the output width drifts (mode/resolution/monitor change), mirroring the
+    /// settings panel's resize (the menu bar is created once at the open-time width).
+    static MENU_W: RefCell<Option<i32>> = const { RefCell::new(None) };
 }
 
 /// Called from the overview GLES prepare while the overlay is open.
-pub fn per_frame(state: &mut Loop) {
+pub fn per_frame(state: &mut Loop, size: Size<i32, Physical>) {
+    resize_menu(state, size);
     clock(state);
     fps(state);
+}
+
+/// Keep the full-width menu/tab bar spanning the output: re-size it when the output
+/// width changes. (Position is fixed at the top-left.)
+fn resize_menu(state: &mut Loop, size: Size<i32, Physical>) {
+    let Some(menu) = state.inner.overview().menu else { return };
+    let drifted = MENU_W.with(|w| { let mut w = w.borrow_mut(); if *w != Some(size.w) { *w = Some(size.w); true } else { false } });
+    if drifted {
+        if let Some(reg) = state.inner.surface_mut().registry.as_mut() {
+            reg.request_resize_by_id(menu, Size::from((size.w, MENU_BAR_HEIGHT)));
+        }
+    }
 }
 
 fn now_tm() -> libc::tm {

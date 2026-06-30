@@ -184,7 +184,7 @@ pub fn wire(
         mode: display.mode,
         output: display.output.clone(),
         damage_tracker,
-        drm_output: renderer.drm_output,
+        drm_output: Some(renderer.drm_output),
         drm_output_manager: renderer.drm_output_manager,
         gpu_binding: renderer.gpu_binding.clone(),
         libinput_context,
@@ -200,6 +200,8 @@ pub fn wire(
         current_drm_mode: display.drm_mode,
         modes: display.connector.modes().to_vec(),
         mode_revert: None,
+        output_revert: None,
+        dark_tick: None,
     }));
 
     // ---- Advertised-mode snapshot for the settings Display panel (kernel → rim).
@@ -216,6 +218,8 @@ pub fn wire(
             .kernel
             .get_mut(&compositor_orchestration_driver_output_base::base::OUTPUT_MODES_SNAPSHOT_MUT) =
             OutputModesSnapshot {
+                // EDID identity "make model serial" — the per-monitor key the picker
+                // selects with and the settings-editor persists.
                 edid_key: display.identity.key(),
                 current: Some(to_info(&display.drm_mode)),
                 available: display.connector.modes().iter().map(to_info).collect(),
@@ -267,6 +271,31 @@ pub fn wire(
             .inner
             .kernel
             .get_mut(&compositor_orchestration_driver_lid_base::base::DISPLAY_SNAPSHOT_MUT) = snap;
+    }
+
+    // ---- Full connected-monitor list for the settings preferred-monitor picker
+    //      (kernel → rim). Lists the active connector plus connected-but-inactive
+    //      monitors; refreshed on a live switch by `display.switch`.
+    {
+        use compositor_orchestration_driver_output_base::base::ModeInfo;
+        let active_mode = ModeInfo {
+            width: display.drm_mode.size().0,
+            height: display.drm_mode.size().1,
+            refresh_mhz: display.drm_mode.vrefresh() * 1000,
+        };
+        let ctx = ctx_rc.borrow();
+        let manager = ctx.drm_output_manager.borrow();
+        let snap = compositor_kernel_native_context_display_enumerate::enumerate::enumerate(
+            manager.device(),
+            display.connector.handle(),
+            active_mode,
+        );
+        drop(manager);
+        drop(ctx);
+        *_loop
+            .inner
+            .kernel
+            .get_mut(&compositor_orchestration_driver_output_base::base::OUTPUTS_SNAPSHOT_MUT) = snap;
     }
 
     // ---- Loop sources.

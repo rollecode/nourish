@@ -3447,6 +3447,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_kernel_native_context_display_build"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_kernel_drm_connector_scan_base",
+ "compositor_kernel_drm_edid_parse_base",
+ "compositor_kernel_drm_mode_select_base",
+ "compositor_kernel_gles_element_wrap_base",
+ "compositor_kernel_scanout_commit_test_base",
+ "compositor_kernel_scanout_pipe_claim_free",
+ "compositor_kernel_scanout_surface_output_base",
+ "compositor_orchestration_core_state_base",
+ "compositor_orchestration_draw_scene_element",
+ "compositor_orchestration_driver_output_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_kernel_native_context_display_enumerate"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_kernel_drm_connector_scan_base",
+ "compositor_kernel_drm_edid_identity_base",
+ "compositor_kernel_drm_edid_parse_base",
+ "compositor_kernel_graphic_preference_output_profile",
+ "compositor_orchestration_driver_output_base",
+ "smithay",
+]
+
+[[package]]
 name = "compositor_kernel_native_context_display_mode"
 version = "0.0.1"
 dependencies = [
@@ -3457,6 +3488,27 @@ dependencies = [
  "compositor_orchestration_core_state_base",
  "compositor_orchestration_draw_scene_element",
  "compositor_orchestration_driver_output_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_kernel_native_context_display_switch"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_debug_instance_record",
+ "compositor_developer_environment_config_base",
+ "compositor_kernel_drm_connector_scan_base",
+ "compositor_kernel_drm_edid_identity_base",
+ "compositor_kernel_drm_edid_parse_base",
+ "compositor_kernel_graphic_preference_output_profile",
+ "compositor_kernel_native_context_display_base",
+ "compositor_kernel_native_context_display_build",
+ "compositor_kernel_native_context_display_enumerate",
+ "compositor_kernel_native_context_render_base",
+ "compositor_orchestration_core_state_base",
+ "compositor_orchestration_driver_lid_base",
+ "compositor_orchestration_driver_output_base",
+ "compositor_orchestration_event_output_base",
  "smithay",
 ]
 
@@ -3472,6 +3524,7 @@ dependencies = [
  "compositor_kernel_scanout_surface_output_base",
  "compositor_kernel_vulkan_renderer_core_base",
  "compositor_orchestration_core_state_base",
+ "compositor_orchestration_driver_output_base",
  "smithay",
 ]
 
@@ -3556,6 +3609,8 @@ dependencies = [
  "compositor_kernel_graphic_draw_plan_frame",
  "compositor_kernel_graphic_draw_plan_tap",
  "compositor_kernel_graphic_draw_present_callbacks",
+ "compositor_kernel_native_context_display_mode",
+ "compositor_kernel_native_context_display_switch",
  "compositor_kernel_native_context_render_base",
  "compositor_kernel_scanout_flip_queue_base",
  "compositor_kernel_scanout_plane_direct_base",
@@ -3595,6 +3650,7 @@ dependencies = [
  "compositor_kernel_native_assemble_display_base",
  "compositor_kernel_native_assemble_renderer_base",
  "compositor_kernel_native_context_display_base",
+ "compositor_kernel_native_context_display_enumerate",
  "compositor_kernel_native_context_render_base",
  "compositor_kernel_native_context_topology_base",
  "compositor_kernel_native_render_execute_base",
@@ -3643,9 +3699,12 @@ dependencies = [
  "compositor_kernel_input_loop_libinput_base",
  "compositor_kernel_native_context_display_apply",
  "compositor_kernel_native_context_display_mode",
+ "compositor_kernel_native_context_display_switch",
  "compositor_kernel_native_context_render_base",
  "compositor_orchestration_core_state_base",
  "compositor_orchestration_draw_state_lifecycle",
+ "compositor_orchestration_driver_lid_base",
+ "compositor_y5_lock_interface_base",
  "smithay",
 ]
 
@@ -3658,6 +3717,7 @@ dependencies = [
  "compositor_kernel_gpu_registry_node_base",
  "compositor_kernel_graphic_preference_gpu_rank",
  "compositor_kernel_native_context_display_base",
+ "compositor_kernel_native_context_display_switch",
  "compositor_kernel_native_context_render_base",
  "compositor_kernel_native_context_topology_base",
  "compositor_kernel_native_plugin_route_base",
@@ -3665,6 +3725,9 @@ dependencies = [
  "compositor_kernel_udev_loop_watch_base",
  "compositor_orchestration_core_state_base",
  "compositor_orchestration_driver_lid_base",
+ "compositor_orchestration_event_output_base",
+ "compositor_orchestration_pump_dark_base",
+ "compositor_y5_graphic_capture_interface",
  "smithay",
 ]
 
@@ -3805,6 +3868,14 @@ name = "compositor_kernel_scanout_pipe_claim_base"
 version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
+ "compositor_developer_debug_instance_record",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_kernel_scanout_pipe_claim_free"
+version = "0.0.1"
+dependencies = [
  "compositor_developer_debug_instance_record",
  "smithay",
 ]
@@ -4711,6 +4782,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_orchestration_event_output_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_channel_router_base",
+ "compositor_support_system_channel_token_base",
+]
+
+[[package]]
 name = "compositor_orchestration_input_drive_base"
 version = "0.0.1"
 dependencies = [
@@ -4726,6 +4805,15 @@ dependencies = [
  "compositor_introspection_execution_launch_types",
  "compositor_support_system_channel_router_base",
  "compositor_support_system_channel_token_base",
+]
+
+[[package]]
+name = "compositor_orchestration_pump_dark_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_orchestration_core_state_base",
+ "compositor_orchestration_driver_remote_base",
+ "compositor_remote_client_handle_base",
 ]
 
 [[package]]
@@ -7841,6 +7929,7 @@ dependencies = [
  "compositor_support_bevy_core_compositor_base",
  "compositor_y5_camera_state_base",
  "compositor_y5_camera_system_base",
+ "compositor_y5_lock_interface_base",
  "compositor_y5_lock_scene_element",
  "compositor_y5_lock_scene_hook",
  "compositor_y5_lock_system_base",
@@ -8227,7 +8316,9 @@ dependencies = [
  "compositor_monitor_overview_ui_base",
  "compositor_orchestration_core_state_base",
  "compositor_orchestration_driver_settings_base",
+ "compositor_y5_overview_state_base",
  "libc",
+ "smithay",
 ]
 
 [[package]]
@@ -8253,6 +8344,7 @@ name = "compositor_y5_overview_input_keyboard"
 version = "0.0.1"
 dependencies = [
  "compositor_developer_debug_instance_record",
+ "compositor_monitor_compositor_iced_base",
  "compositor_orchestration_core_state_base",
  "compositor_support_library_input_keyboard_base",
  "compositor_y5_overview_interface_activate",

@@ -4,7 +4,7 @@ use compositor_monitor_compositor_iced_base::{HandleId, IcedHandle, IcedSpace};
 use compositor_orchestration_core_state_base::Loop;
 use compositor_orchestration_draw_layer_base::base::Layer;
 use compositor_orchestration_driver_audio_base::base::AUDIO;
-use compositor_orchestration_driver_output_base::base::{OutputModeRequest, OUTPUT_MODES_SNAPSHOT, OUTPUT_MODE_REQUEST_MUT, OUTPUT_MODE_RESULT_MUT};
+use compositor_orchestration_driver_output_base::base::{OutputModeRequest, OutputSwitchRequest, OutputsSnapshot, OUTPUTS_SNAPSHOT, OUTPUT_MODE_REQUEST_MUT, OUTPUT_MODE_RESULT_MUT, OUTPUT_SWITCH_REQUEST_MUT, OUTPUT_SWITCH_RESULT_MUT};
 use compositor_orchestration_driver_settings_base::base::{SETTINGS, SETTINGS_MUT};
 use compositor_configurator_network_backend_base::base::{self as wifi, WifiCmd, WifiSnapshot};
 use compositor_configurator_bluetooth_backend_base::base::{self as bt, BtCmd, BtSnapshot};
@@ -21,6 +21,8 @@ use std::cell::RefCell;
 thread_local! {
     /// Last snapshot pushed — only re-dispatch (re-render) the UI when it changes.
     static LAST: RefCell<Option<(AudioState, WifiSnapshot, BtSnapshot)>> = const { RefCell::new(None) };
+    /// Last connected-monitor list pushed — re-dispatch the picker only on hotplug change.
+    static LAST_OUTPUTS: RefCell<Option<OutputsSnapshot>> = const { RefCell::new(None) };
     /// Output size the surface was last sized to. The settings surface is
     /// screen-space and spans the output, so a mode/resolution change invalidates
     /// its rect — re-size only when this drifts (resizes reallocate a texture).
@@ -57,6 +59,10 @@ fn sync(state: &mut Loop, id: HandleId, size: Size<i32, Physical>) {
             reg.request_resize_by_id(id, rect.size);
             reg.set_location_by_id(id, rect.loc);
         }
+        // A resize alone doesn't re-lay-out the iced content, so force a re-render
+        // next frame by invalidating the change-detection cache below (the
+        // SyncSystem dispatch repaints the panel at the new size).
+        LAST.with(|l| *l.borrow_mut() = None);
     }
     let audio = state.inner.kernel.get(&AUDIO).as_ref().map(|a| a.state()).unwrap_or_default();
     let cur = (audio, wifi::snapshot(), bt::snapshot());
@@ -66,10 +72,26 @@ fn sync(state: &mut Loop, id: HandleId, size: Size<i32, Physical>) {
             let _ = reg.dispatch_message(IcedHandle::<Settings>::from_id(id), SettingsMessage::SyncSystem(cur.0, cur.1, cur.2));
         }
     }
+    // Live hotplug refresh of the monitor picker: re-dispatch only when the
+    // connected-monitor list changes (reconcile/wire.entry write OUTPUTS_SNAPSHOT).
+    let outs = state.inner.kernel.get(&OUTPUTS_SNAPSHOT).clone();
+    let outs_changed = LAST_OUTPUTS.with(|l| { let mut l = l.borrow_mut(); if l.as_ref() != Some(&outs) { *l = Some(outs.clone()); true } else { false } });
+    if outs_changed {
+        if let Some(reg) = state.inner.surface_mut().registry.as_mut() {
+            let _ = reg.dispatch_message(IcedHandle::<Settings>::from_id(id), SettingsMessage::SyncDisplays(outs.displays));
+        }
+    }
     // One-shot mode-apply result → UI (drops the confirm bar; restores the shown
     // mode on auto-revert / failure, commits on Keep).
     let result = state.inner.kernel.get_mut(&OUTPUT_MODE_RESULT_MUT).take();
     if let Some(r) = result {
+        if let Some(reg) = state.inner.surface_mut().registry.as_mut() {
+            let _ = reg.dispatch_message(IcedHandle::<Settings>::from_id(id), SettingsMessage::ModeResult(r));
+        }
+    }
+    // Same for the active-output switch gate (shares the ModeResult UI handling).
+    let switch_result = state.inner.kernel.get_mut(&OUTPUT_SWITCH_RESULT_MUT).take();
+    if let Some(r) = switch_result {
         if let Some(reg) = state.inner.surface_mut().registry.as_mut() {
             let _ = reg.dispatch_message(IcedHandle::<Settings>::from_id(id), SettingsMessage::ModeResult(r));
         }
@@ -84,7 +106,7 @@ fn create(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Physica
     state.inner.keybinding = compositor_developer_environment_keybinding_base::base::load();
     let cursor = state.inner.preference.cursor_sensitivity as f32;
     let natural = state.inner.preference.input_natural_scroll;
-    let snap = state.inner.kernel.get(&OUTPUT_MODES_SNAPSHOT).clone();
+    let snap = state.inner.kernel.get(&OUTPUTS_SNAPSHOT).clone();
     let mut keys = compositor_y5_overlay_interface_keyboard::keyboard::registry(&state.inner.keybinding);
     keys.extend(compositor_y5_canvas_input_keyboard::navigator::registry(&state.inner.keybinding));
     keys.extend(compositor_y5_canvas_input_keyboard::navigator::fixed());
@@ -102,12 +124,14 @@ fn create(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Physica
     wifi::command(WifiCmd::Scan);
     bt::command(BtCmd::Scan(true));
     LAST.with(|l| *l.borrow_mut() = None);
+    LAST_OUTPUTS.with(|l| *l.borrow_mut() = None);
 }
 
 fn destroy(state: &mut Loop, id: HandleId) {
     // Closing settings (Esc / overview-tab switch / overview close) abandons any
-    // provisional mode change → revert it (no-op if nothing is pending).
+    // provisional mode/switch change → revert it (no-op if nothing is pending).
     *state.inner.kernel.get_mut(&OUTPUT_MODE_REQUEST_MUT) = Some(OutputModeRequest::Revert);
+    *state.inner.kernel.get_mut(&OUTPUT_SWITCH_REQUEST_MUT) = Some(OutputSwitchRequest::Revert);
     if let Some(reg) = state.inner.surface_mut().registry.as_mut() { reg.destroy_by_id(id); reg.set_keyboard_focus(None); }
     bt::command(BtCmd::Scan(false));
     let st = state.inner.kernel.get_mut(&SETTINGS_MUT);
@@ -120,7 +144,7 @@ fn install_handler(state: &mut Loop, handle: IcedHandle<Settings>) {
     if let Some(reg) = state.inner.surface_mut().registry.as_mut() {
         if let Some(inst) = reg.instance_mut(handle) {
             inst.runtime_mut().set_message_handler(move |m: &SettingsMessage| {
-                if matches!(m, SettingsMessage::SyncSystem(..) | SettingsMessage::WifiSelect(_) | SettingsMessage::WifiPassword(_)) { return; }
+                if matches!(m, SettingsMessage::SyncSystem(..) | SettingsMessage::SyncDisplays(_) | SettingsMessage::WifiSelect(_) | SettingsMessage::WifiPassword(_) | SettingsMessage::SelectDisplay(_) | SettingsMessage::SelectMode(_)) { return; }
                 let _ = tx.send(SurfaceMessage { message: SurfaceMessageType::Settings(m.clone()) });
             });
         }

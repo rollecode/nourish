@@ -89,12 +89,9 @@ pub fn prepare(
     let background_three =
         compositor_background_three_draw_scene::scene::scene(state, renderer, size);
 
-    // Lock setup is GLES construction (builds iced/bevy lock surfaces).
-    if let Some(setlock) = state.inner.__set_lock.clone() {
-        let sleep = setlock.sleep;
-        state.inner.__set_lock = None;
-        compositor_y5_lock_interface_base::interface::lock(state, renderer, size, sleep);
-    }
+    // (Lock engage is no longer a per-frame drain — the keybinding sets the lock
+    // status synchronously and runs `lock_logical` off-frame; the lock VISUAL is
+    // built lazily in `lock.scene/scene.frame::prepare`.)
 
     // World-selection screen: a two-frame capture-on-leave. Frame A (the request
     // is present) arms a framebuffer capture of the still-active origin world;

@@ -29,13 +29,8 @@ pub struct Loader {
     pub loop_signal: LoopSignal,
 }
 
-#[derive(Clone)]
-pub struct SetLockRequest {
-    pub sleep: bool,
-}
-
 /// Deferred world-selection-screen request, drained in the GLES prepare phase
-/// (where a renderer + the capture registry are available — like `__set_lock`).
+/// (where a renderer + the capture registry are available).
 /// Opening is deferred so the current world's framebuffer can be snapshotted for
 /// its thumbnail before we switch away from it.
 #[derive(Clone, Copy)]
@@ -47,8 +42,11 @@ pub enum SetPickerRequest {
 pub struct Orchestrator {
     pub start_time: std::time::Instant,
     pub status: Status,
-    // Temporary flag to set lock on next draw.
-    pub __set_lock: Option<SetLockRequest>,
+    /// One-shot request to run the renderer-free lock engage (`lock_logical`) off
+    /// the render loop. The lock keybinding sets `Status::Locked` synchronously and
+    /// flips this; `wire.input` drains it and schedules the engage on an idle (the
+    /// keyboard crates can't call `lock.interface` — it depends back on them).
+    pub lock_engage: bool,
     // Deferred request to open the world-selection screen on a coming draw.
     pub __set_picker: Option<SetPickerRequest>,
     pub status_session: StatusSession,
@@ -190,13 +188,18 @@ impl Orchestrator {
         kernel_data.insert(&compositor_orchestration_driver_output_base::base::OUTPUT_MODE_REQUEST, None);
         kernel_data.insert(&compositor_orchestration_driver_output_base::base::OUTPUT_MODES_SNAPSHOT, Default::default());
         kernel_data.insert(&compositor_orchestration_driver_output_base::base::OUTPUT_MODE_RESULT, None);
+        // Active-output switch driver: rim-issued switch request + kernel-written
+        // full connector list and switch result (preferred-monitor change gate).
+        kernel_data.insert(&compositor_orchestration_driver_output_base::base::OUTPUTS_SNAPSHOT, Default::default());
+        kernel_data.insert(&compositor_orchestration_driver_output_base::base::OUTPUT_SWITCH_REQUEST, None);
+        kernel_data.insert(&compositor_orchestration_driver_output_base::base::OUTPUT_SWITCH_RESULT, None);
 
         // Settings-window driver: the open/handle/dirty state for the Super+. surface.
         kernel_data.insert(&compositor_orchestration_driver_settings_base::base::SETTINGS, Default::default());
 
         Self {
             environment,
-            __set_lock: None,
+            lock_engage: false,
             __set_picker: None,
             status_session: StatusSession::Active,
             gesture: Default::default(),

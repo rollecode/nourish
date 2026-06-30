@@ -7,7 +7,7 @@ use compositor_kernel_native_context_render_base::render::NativeRenderContext;
 use compositor_orchestration_core_state_base::state::StateDRMBinding;
 use compositor_orchestration_core_state_base::Loop;
 use compositor_orchestration_draw_scene_element::element::SceneElement;
-use compositor_orchestration_driver_output_base::base::{ApplyResult, OutputModeRequest, OUTPUT_MODE_REQUEST_MUT, OUTPUT_MODE_RESULT_MUT};
+use compositor_orchestration_driver_output_base::base::{ApplyResult, ModeInfo, OutputModeRequest, OUTPUTS_SNAPSHOT_MUT, OUTPUT_MODES_SNAPSHOT_MUT, OUTPUT_MODE_REQUEST_MUT, OUTPUT_MODE_RESULT_MUT};
 use smithay::backend::renderer::gles::GlesRenderer;
 use smithay::reexports::calloop::timer::{TimeoutAction, Timer};
 use smithay::reexports::calloop::RegistrationToken;
@@ -21,13 +21,27 @@ type Ctx = Rc<RefCell<NativeRenderContext>>;
 fn set_result(state: &mut Loop, r: ApplyResult) {
     *state.inner.kernel.get_mut(&OUTPUT_MODE_RESULT_MUT) = Some(r);
 }
+fn mode_info(m: DrmMode) -> ModeInfo {
+    ModeInfo { width: m.size().0, height: m.size().1, refresh_mhz: m.vrefresh() * 1000 }
+}
+/// After a CONFIRMED mode change, refresh the active output's `current` in both
+/// rim-facing snapshots so reopening the settings window shows the new mode (its
+/// picker / enable logic reads these). A mode change leaves the connector list and
+/// each monitor's advertised modes unchanged, so only `current` needs updating.
+fn refresh_snapshot_current(state: &mut Loop, cur: ModeInfo) {
+    state.inner.kernel.get_mut(&OUTPUT_MODES_SNAPSHOT_MUT).current = Some(cur);
+    if let Some(d) = state.inner.kernel.get_mut(&OUTPUTS_SNAPSHOT_MUT).displays.iter_mut().find(|d| d.active) {
+        d.current = Some(cur);
+    }
+}
 /// Apply `mode` to the running pipe and propagate to the smithay Output.
 fn set_mode_now(ctx: &mut NativeRenderContext, mode: DrmMode) -> Result<(), String> {
     let gpu = ctx.gpu_binding.clone();
     let mut binding = gpu.borrow_mut();
     let StateDRMBinding { gpus, primary } = &mut *binding;
     let mut renderer = gpus.single_renderer(primary).map_err(|e| format!("renderer: {e:?}"))?;
-    compositor_kernel_scanout_surface_reconfigure_base::reconfigure::set_output_mode::<_, GlesElementWrapper<SceneElement<GlesRenderer>>>(&mut ctx.drm_output, mode, &mut renderer)?;
+    let output = ctx.drm_output.as_mut().ok_or_else(|| "no active output".to_string())?;
+    compositor_kernel_scanout_surface_reconfigure_base::reconfigure::set_output_mode::<_, GlesElementWrapper<SceneElement<GlesRenderer>>>(output, mode, &mut renderer)?;
     drop(binding);
     let m = smithay::output::Mode::from(mode);
     ctx.mode = m;
@@ -35,13 +49,23 @@ fn set_mode_now(ctx: &mut NativeRenderContext, mode: DrmMode) -> Result<(), Stri
     ctx.output.change_current_state(Some(m), None, None, None);
     Ok(())
 }
+/// Take a pending request (if any) and DEFER it onto a one-shot loop timer, so the
+/// modeset never runs inside the vblank/render callback that may be calling this
+/// drain (a modeset mid-vblank is unsafe — same rule as `display.switch`).
 pub fn drain(state: &mut Loop, ctx_rc: &Ctx) {
     let Some(req) = state.inner.kernel.get_mut(&OUTPUT_MODE_REQUEST_MUT).take() else { return };
-    match req {
-        OutputModeRequest::Apply { width, height, refresh_mhz } => apply(state, ctx_rc, width, height, refresh_mhz),
-        OutputModeRequest::Confirm => finish(state, ctx_rc, false),
-        OutputModeRequest::Revert => finish(state, ctx_rc, true),
-    }
+    let ctx = ctx_rc.clone();
+    state
+        .loop_handle
+        .insert_source(Timer::immediate(), move |_, _, state: &mut Loop| {
+            match req {
+                OutputModeRequest::Apply { width, height, refresh_mhz } => apply(state, &ctx, width, height, refresh_mhz),
+                OutputModeRequest::Confirm => finish(state, &ctx, false),
+                OutputModeRequest::Revert => finish(state, &ctx, true),
+            }
+            TimeoutAction::Drop
+        })
+        .expect("output mode deferral timer registration failed");
 }
 fn apply(state: &mut Loop, ctx_rc: &Ctx, w: u16, h: u16, mhz: u32) {
     let mut ctx = ctx_rc.borrow_mut();
@@ -78,7 +102,9 @@ fn finish(state: &mut Loop, ctx_rc: &Ctx, revert: bool) {
         state.schedule_redraw();
         set_result(state, ApplyResult::Reverted);
     } else {
+        let cur = mode_info(ctx.current_drm_mode);
         drop(ctx);
+        refresh_snapshot_current(state, cur);
         set_result(state, ApplyResult::Confirmed);
     }
 }

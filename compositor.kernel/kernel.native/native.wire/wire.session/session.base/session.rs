@@ -74,7 +74,12 @@ pub fn register(
                         let output_for_map = ctx_ref.output.clone();
                         let space = &mut state.inner.space_state_mut().state;
                         let libinput = &mut ctx_ref.libinput_context;
-                        let drm_output = &mut ctx_ref.drm_output;
+                        // `Option` because a monitor switch briefly tears the output
+                        // down before rebuilding. That can't overlap this session
+                        // callback (calloop runs sources serially), but the resume
+                        // path is the self-recovering class — skip the surface reset
+                        // rather than panic if there is somehow no output.
+                        let mut drm_output = ctx_ref.drm_output.as_mut();
 
                         compositor_kernel_seat_lifecycle_resume_base::resume::resume(
                             compositor_kernel_seat_lifecycle_resume_base::resume::ResumeSteps {
@@ -89,10 +94,11 @@ pub fn register(
                                         force,
                                     )
                                 },
-                                reset_surface: || {
-                                    compositor_kernel_scanout_surface_output_base::output::reset(
-                                        drm_output,
-                                    )
+                                reset_surface: || match drm_output.as_deref_mut() {
+                                    Some(o) => {
+                                        compositor_kernel_scanout_surface_output_base::output::reset(o)
+                                    }
+                                    None => Ok(()),
                                 },
                                 reset_buffers: || {},
                                 remap_output: || {

@@ -6943,6 +6943,7 @@ dependencies = [
  "compositor_support_bevy_core_compositor_base",
  "compositor_y5_camera_state_base",
  "compositor_y5_camera_system_base",
+ "compositor_y5_lock_interface_base",
  "compositor_y5_lock_scene_element",
  "compositor_y5_lock_scene_hook",
  "compositor_y5_lock_system_base",
@@ -7329,7 +7330,9 @@ dependencies = [
  "compositor_monitor_overview_ui_base",
  "compositor_orchestration_core_state_base",
  "compositor_orchestration_driver_settings_base",
+ "compositor_y5_overview_state_base",
  "libc",
+ "smithay",
 ]
 
 [[package]]
@@ -7355,6 +7358,7 @@ name = "compositor_y5_overview_input_keyboard"
 version = "0.0.1"
 dependencies = [
  "compositor_developer_debug_instance_record",
+ "compositor_monitor_compositor_iced_base",
  "compositor_orchestration_core_state_base",
  "compositor_support_library_input_keyboard_base",
  "compositor_y5_overview_interface_activate",

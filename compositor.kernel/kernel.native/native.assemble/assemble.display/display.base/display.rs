@@ -191,12 +191,24 @@ fn resolve_mode(
     connector: &connector::Info,
     profile: Option<&compositor_kernel_graphic_preference_output_profile::profile::OutputProfile>,
 ) -> DrmMode {
+    use compositor_kernel_graphic_preference_output_profile::profile::OutputProfile;
     match profile.and_then(|p| p.mode.as_ref()) {
         Some(ModeRequest::Cvt { .. }) | Some(ModeRequest::Modeline(_)) => {
             synthesize_mode(profile.unwrap())
         }
-        _ => compositor_kernel_drm_mode_select_base::select::select(connector, profile)
-            .expect("connector advertises no modes"),
+        Some(ModeRequest::Advertised { .. }) => {
+            compositor_kernel_drm_mode_select_base::select::select(connector, profile)
+                .expect("connector advertises no modes")
+        }
+        // No per-output mode: try the hand-set default mode (advertised match),
+        // else fall through to the default selection policy. An unmatched
+        // advertised request inside mode.select falls back to default policy too.
+        None => {
+            let dm = compositor_kernel_graphic_preference_output_profile::profile::default_mode()
+                .map(|mode| OutputProfile { identity: None, mode: Some(mode) });
+            compositor_kernel_drm_mode_select_base::select::select(connector, dm.as_ref())
+                .expect("connector advertises no modes")
+        }
     }
 }
 

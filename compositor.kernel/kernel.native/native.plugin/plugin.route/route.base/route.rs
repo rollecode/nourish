@@ -5,13 +5,15 @@
 //! - Added(new, preference-allowed)  -> register (bookkeeping; single-GPU
 //!   policy drives only the primary)
 //! - Added(known)                    -> ignore (re-announce)
-//! - Changed(primary)                -> connector rescan + diff; losing the
-//!   ACTIVE connector panics (multi-connector reaction is out of scope and
-//!   silently degrading is not an option); a newly connected connector is
-//!   logged as ignored-by-policy (single-output era)
+//! - Changed(primary)                -> connector rescan + diff; ANY change on the
+//!   driven device returns `true` so the caller reconciles the active output
+//!   (fail over to another connected monitor, or go dark + wait — see
+//!   `display.switch::reconcile`). No longer panics on active-connector loss.
 //! - Removed(primary)                -> panic (the device under the running
 //!   pipe is gone; not self-recovering)
 //! - Removed(secondary)              -> bookkeeping cleanup
+//!
+//! Returns `true` when the caller should reconcile the active output.
 
 use compositor_kernel_drm_connector_diff_base::diff;
 use compositor_kernel_gpu_registry_node_base::node::NodeRegistry;
@@ -28,7 +30,7 @@ pub fn route(
     topology: &mut Topology,
     rank: &GpuRank,
     ctx_rc: &Rc<RefCell<NativeRenderContext>>,
-) {
+) -> bool {
     use compositor_kernel_native_device_delegate_base::delegate::{classify, DeviceClass};
     use compositor_kernel_native_device_select_base::select::{decide, Decision};
 
@@ -57,18 +59,21 @@ pub fn route(
                 },
                 DeviceClass::Unknown => {}
             }
+            false
         }
         DeviceEvent::Changed { device_id } => {
-            let is_primary = registry
-                .primary()
-                .map(|p| p.dev_id() == device_id)
-                .unwrap_or(false);
+            // Match the udev device against the primary GPU by BOTH its render and
+            // card dev_id — udev reports the CARD node's dev_t for connector hotplug,
+            // but the registry stores the RENDER node. Without this every hotplug was
+            // wrongly dismissed as "non-driven device".
+            let is_primary = registry.is_primary_dev(device_id);
+            info!("udev Changed: device {device_id:?} (primary={is_primary})");
             if !is_primary {
                 trace!("change on non-driven device; bookkeeping only: {device_id:?}");
-                return;
+                return false;
             }
 
-            // Connector rescan on the driven device, through the hosted manager.
+            // Connector rescan on the driven device (best-effort log of the diff).
             let ctx = ctx_rc.borrow();
             let manager = ctx.drm_output_manager.borrow();
             let drm = manager.device();
@@ -78,40 +83,28 @@ pub fn route(
             drop(manager);
             drop(ctx);
 
-            let old = topology
-                .snapshot(device_id)
-                .cloned()
-                .unwrap_or_default();
+            let old = topology.snapshot(device_id).cloned().unwrap_or_default();
             let changes = diff::diff(&old, &new_snapshot);
             topology.set_snapshot(device_id, new_snapshot);
-
-            for handle in &changes.disconnected {
-                if topology.is_active_connector(device_id, *handle) {
-                    abort!(
-                        "active connector {handle:?} disconnected; multi-connector reaction is \
-                         out of scope and degrading silently is not an option"
-                    );
-                }
-                info!("inactive connector disconnected: {handle:?}");
-            }
-            for handle in &changes.connected {
-                warn!(
-                    "connector connected; ignored by single-output policy \
-                     (not a failure): {handle:?}"
-                );
-            }
+            info!(
+                "primary device changed: +{} -{} connector(s) → reconciling output",
+                changes.connected.len(),
+                changes.disconnected.len()
+            );
+            // Always reconcile on a primary change — `reconcile` re-scans the live
+            // connectors and decides (fail over / recover / refresh) authoritatively,
+            // so it does NOT depend on the (separately-keyed) topology diff above.
+            true
         }
         DeviceEvent::Removed { device_id } => {
-            let was_primary = registry
-                .primary()
-                .map(|p| p.dev_id() == device_id)
-                .unwrap_or(false);
+            let was_primary = registry.is_primary_dev(device_id);
             if was_primary {
                 abort!("primary DRM device removed from under the running pipe");
             }
             registry.remove(device_id);
             topology.remove_device(device_id);
             info!("secondary DRM device removed; bookkeeping cleaned: {device_id:?}");
+            false
         }
     }
 }

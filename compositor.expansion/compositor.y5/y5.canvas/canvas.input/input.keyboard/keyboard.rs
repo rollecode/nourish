@@ -15,10 +15,12 @@ pub fn input_received(
     let key = Key::from_keysym(keysym);
 
     // Overview (Super+Tab) owns its keys: toggling from any state, and fully
-    // capturing the keyboard while open. The overview layer decides; if it
-    // consumed the key, windows get nothing.
-    if compositor_y5_overview_input_keyboard::keyboard::handle(key, key_state, modifiers, state) {
-        return Some(true);
+    // capturing the keyboard while open. When it consumes the key we INTERCEPT
+    // (None) — the overview has already delegated to its own screen-space iced
+    // surfaces, and the key must reach neither the canvas tools, the focused
+    // window, nor the fallback iced stage.
+    if compositor_y5_overview_input_keyboard::keyboard::handle(key, keysym, key_state, modifiers, state) {
+        return None;
     }
 
     input::input_received(key_state, modifiers, state, key)?;

@@ -12,7 +12,7 @@ use crate::prompt::ask;
 use crate::select::{select_list, Item};
 use crate::term::Nav;
 use compositor_developer_environment_preference_base::base as pref;
-use compositor_developer_environment_preference_base::base::{ModeRequest, OutputProfile, Preference};
+use compositor_developer_environment_preference_base::base::{ModeRequest, Preference};
 
 /// Run the preferences editor until the user backs out of the monitor list. The
 /// monitor marked `*` is the **default output**: the compositor uses the first entry
@@ -57,7 +57,7 @@ fn monitor_menu(prefs: &mut Preference, mon: &ProbedMonitor) {
         match select_list(&format!("{} — preferences", mon.label), &actions, None, true) {
             Nav::Selected(0) => set_mode(prefs, mon),
             Nav::Selected(1) => {
-                set_default(&mut prefs.outputs, &mon.identity_key);
+                pref::set_default(&mut prefs.outputs, &mon.identity_key);
                 match pref::save(prefs) {
                     Ok(()) => println!("\n{} is now the default output ✓", mon.label),
                     Err(e) => eprintln!("\nfailed to save preferences: {e}"),
@@ -106,17 +106,6 @@ fn set_mode(prefs: &mut Preference, mon: &ProbedMonitor) {
 fn default_index(prefs: &Preference, monitors: &[ProbedMonitor]) -> Option<usize> {
     let key = prefs.outputs.first()?.identity.as_deref()?;
     monitors.iter().position(|m| m.identity_key == key)
-}
-
-/// Make the profile for `key` the first entry in `outputs` (the compositor's default
-/// output). Reuses an existing profile (preserving its mode/position/scale) or creates
-/// an identity-only one, then moves it to the front.
-fn set_default(outputs: &mut Vec<OutputProfile>, key: &str) {
-    let profile = match outputs.iter().position(|p| p.identity.as_deref() == Some(key)) {
-        Some(i) => outputs.remove(i),
-        None => OutputProfile { identity: Some(key.to_string()), ..Default::default() },
-    };
-    outputs.insert(0, profile);
 }
 
 /// Index into `mon.modes` of the currently-saved Advertised mode for this monitor.

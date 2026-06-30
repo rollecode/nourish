@@ -1,16 +1,16 @@
 //! The settings window `IcedUi`: owns the live UI state; rendering lives in
-//! `surface.chrome`. All edit messages forward to the surface handler; `Tab` and
-//! the optimistic `current`/confirm state are handled locally.
+//! `surface.chrome`. All edit messages forward to the surface handler; `Tab`, the
+//! display selection, and the optimistic confirm state are handled locally.
 use compositor_developer_environment_config_base::base::Environment;
 use compositor_developer_environment_keybinding_base::base::KeyRow;
-use compositor_orchestration_driver_output_base::base::{ApplyResult, ModeInfo, OutputModesSnapshot};
+use compositor_orchestration_driver_output_base::base::{ApplyResult, DisplayInfo, ModeInfo, OutputsSnapshot};
 use compositor_support_iced_core_engine_base::{IcedUi, Renderer};
 use compositor_y5_audio_controller_interface::interface::AudioState;
 use compositor_configurator_network_backend_base::base::WifiSnapshot;
 use compositor_configurator_bluetooth_backend_base::base::BtSnapshot;
 use compositor_configurator_hardware_gpu_base::base::{render_devices, RenderDevice};
 use compositor_configurator_settings_surface_chrome::chrome;
-use compositor_configurator_settings_surface_message::message::{SettingsMessage, Tab};
+use compositor_configurator_settings_surface_message::message::{Applied, SettingsMessage, Tab};
 use iced_core::{Element, Theme};
 
 pub struct Settings {
@@ -19,13 +19,16 @@ pub struct Settings {
     pub natural_scroll: bool,
     pub env: Environment,
     pub dirty: bool,
-    pub modes: Vec<ModeInfo>,
-    /// The mode shown as active. Updated optimistically when a mode is picked,
-    /// restored to `baseline` on revert.
-    pub current: Option<ModeInfo>,
-    /// The last confirmed (kept) mode — the revert target for `current`.
-    pub baseline: Option<ModeInfo>,
-    pub picked: Option<ModeInfo>,
+    /// Every connected monitor (active + connected-but-inactive), for the picker.
+    pub displays: Vec<DisplayInfo>,
+    /// EDID key of the monitor currently driving the compositor.
+    pub active_edid: String,
+    /// EDID key of the monitor selected in the picker (defaults to active).
+    pub selected_display: String,
+    /// Mode selected for the selected monitor (defaults to its current/first).
+    pub selected_mode: Option<ModeInfo>,
+    /// The change awaiting Keep/Revert (drives the confirm bar + commit on result).
+    pub pending: Option<Applied>,
     pub confirming: bool,
     /// Shortcut rows for the Keys tab (id, label, default, current combo).
     pub keys: Vec<KeyRow>,
@@ -42,18 +45,30 @@ pub struct Settings {
     pub fps: u32,
 }
 
+/// The mode to seed the picker selection with for a display: its current mode if
+/// active, else its first advertised mode.
+fn default_mode(d: &DisplayInfo) -> Option<ModeInfo> {
+    // Active monitor: its live mode. Otherwise the mode SAVED IN PREFERENCES for
+    // this monitor, then the recommended (first advertised) as a last resort.
+    d.current.or(d.preferred).or_else(|| d.available.first().copied())
+}
+
 impl Settings {
-    pub fn new(env: Environment, cursor: f32, natural: bool, snap: OutputModesSnapshot, keys: Vec<KeyRow>, tab: Tab) -> Self {
+    pub fn new(env: Environment, cursor: f32, natural: bool, snap: OutputsSnapshot, keys: Vec<KeyRow>, tab: Tab) -> Self {
+        let active = snap.displays.iter().find(|d| d.active).cloned();
+        let active_edid = active.as_ref().map(|d| d.edid_key.clone()).unwrap_or_default();
+        let selected_mode = active.as_ref().and_then(default_mode);
         Self {
             tab,
             cursor_sensitivity: cursor,
             natural_scroll: natural,
             env,
             dirty: false,
-            modes: snap.available,
-            current: snap.current,
-            baseline: snap.current,
-            picked: None,
+            displays: snap.displays,
+            active_edid: active_edid.clone(),
+            selected_display: active_edid,
+            selected_mode,
+            pending: None,
             confirming: false,
             keys,
             audio: AudioState::default(),
@@ -65,6 +80,16 @@ impl Settings {
             fps: 0,
         }
     }
+
+    fn display(&self, key: &str) -> Option<&DisplayInfo> {
+        self.displays.iter().find(|d| d.edid_key == key)
+    }
+
+    /// Reset the picker selection back to the active monitor + its current mode.
+    fn reset_selection(&mut self) {
+        self.selected_display = self.active_edid.clone();
+        self.selected_mode = self.display(&self.active_edid).and_then(default_mode);
+    }
 }
 
 impl IcedUi for Settings {
@@ -74,16 +99,36 @@ impl IcedUi for Settings {
         match message {
             SettingsMessage::Tab(t) => self.tab = t,
             SettingsMessage::Fps(f) => self.fps = f,
-            // Kernel outcome of the provisional apply: commit on Confirmed, drop
-            // the confirm + restore the shown mode otherwise.
+            // Kernel outcome of the provisional apply: commit on Confirmed (a
+            // switch makes the target the active monitor), reset otherwise.
             SettingsMessage::ModeResult(r) => match r {
                 ApplyResult::Confirmed => {
-                    self.baseline = self.current;
+                    if let Some(p) = self.pending.take() {
+                        // Update the in-memory snapshot so the active monitor's
+                        // `current` reflects the just-applied mode (and, for a real
+                        // switch, the active flag moves). Without this the snapshot
+                        // is stale: re-selecting the previous mode would read as "no
+                        // change", greying out CHECK, so you couldn't revert/redo in
+                        // the same session.
+                        for d in &mut self.displays {
+                            if d.edid_key == p.edid_key {
+                                d.active = true;
+                                d.current = Some(p.mode);
+                            } else if p.switch {
+                                d.active = false;
+                                d.current = None;
+                            }
+                        }
+                        self.active_edid = p.edid_key;
+                        self.selected_display = self.active_edid.clone();
+                        self.selected_mode = Some(p.mode);
+                    }
                     self.confirming = false;
                 }
                 ApplyResult::Reverted | ApplyResult::Failed => {
-                    self.current = self.baseline;
+                    self.pending = None;
                     self.confirming = false;
+                    self.reset_selection();
                 }
                 ApplyResult::Provisional => {}
             },
@@ -93,18 +138,20 @@ impl IcedUi for Settings {
                 self.env = e;
                 self.dirty = true;
             }
-            SettingsMessage::PickMode(info) => {
-                self.picked = Some(info);
-                self.current = Some(info); // optimistic: mark the picked mode current
+            SettingsMessage::SelectDisplay(key) => {
+                self.selected_display = key.clone();
+                self.selected_mode = self.display(&key).and_then(default_mode);
+            }
+            SettingsMessage::SelectMode(m) => self.selected_mode = Some(m),
+            SettingsMessage::Apply(a) => {
+                self.pending = Some(a);
                 self.confirming = true;
             }
-            SettingsMessage::Keep(_) => {
-                self.baseline = self.current; // commit the kept mode
-                self.confirming = false;
-            }
+            SettingsMessage::Keep(_) => self.confirming = false,
             SettingsMessage::Revert => {
-                self.current = self.baseline; // restore the previously-confirmed mode
+                self.pending = None;
                 self.confirming = false;
+                self.reset_selection();
             }
             SettingsMessage::Rebind(id, combo) => {
                 if let Some(r) = self.keys.iter_mut().find(|r| r.id == id) { r.combo = combo; }
@@ -116,6 +163,24 @@ impl IcedUi for Settings {
                 self.audio = a;
                 self.wifi = w;
                 self.bt = b;
+            }
+            // Live hotplug refresh of the monitor list. Skip while a provisional
+            // change is being confirmed (the snapshot is mid-transition then), and
+            // preserve the user's picker selection when that monitor still exists.
+            SettingsMessage::SyncDisplays(displays) => {
+                if !self.confirming {
+                    self.active_edid = displays
+                        .iter()
+                        .find(|d| d.active)
+                        .map(|d| d.edid_key.clone())
+                        .unwrap_or_default();
+                    if !displays.iter().any(|d| d.edid_key == self.selected_display) {
+                        self.selected_display = self.active_edid.clone();
+                        self.selected_mode =
+                            displays.iter().find(|d| d.edid_key == self.selected_display).and_then(default_mode);
+                    }
+                    self.displays = displays;
+                }
             }
             SettingsMessage::WifiSelect(ssid) => {
                 self.wifi_selected = Some(ssid);
@@ -146,9 +211,11 @@ impl IcedUi for Settings {
             self.cursor_sensitivity,
             self.natural_scroll,
             &self.env,
-            &self.modes,
-            self.current,
-            self.picked,
+            &self.displays,
+            &self.active_edid,
+            &self.selected_display,
+            self.selected_mode,
+            self.pending.as_ref(),
             self.confirming,
             &self.keys,
             &self.audio,

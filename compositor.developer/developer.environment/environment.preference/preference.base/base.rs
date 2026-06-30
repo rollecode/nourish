@@ -28,9 +28,17 @@ pub struct OutputProfile {
     /// EDID identity string ("make model serial") this profile applies to.
     pub identity: Option<String>,
     pub mode: Option<ModeRequest>,
-    #[serde(default)]
-    pub position: (i32, i32),
-    pub scale: Option<f64>,
+}
+
+/// Fallback mode for any monitor that has no per-output [`OutputProfile`] mode yet.
+/// Manually set in preferences.json only (no UI). `refresh_mhz` is mHz (e.g.
+/// `60000` = 60 Hz) to match [`ModeRequest::Advertised`]; an implausibly small
+/// value is normalized to 30 Hz on [`load`] (see `MIN_DEFAULT_REFRESH_MHZ`).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct DefaultMode {
+    pub width: u16,
+    pub height: u16,
+    pub refresh_mhz: u32,
 }
 
 /// The complete preferences document. `#[serde(default)]` so a partial or older
@@ -43,14 +51,38 @@ pub struct Preference {
     /// Natural scrolling: invert the touchpad finger-axis direction for canvas
     /// pan, window scroll, and multi-finger swipe navigation (wheel unaffected).
     pub input_natural_scroll: bool,
-    /// Per-EDID output mode/position/scale preferences.
+    /// Per-output mode preferences, priority-ordered: the FIRST entry is the
+    /// default/preferred output (see `display.base`'s `profiles.first()`).
     pub outputs: Vec<OutputProfile>,
+    /// Fallback mode for monitors without a per-output profile (manual only).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub outputs_default_mode: Option<DefaultMode>,
 }
 
 impl Default for Preference {
     fn default() -> Self {
-        Self { cursor_sensitivity: 1.0, input_natural_scroll: true, outputs: Vec::new() }
+        Self {
+            cursor_sensitivity: 1.0,
+            input_natural_scroll: true,
+            outputs: Vec::new(),
+            outputs_default_mode: None,
+        }
     }
+}
+
+/// Lowest plausible refresh in mHz. A `outputs_default_mode.refresh_mhz` below this
+/// (someone typed `60` meaning 60 Hz, or a nonsense value) is normalized to 30 Hz.
+const MIN_DEFAULT_REFRESH_MHZ: u32 = 20_000;
+
+/// Sanitize a freshly-loaded document: clamp an implausible default-mode refresh
+/// up to 30 Hz so a hand-edited file can't drive a monitor at a garbage rate.
+pub fn normalize(mut p: Preference) -> Preference {
+    if let Some(m) = p.outputs_default_mode.as_mut() {
+        if m.refresh_mhz < MIN_DEFAULT_REFRESH_MHZ {
+            m.refresh_mhz = 30_000;
+        }
+    }
+    p
 }
 
 /// `preferences.json`, in the same config dir as `settings.json` (honoring
@@ -65,7 +97,8 @@ fn path() -> PathBuf {
 pub fn load() -> Preference {
     std::fs::read_to_string(path())
         .ok()
-        .and_then(|raw| serde_json::from_str(&raw).ok())
+        .and_then(|raw| serde_json::from_str::<Preference>(&raw).ok())
+        .map(normalize)
         .unwrap_or_default()
 }
 
@@ -90,10 +123,18 @@ pub fn upsert_output(outputs: &mut Vec<OutputProfile>, edid_key: &str, mode: Mod
     if let Some(p) = outputs.iter_mut().find(|p| p.identity.as_deref() == Some(edid_key)) {
         p.mode = Some(mode);
     } else {
-        outputs.push(OutputProfile {
-            identity: Some(edid_key.to_string()),
-            mode: Some(mode),
-            ..Default::default()
-        });
+        outputs.push(OutputProfile { identity: Some(edid_key.to_string()), mode: Some(mode) });
     }
+}
+
+/// Make the profile for `edid_key` the FIRST entry in `outputs` — the default /
+/// preferred output the compositor drives (`display.base` uses `profiles.first()`).
+/// Reuses an existing profile (preserving its mode) or creates an identity-only one,
+/// then moves it to the front. Shared by the settings window and the settings editor.
+pub fn set_default(outputs: &mut Vec<OutputProfile>, edid_key: &str) {
+    let profile = match outputs.iter().position(|p| p.identity.as_deref() == Some(edid_key)) {
+        Some(i) => outputs.remove(i),
+        None => OutputProfile { identity: Some(edid_key.to_string()), mode: None },
+    };
+    outputs.insert(0, profile);
 }

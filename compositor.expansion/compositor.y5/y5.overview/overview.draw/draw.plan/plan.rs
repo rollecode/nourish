@@ -47,20 +47,20 @@ pub fn plan(state: &mut Loop, size: Size<i32, Physical>) -> Vec<(Window, Rectang
     );
     let inner_h = (area.size.h - 2 * GRID_MARGIN).max(1);
     let inner_w = (area.size.w - 2 * GRID_MARGIN).max(1);
-    // Fill the screen: the LARGEST cell height whose packed block fits the height
-    // (rows capped at 5 cells). Bounded so no single cell exceeds the width.
+    // DON'T fill the screen. Size cells by the windows' REALIZED OCCUPANCY — total
+    // grid footprint (area = cell_h² · Σaspect, so wide windows count for more than
+    // narrow ones) — targeting a fraction of the viewport AREA, solved for cell_h.
+    // Shrinks smoothly as windows get more/wider (not a coarse count tier): a lone
+    // window is a card, not the whole 4K screen, and the grid overflows + scrolls
+    // (clamped below) when it genuinely doesn't fit. Width-bounded + height-capped.
+    const TARGET_OCCUPANCY: f64 = 0.30;
     let max_aspect = aspects.iter().cloned().fold(0.05_f64, f64::max);
-    let h_cap = ((inner_w as f64 / max_aspect) as i32).min(inner_h).max(1);
-    let mut cell_h = (inner_h / 4).max(1);
-    let mut probe = h_cap;
-    while probe >= 80 {
-        let (_, block) = grid::layout(area, &aspects, GridParams { gap: GRID_GAP, cell_height: probe, margin: GRID_MARGIN, max_cols: 5 });
-        if block <= inner_h {
-            cell_h = probe;
-            break;
-        }
-        probe -= 20;
-    }
+    let sum_aspect: f64 = aspects.iter().map(|a| a.max(0.05)).sum();
+    let by_area = (TARGET_OCCUPANCY * inner_w as f64 * inner_h as f64 / sum_aspect).sqrt() as i32;
+    let by_width = (inner_w as f64 / max_aspect) as i32;
+    // Hard cap so no single cell (e.g. a lone square) dominates the viewport height.
+    let by_height = (inner_h as f64 * 0.60) as i32;
+    let cell_h = by_area.min(by_width).min(by_height).clamp(80, inner_h);
     let (cells, content_h) = grid::layout(
         area,
         &aspects,

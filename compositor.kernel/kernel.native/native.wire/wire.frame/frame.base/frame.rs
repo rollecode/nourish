@@ -211,9 +211,12 @@ fn process_vblank(
 
     let mut ctx = ctx_rc.borrow_mut();
 
-    // 1. Pop presentation feedback for the frame that just hit screen.
-    let pending_feedback =
-        compositor_kernel_scanout_flip_feedback_base::feedback::pop(&mut ctx.drm_output);
+    // 1. Pop presentation feedback for the frame that just hit screen. No output
+    //    during a monitor-switch teardown window → nothing to pop.
+    let pending_feedback = match ctx.drm_output.as_mut() {
+        Some(o) => compositor_kernel_scanout_flip_feedback_base::feedback::pop(o),
+        None => None,
+    };
 
     let refresh_rate =
         compositor_kernel_scanout_timing_vblank_base::vblank::refresh_interval(&ctx.mode);

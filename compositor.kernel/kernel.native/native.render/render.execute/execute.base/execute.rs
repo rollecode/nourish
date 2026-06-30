@@ -161,8 +161,22 @@ pub fn execute(
         return FrameOutcome::Idle;
     }
 
+    // Drain any pending output-mode / output-switch transaction from the settings
+    // window every render frame, so a provisional Apply and especially a Confirm/
+    // Revert take effect promptly instead of waiting for the next libinput event
+    // (the request channels are otherwise only drained on input — a still pointer
+    // after clicking Keep would let the ~15s watchdog auto-revert). Runs before the
+    // context borrow below; both are no-ops when no request is pending.
+    compositor_kernel_native_context_display_mode::mode::drain(state, &ctx_rc);
+    compositor_kernel_native_context_display_switch::switch::drain(state, &ctx_rc);
+
     let mut ctx = ctx_rc.borrow_mut();
     let ctx_ref = &mut *ctx;
+    // No live pipe (transient monitor-switch teardown window) → skip this frame.
+    // Every `ctx_ref.drm_output.as_*().unwrap()` below is guarded by this return.
+    if ctx_ref.drm_output.is_none() {
+        return FrameOutcome::Idle;
+    }
     let size = ctx_ref.mode.size;
     let frame_flags = compositor_kernel_scanout_plane_direct_base::direct::flags();
 
@@ -290,6 +304,8 @@ pub fn execute(
                 vk.set_capture_targets(targets);
                 match ctx_ref
                     .drm_output
+                    .as_mut()
+                    .unwrap()
                     .render_frame(&mut *vk, &outputs, picker_clear, frame_flags)
                 {
                     Ok(result) => {
@@ -330,6 +346,8 @@ pub fn execute(
             let mut r = gles_renderer.borrow_mut();
             let picker_result = ctx_ref
                 .drm_output
+                .as_mut()
+                .unwrap()
                 .render_frame(&mut *r, &wrapped, picker_clear, frame_flags)
                 .unwrap();
             honor_needs_sync(&picker_result);
@@ -472,7 +490,7 @@ pub fn execute(
                 if !targets.is_empty() {
                     let vk = ctx_ref.vulkan.as_mut().expect("vulkan_mode without renderer");
                     vk.set_capture_targets(targets);
-                    if let Err(e) = ctx_ref.drm_output.render_frame(
+                    if let Err(e) = ctx_ref.drm_output.as_mut().unwrap().render_frame(
                         &mut *vk,
                         &scene_outputs,
                         [0.0, 0.0, 0.0, 1.0],
@@ -490,7 +508,7 @@ pub fn execute(
             if !combined.is_empty() {
                 let vk = ctx_ref.vulkan.as_mut().expect("vulkan_mode without renderer");
                 vk.set_capture_targets(Vec::new()); // never capture lock content
-                match ctx_ref.drm_output.render_frame(
+                match ctx_ref.drm_output.as_mut().unwrap().render_frame(
                     &mut *vk,
                     &combined,
                     [0.0, 0.0, 0.0, 1.0],
@@ -526,7 +544,7 @@ pub fn execute(
                 {
                     let vk = ctx_ref.vulkan.as_mut().expect("vulkan_mode without renderer");
                     vk.set_capture_targets(targets);
-                    match ctx_ref.drm_output.render_frame(
+                    match ctx_ref.drm_output.as_mut().unwrap().render_frame(
                         &mut *vk,
                         &elements,
                         [0.0, 0.0, 0.0, 1.0],
@@ -584,6 +602,8 @@ pub fn execute(
             let mut r = gles_renderer.borrow_mut();
             let scene_result = ctx_ref
                 .drm_output
+                .as_mut()
+                .unwrap()
                 .render_frame(&mut *r, &wrapped, [0.0, 0.0, 0.0, 1.0], frame_flags)
                 .unwrap();
             honor_needs_sync(&scene_result);
@@ -676,6 +696,8 @@ pub fn execute(
             let mut r = gles_renderer.borrow_mut();
             let scene_result = ctx_ref
                 .drm_output
+                .as_mut()
+                .unwrap()
                 .render_frame(&mut *r, &scene_wrapped, [0.0, 0.0, 0.0, 1.0], frame_flags)
                 .unwrap();
             honor_needs_sync(&scene_result);
@@ -766,6 +788,8 @@ pub fn execute(
             let mut r = gles_renderer.borrow_mut();
             let combined_result = ctx_ref
                 .drm_output
+                .as_mut()
+                .unwrap()
                 .render_frame(&mut *r, &combined, [0.0, 0.0, 0.0, 1.0], frame_flags)
                 .unwrap();
             honor_needs_sync(&combined_result);
@@ -793,6 +817,8 @@ pub fn execute(
             let mut r = gles_renderer.borrow_mut();
             let lock_result = ctx_ref
                 .drm_output
+                .as_mut()
+                .unwrap()
                 .render_frame(&mut *r, &wrapped, [0.0, 0.0, 0.0, 1.0], frame_flags)
                 .unwrap();
             honor_needs_sync(&lock_result);
@@ -870,7 +896,8 @@ fn present(
     );
 
     let resuming = !(*state.inner.kernel.get(&compositor_orchestration_driver_resume_base::base::VBLANK_SEEN));
-    match queue(&mut ctx_ref.drm_output, Some(feedback), resuming) {
+    let Some(drm_output) = ctx_ref.drm_output.as_mut() else { return false };
+    match queue(drm_output, Some(feedback), resuming) {
         QueueOutcome::Queued => {
             state.mark_render_queued();
         }

@@ -3379,6 +3379,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_orchestration_event_output_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_channel_router_base",
+ "compositor_support_system_channel_token_base",
+]
+
+[[package]]
 name = "compositor_orchestration_input_drive_base"
 version = "0.0.1"
 dependencies = [
@@ -3394,6 +3402,15 @@ dependencies = [
  "compositor_introspection_execution_launch_types",
  "compositor_support_system_channel_router_base",
  "compositor_support_system_channel_token_base",
+]
+
+[[package]]
+name = "compositor_orchestration_pump_dark_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_orchestration_core_state_base",
+ "compositor_orchestration_driver_remote_base",
+ "compositor_remote_client_handle_base",
 ]
 
 [[package]]
@@ -6834,7 +6851,9 @@ dependencies = [
  "compositor_monitor_overview_ui_base",
  "compositor_orchestration_core_state_base",
  "compositor_orchestration_driver_settings_base",
+ "compositor_y5_overview_state_base",
  "libc",
+ "smithay",
 ]
 
 [[package]]
@@ -6860,6 +6879,7 @@ name = "compositor_y5_overview_input_keyboard"
 version = "0.0.1"
 dependencies = [
  "compositor_developer_debug_instance_record",
+ "compositor_monitor_compositor_iced_base",
  "compositor_orchestration_core_state_base",
  "compositor_support_library_input_keyboard_base",
  "compositor_y5_overview_interface_activate",

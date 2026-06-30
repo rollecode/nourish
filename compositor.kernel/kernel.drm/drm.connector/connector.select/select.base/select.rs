@@ -12,7 +12,8 @@ use smithay::reexports::drm::control::connector;
 
 /// Pick the connector to drive. The first profile whose EDID identity
 /// ("make model serial") matches a connected monitor wins; otherwise the first
-/// connected connector is used.
+/// connected connector is used. The EDID identity is the per-monitor key both the
+/// in-compositor switch and the standalone settings-editor persist.
 pub fn select(
     drm: &DrmDevice,
     connectors: Vec<connector::Info>,
@@ -23,12 +24,9 @@ pub fn select(
         .filter(|c| c.state() == connector::State::Connected)
         .collect();
 
-    // Identity of each connected monitor, computed once and matched against the
-    // preferences (which are keyed by the same "make model serial" string).
-    let keys: Vec<String> = connected.iter().map(|c| identity_key(drm, c)).collect();
     let chosen = profiles.iter().find_map(|p| {
         let want = p.identity.as_deref()?;
-        keys.iter().position(|k| k == want)
+        connected.iter().position(|c| identity_key(drm, c) == want)
     });
 
     match chosen {
@@ -38,8 +36,9 @@ pub fn select(
 }
 
 /// The stable identity key ("make model serial") for a connector's monitor — the same
-/// value the preferences are keyed by. An unreadable EDID yields the unknown-monitor
-/// key, so it simply never matches a real preference.
+/// value both the in-compositor switch and the standalone settings editor key
+/// preferences by. An unreadable EDID yields the unknown-monitor key, so it simply
+/// never matches a real preference.
 fn identity_key(drm: &DrmDevice, info: &connector::Info) -> String {
     let raw = parse::read(drm, info);
     let parsed = raw.as_ref().and_then(|r| parse::parse(r));

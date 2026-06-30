@@ -9,7 +9,9 @@
 # (cargo does not merge the two). Keep compiler flags here and do NOT export RUSTFLAGS
 # in scripts/shells, or these flags are silently dropped. The build scripts rely on this.
 
-[target.x86_64-unknown-linux-gnu]
+# Arch-independent key so these flags apply on x86_64 AND aarch64 (Raspberry Pi etc.);
+# a triple-specific `[target.x86_64-...]` block would be silently dropped on other arches.
+[target.'cfg(all())']
 rustflags = [
     "-A", "warnings",                # quiet warnings (was RUSTFLAGS="-A warnings")
     # (mold linker removed — the default system linker is used)

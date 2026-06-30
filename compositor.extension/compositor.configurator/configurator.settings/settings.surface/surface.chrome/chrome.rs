@@ -4,7 +4,7 @@
 use compositor_developer_environment_config_base::base::Environment;
 use compositor_developer_environment_keybinding_base::base::KeyRow;
 use compositor_configurator_hardware_gpu_base::base::RenderDevice;
-use compositor_orchestration_driver_output_base::base::ModeInfo;
+use compositor_orchestration_driver_output_base::base::{DisplayInfo, ModeInfo};
 use compositor_support_iced_core_engine_base::Renderer;
 use compositor_y5_audio_controller_interface::interface::AudioState;
 use compositor_configurator_network_backend_base::base::WifiSnapshot;
@@ -16,7 +16,7 @@ use compositor_configurator_settings_surface_environment::environment;
 use compositor_configurator_audio_tab_base::base as audio_tab;
 use compositor_configurator_network_tab_base::base as network_tab;
 use compositor_configurator_bluetooth_tab_base::base as bluetooth_tab;
-use compositor_configurator_settings_surface_message::message::{SettingsMessage, Tab};
+use compositor_configurator_settings_surface_message::message::{Applied, SettingsMessage, Tab};
 use compositor_configurator_settings_surface_style::style;
 use compositor_configurator_settings_surface_control::control;
 use iced_core::{Alignment, Element, Length, Padding, Theme};
@@ -63,24 +63,17 @@ fn performance<'a>(fps: u32) -> El<'a> {
     column![text("PERFORMANCE").size(16).color(style::ACCENT), text("Live runtime metrics.").size(11).color(style::MUTED), cell].spacing(12).into()
 }
 
-fn confirm<'a>(p: ModeInfo) -> El<'a> {
-    let bar = row![
-        text("Keep new display mode?").width(Length::Fill),
-        button(text("KEEP")).on_press(SettingsMessage::Keep(p)).style(control::accent),
-        button(text("REVERT")).on_press(SettingsMessage::Revert).style(control::action),
-    ].spacing(10).align_y(Alignment::Center).padding(12);
-    container(bar).style(style::card).into()
-}
-
+#[allow(clippy::too_many_arguments)]
 #[allow(clippy::too_many_arguments)]
 pub fn render<'a>(
     tab: Tab, dirty: bool, cursor_sensitivity: f32, natural: bool, env: &'a Environment,
-    modes: &'a [ModeInfo], current: Option<ModeInfo>, picked: Option<ModeInfo>, confirming: bool,
+    displays: &'a [DisplayInfo], active_edid: &'a str, selected_display: &'a str,
+    selected_mode: Option<ModeInfo>, pending: Option<&'a Applied>, confirming: bool,
     keys: &'a [KeyRow], audio: &'a AudioState, wifi: &'a WifiSnapshot, bt: &'a BtSnapshot,
     wifi_selected: Option<&'a str>, wifi_password: &'a str, devices: &'a [RenderDevice], fps: u32,
 ) -> El<'a> {
     let body: El<'a> = match tab {
-        Tab::Display => display::build(modes, current),
+        Tab::Display => display::build(displays, active_edid, selected_display, selected_mode, confirming, pending),
         Tab::Audio => audio_tab::build(audio),
         Tab::Input => row![
             container(cursor::build(cursor_sensitivity, natural)).width(Length::FillPortion(5)).height(Length::Fill),
@@ -91,11 +84,9 @@ pub fn render<'a>(
         Tab::Performance => performance(fps),
         Tab::System => environment::build(env, devices),
     };
-    // No outer scrollable — each section scrolls its own lists independently.
-    let mut content = column![body].spacing(16).height(Length::Fill);
-    if confirming {
-        if let Some(p) = picked { content = content.push(confirm(p)); }
-    }
+    // No outer scrollable — each section scrolls its own lists independently. The
+    // Display tab owns its own CHECK/APPLY/REVERT row, so there is no global bar.
+    let content = column![body].spacing(16).height(Length::Fill);
     let main = row![sidebar(tab), container(content).width(Length::Fill).height(Length::Fill).padding(24)].height(Length::Fill);
     container(column![titlebar(dirty), main]).width(Length::Fill).height(Length::Fill).style(style::backdrop).into()
 }

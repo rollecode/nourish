@@ -23,6 +23,13 @@ pub fn action(_t: &Theme, _s: BStatus) -> Button {
         border: Border { color: LINE, width: 1.0, radius: 3.0.into() }, ..Default::default() }
 }
 
+/// Greyed-out disabled button — faint fill, faint border, muted text. Use on a
+/// button with no `on_press` so it both looks and behaves inert.
+pub fn disabled(_t: &Theme, _s: BStatus) -> Button {
+    Button { background: Some(bg(rgba(1.0, 1.0, 1.0, 0.02))), text_color: rgba(1.0, 1.0, 1.0, 0.25),
+        border: Border { color: rgba(1.0, 1.0, 1.0, 0.06), width: 1.0, radius: 3.0.into() }, ..Default::default() }
+}
+
 /// A sidebar module row — cyan text + lit fill when active.
 pub fn sidebar_item(active: bool) -> impl Fn(&Theme, BStatus) -> Button {
     move |_t, _s| Button {

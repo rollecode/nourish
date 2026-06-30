@@ -15,6 +15,7 @@ compositor_kernel_scanout_surface_output_base.workspace = true
 compositor_kernel_graphic_draw_plan_tap.workspace = true
 compositor_kernel_graphic_preference_enable_safety.workspace = true
 compositor_orchestration_core_state_base.workspace = true
+compositor_orchestration_driver_output_base.workspace = true
 
 [lib]
 path = "lib.rs"

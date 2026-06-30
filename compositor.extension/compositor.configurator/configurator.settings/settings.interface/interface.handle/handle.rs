@@ -5,7 +5,7 @@
 //! modes go via the OUTPUT_MODE_REQUEST channel (apply / confirm+persist / revert).
 use compositor_developer_environment_preference_base::base as pref;
 use compositor_orchestration_core_state_base::Loop;
-use compositor_orchestration_driver_output_base::base::{OutputModeRequest, OUTPUT_MODES_SNAPSHOT, OUTPUT_MODE_REQUEST_MUT};
+use compositor_orchestration_driver_output_base::base::{OutputModeRequest, OutputSwitchRequest, OUTPUT_MODES_SNAPSHOT, OUTPUT_MODE_REQUEST_MUT, OUTPUT_SWITCH_REQUEST_MUT};
 use compositor_orchestration_driver_settings_base::base::SETTINGS_MUT;
 use compositor_configurator_settings_surface_message::message::{SettingsMessage, Tab};
 use compositor_configurator_network_backend_base::base::{self as wifi, WifiCmd};
@@ -26,25 +26,47 @@ pub fn handle(state: &mut Loop, _renderer: &mut GlesRenderer, m: SettingsMessage
         SettingsMessage::Env(e) => {
             let _ = compositor_developer_environment_config_base::base::save(&e);
         }
-        SettingsMessage::PickMode(info) => {
-            *state.inner.kernel.get_mut(&OUTPUT_MODE_REQUEST_MUT) = Some(OutputModeRequest::Apply {
-                width: info.width,
-                height: info.height,
-                refresh_mhz: info.refresh_mhz,
-            });
+        SettingsMessage::Apply(a) => {
+            if a.switch {
+                *state.inner.kernel.get_mut(&OUTPUT_SWITCH_REQUEST_MUT) = Some(OutputSwitchRequest::Apply {
+                    edid_key: a.edid_key,
+                    mode: Some(a.mode),
+                });
+            } else {
+                *state.inner.kernel.get_mut(&OUTPUT_MODE_REQUEST_MUT) = Some(OutputModeRequest::Apply {
+                    width: a.mode.width,
+                    height: a.mode.height,
+                    refresh_mhz: a.mode.refresh_mhz,
+                });
+            }
         }
-        SettingsMessage::Keep(info) => {
-            *state.inner.kernel.get_mut(&OUTPUT_MODE_REQUEST_MUT) = Some(OutputModeRequest::Confirm);
-            let edid = state.inner.kernel.get(&OUTPUT_MODES_SNAPSHOT).edid_key.clone();
-            pref::upsert_output(&mut state.inner.preference.outputs, &edid, pref::ModeRequest::Advertised {
-                width: info.width,
-                height: info.height,
-                refresh_mhz: info.refresh_mhz,
-            });
+        SettingsMessage::Keep(a) => {
+            if a.switch {
+                // Confirm the switch + persist the preferred monitor as the default
+                // output: set its mode, then move it to the front of `outputs`
+                // (`display.base` drives `profiles.first()` at startup).
+                *state.inner.kernel.get_mut(&OUTPUT_SWITCH_REQUEST_MUT) = Some(OutputSwitchRequest::Confirm);
+                pref::upsert_output(&mut state.inner.preference.outputs, &a.edid_key, pref::ModeRequest::Advertised {
+                    width: a.mode.width,
+                    height: a.mode.height,
+                    refresh_mhz: a.mode.refresh_mhz,
+                });
+                pref::set_default(&mut state.inner.preference.outputs, &a.edid_key);
+            } else {
+                *state.inner.kernel.get_mut(&OUTPUT_MODE_REQUEST_MUT) = Some(OutputModeRequest::Confirm);
+                let edid = state.inner.kernel.get(&OUTPUT_MODES_SNAPSHOT).edid_key.clone();
+                pref::upsert_output(&mut state.inner.preference.outputs, &edid, pref::ModeRequest::Advertised {
+                    width: a.mode.width,
+                    height: a.mode.height,
+                    refresh_mhz: a.mode.refresh_mhz,
+                });
+            }
             let _ = pref::save(&state.inner.preference);
         }
         SettingsMessage::Revert => {
+            // Revert whichever gate is armed (both are no-ops if nothing pending).
             *state.inner.kernel.get_mut(&OUTPUT_MODE_REQUEST_MUT) = Some(OutputModeRequest::Revert);
+            *state.inner.kernel.get_mut(&OUTPUT_SWITCH_REQUEST_MUT) = Some(OutputSwitchRequest::Revert);
         }
         SettingsMessage::Rebind(id, combo) => {
             state.inner.keybinding.set(&id, combo);
@@ -81,15 +103,19 @@ pub fn handle(state: &mut Loop, _renderer: &mut GlesRenderer, m: SettingsMessage
             let st = state.inner.kernel.get_mut(&SETTINGS_MUT);
             st.fps_wanted = matches!(t, Tab::Performance);
             st.tab = t.to_index(); // remember the module for the session (restored on reopen)
-            // Leaving Display abandons any provisional mode change → revert it
-            // (no-op in the kernel if nothing is pending).
+            // Leaving Display abandons any provisional mode/switch change → revert
+            // it (both are no-ops in the kernel if nothing is pending).
             if !matches!(t, Tab::Display) {
                 *state.inner.kernel.get_mut(&OUTPUT_MODE_REQUEST_MUT) = Some(OutputModeRequest::Revert);
+                *state.inner.kernel.get_mut(&OUTPUT_SWITCH_REQUEST_MUT) = Some(OutputSwitchRequest::Revert);
             }
         }
         SettingsMessage::Fps(_)
         | SettingsMessage::ModeResult(_)
         | SettingsMessage::SyncSystem(..)
+        | SettingsMessage::SyncDisplays(_)
+        | SettingsMessage::SelectDisplay(_)
+        | SettingsMessage::SelectMode(_)
         | SettingsMessage::WifiSelect(_)
         | SettingsMessage::WifiPassword(_) => {}
     }

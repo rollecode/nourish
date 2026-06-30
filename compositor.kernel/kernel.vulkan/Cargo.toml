@@ -239,7 +239,10 @@ compositor_kernel_native_assemble_display_base = { path = "../kernel.native/nati
 compositor_kernel_native_assemble_renderer_base = { path = "../kernel.native/native.assemble/assemble.renderer/renderer.base" }
 compositor_kernel_native_context_display_apply = { path = "../kernel.native/native.context/context.display/display.apply" }
 compositor_kernel_native_context_display_base = { path = "../kernel.native/native.context/context.display/display.base" }
+compositor_kernel_native_context_display_build = { path = "../kernel.native/native.context/context.display/display.build" }
+compositor_kernel_native_context_display_enumerate = { path = "../kernel.native/native.context/context.display/display.enumerate" }
 compositor_kernel_native_context_display_mode = { path = "../kernel.native/native.context/context.display/display.mode" }
+compositor_kernel_native_context_display_switch = { path = "../kernel.native/native.context/context.display/display.switch" }
 compositor_kernel_native_context_render_base = { path = "../kernel.native/native.context/context.render/render.base" }
 compositor_kernel_native_context_topology_base = { path = "../kernel.native/native.context/context.topology/topology.base" }
 compositor_kernel_native_device_delegate_base = { path = "../kernel.native/native.device/device.delegate/delegate.base" }
@@ -265,6 +268,7 @@ compositor_kernel_scanout_framebuffer_import_base = { path = "../kernel.scanout/
 compositor_kernel_scanout_framebuffer_modifier_base = { path = "../kernel.scanout/scanout.framebuffer/framebuffer.modifier/modifier.base" }
 compositor_kernel_scanout_pipe_assign_base = { path = "../kernel.scanout/scanout.pipe/pipe.assign/assign.base" }
 compositor_kernel_scanout_pipe_claim_base = { path = "../kernel.scanout/scanout.pipe/pipe.claim/claim.base" }
+compositor_kernel_scanout_pipe_claim_free = { path = "../kernel.scanout/scanout.pipe/pipe.claim/claim.free" }
 compositor_kernel_scanout_plane_assign_base = { path = "../kernel.scanout/scanout.plane/plane.assign/assign.base" }
 compositor_kernel_scanout_plane_cursor_base = { path = "../kernel.scanout/scanout.plane/plane.cursor/cursor.base" }
 compositor_kernel_scanout_plane_direct_base = { path = "../kernel.scanout/scanout.plane/plane.direct/direct.base" }
@@ -349,8 +353,10 @@ compositor_orchestration_driver_selection_base = { path = "../../compositor.orch
 compositor_orchestration_driver_settings_base = { path = "../../compositor.orchestration/orchestration.driver/driver.settings/settings.base" }
 compositor_orchestration_environment_interface_lifecycle = { path = "../../compositor.orchestration/orchestration.environment/environment.interface/interface.lifecycle" }
 compositor_orchestration_environment_type_base = { path = "../../compositor.orchestration/orchestration.environment/environment.type/type.base" }
+compositor_orchestration_event_output_base = { path = "../../compositor.orchestration/orchestration.event/event.output/output.base" }
 compositor_orchestration_input_drive_base = { path = "../../compositor.orchestration/orchestration.input/input.drive/drive.base" }
 compositor_orchestration_launch_broadcast_base = { path = "../../compositor.orchestration/orchestration.launch/launch.broadcast/broadcast.base" }
+compositor_orchestration_pump_dark_base = { path = "../../compositor.orchestration/orchestration.pump/pump.dark/dark.base" }
 compositor_orchestration_seat_delegate_base = { path = "../../compositor.orchestration/orchestration.seat/seat.delegate/delegate.base" }
 compositor_orchestration_seat_delegate_lock = { path = "../../compositor.orchestration/orchestration.seat/seat.delegate/delegate.lock" }
 compositor_orchestration_seat_delegate_main = { path = "../../compositor.orchestration/orchestration.seat/seat.delegate/delegate.main" }

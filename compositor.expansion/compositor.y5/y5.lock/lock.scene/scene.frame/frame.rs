@@ -23,6 +23,9 @@ pub struct LockPrepared {
 
 /// GLES preparation phase for the lock scene.
 pub fn prepare(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Physical>) -> LockPrepared {
+    // Build the lock VISUAL lazily now that a renderer exists (the logical lock
+    // engaged earlier, possibly while dark). No-op once built.
+    compositor_y5_lock_interface_base::interface::lock_visual(state, renderer, size);
     compositor_y5_lock_scene_hook::hook::hook(state, renderer, size);
 
     let surfaces = surface::scene(state, renderer, size);

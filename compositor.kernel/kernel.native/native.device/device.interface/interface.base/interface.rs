@@ -35,10 +35,14 @@ pub fn apply(ctx: &mut NativeRenderContext, setting: DeviceSetting) {
                 .single_renderer(primary)
                 .expect("renderer unavailable for mode application");
 
+            let output = ctx
+                .drm_output
+                .as_mut()
+                .unwrap_or_else(|| abort!("mode application with no active output"));
             compositor_kernel_scanout_surface_reconfigure_base::reconfigure::set_output_mode::<
                 _,
                 GlesElementWrapper<SceneElement<GlesRenderer>>,
-            >(&mut ctx.drm_output, drm_mode, &mut renderer)
+            >(output, drm_mode, &mut renderer)
             .unwrap_or_else(|e| abort!("mode application failed: {e}"));
 
             // Propagate to the smithay Output so clients observe the change.

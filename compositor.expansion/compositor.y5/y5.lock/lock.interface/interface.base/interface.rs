@@ -18,54 +18,37 @@ use compositor_y5_graphic_capture_registry::{CaptureSource, OutputId};
 use compositor_y5_lock_state_base::state::{LockActiveCapture, LockActiveState};
 use compositor_monitor_compositor_iced_base::IcedHandle;
 
-pub fn lock(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Physical>, sleep: bool) {
-    if let compositor_orchestration_core_state_base::state::Status::Locked { .. } = state.inner.status {
-        error!("lock when already locked");
+/// LOGICAL lock engage — renderer-free, so a lock holds even when the compositor
+/// is dark (no output → no render). The keybinding handler sets
+/// `Status::Locked{pending:true}` SYNCHRONOUSLY and schedules this on `insert_idle`
+/// (NOT a per-frame flag). The VISUAL (lock screen + capture backdrop + bevy) is
+/// built lazily by [`lock_visual`] on the next real frame. Reads `sleep` from the
+/// status the handler already set.
+pub fn lock_logical(state: &mut Loop) {
+    let compositor_orchestration_core_state_base::state::Status::Locked { .. } = state.inner.status
+    else {
+        // Status must already be set by the handler; nothing to engage otherwise.
+        return;
+    };
+    // Already engaged (active set) → idempotent no-op (e.g. double idle).
+    if state.inner.worlds.get_mut(compositor_y5_lock_system_base::base::LOCK_WORLD).storage_mut().get_mut(&compositor_y5_lock_system_base::base::LOCK_MUT).active.is_some() {
         return;
     }
 
-    // Stop and discard any in-progress capture before the lock takes its own
-    // snapshot, so the capture overlays don't bleed into the lock background.
+    // Stop any in-progress capture before the lock takes its own snapshot, so the
+    // capture overlays don't bleed into the lock background.
     compositor_y5_graphic_capture_interface::interface::stop_and_discard(state);
 
     compositor_y5_navigator_interface_base::interface::lock(state);
 
-    let mut surface_element = vec![];
-
-    let mut surface_input: Option<
-        IcedHandle<compositor_y5_lock_interface_surface::view::LockSurface>,
-    > = None;
-
-    if let Some(surface) = surface::create(state, renderer, size) {
-        surface_element.push(surface.id);
-        surface_input = Some(surface);
-    }
-
-    let capture = if let Some(registry_capture) = state.inner.kernel.get_mut(&compositor_orchestration_driver_capture_base::base::CAPTURE_REGISTRY_MUT).as_mut() {
-        if let Some(cap) = registry_capture
-            .request(&state.inner.environment.GPU.as_str(), renderer, CaptureSource::OutputFramebuffer(OutputId(0)))
-            .ok()
-        {
-            LockActiveCapture::Capture(cap)
-        } else {
-            LockActiveCapture::None
-        }
-    } else {
-        LockActiveCapture::None
-    };
-
+    // Empty visual — filled by `lock_visual` once a renderer is available.
     let active = LockActiveState {
         bevy: None,
-        capture,
-        surface: surface_element,
-        surface_input,
+        capture: LockActiveCapture::None,
+        surface: vec![],
+        surface_input: None,
     };
 
-    state.inner.status = compositor_orchestration_core_state_base::state::Status::Locked {
-        pending: true,
-        sleep,
-        time: Instant::now(),
-    };
     // Locking IS a world switch: session systems get on_disable, lock systems
     // on_enable. The Status enum stays alongside until the legacy scene/input
     // selection migrates onto the active world (then it dissolves).
@@ -77,6 +60,62 @@ pub fn lock(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Physi
     state.inner.worlds.get_mut(compositor_y5_lock_system_base::base::LOCK_WORLD).storage_mut().get_mut(&compositor_y5_lock_system_base::base::LOCK_MUT).active = Some(active);
 
     deactivate_scene(state);
+
+    // Pending→done after PERIOD, on a loop timer (NOT the per-frame render hook).
+    let delay = Duration::from_secs_f64(compositor_y5_lock_state_transition::transition::PERIOD);
+    let _ = state.loop_handle.insert_source(Timer::from_duration(delay), |_, _, state| {
+        lock_done_logical(state);
+        TimeoutAction::Drop
+    });
+}
+
+/// VISUAL lock build — needs the GLES renderer, so it runs from the lock render
+/// path (`lock.scene/scene.frame::prepare`), lazily: the lock-screen surface +
+/// capture backdrop are built once `active` exists, and the bevy morph once the
+/// lock is no longer pending. When dark this simply doesn't run; the visuals
+/// appear on the first frame after a monitor returns.
+pub fn lock_visual(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Physical>) {
+    let pending = match state.inner.status {
+        compositor_orchestration_core_state_base::state::Status::Locked { pending, .. } => pending,
+        _ => return,
+    };
+    if state.inner.worlds.get_mut(compositor_y5_lock_system_base::base::LOCK_WORLD).storage_mut().get_mut(&compositor_y5_lock_system_base::base::LOCK_MUT).active.is_none() {
+        return;
+    }
+
+    let need_surface = state.inner.worlds.get_mut(compositor_y5_lock_system_base::base::LOCK_WORLD).storage_mut().get_mut(&compositor_y5_lock_system_base::base::LOCK_MUT).active.as_ref().unwrap().surface_input.is_none();
+    if need_surface {
+        let mut surface_element = vec![];
+        let mut surface_input: Option<
+            IcedHandle<compositor_y5_lock_interface_surface::view::LockSurface>,
+        > = None;
+        if let Some(surface) = surface::create(state, renderer, size) {
+            surface_element.push(surface.id);
+            surface_input = Some(surface);
+        }
+        let capture = if let Some(registry_capture) = state.inner.kernel.get_mut(&compositor_orchestration_driver_capture_base::base::CAPTURE_REGISTRY_MUT).as_mut() {
+            if let Some(cap) = registry_capture
+                .request(&state.inner.environment.GPU.as_str(), renderer, CaptureSource::OutputFramebuffer(OutputId(0)))
+                .ok()
+            {
+                LockActiveCapture::Capture(cap)
+            } else {
+                LockActiveCapture::None
+            }
+        } else {
+            LockActiveCapture::None
+        };
+        let active = state.inner.worlds.get_mut(compositor_y5_lock_system_base::base::LOCK_WORLD).storage_mut().get_mut(&compositor_y5_lock_system_base::base::LOCK_MUT).active.as_mut().unwrap();
+        active.surface = surface_element;
+        active.surface_input = surface_input;
+        active.capture = capture;
+    }
+
+    let need_bevy = !pending && state.inner.worlds.get_mut(compositor_y5_lock_system_base::base::LOCK_WORLD).storage_mut().get_mut(&compositor_y5_lock_system_base::base::LOCK_MUT).active.as_ref().unwrap().bevy.is_none();
+    if need_bevy {
+        let bevy = three::create(state, renderer, size);
+        state.inner.worlds.get_mut(compositor_y5_lock_system_base::base::LOCK_WORLD).storage_mut().get_mut(&compositor_y5_lock_system_base::base::LOCK_MUT).active.as_mut().unwrap().bevy = bevy;
+    }
 }
 
 fn deactivate_scene(_loop: &mut Loop) {
@@ -127,12 +166,19 @@ fn clear_keyboard(_loop: &mut Loop) {
     keyboard.set_modifier_state(ModifiersState::default());
 }
 
-pub fn lock_done(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Physical>) {
-    let compositor_orchestration_core_state_base::state::Status::Locked { sleep, time, .. } =
+/// Pending→done transition — renderer-free, run from the loop timer armed in
+/// [`lock_logical`] (NOT the per-frame render hook). Marks the lock complete and
+/// creates the PAM worker (a calloop source) so authentication works even while
+/// dark. The bevy morph is built later by [`lock_visual`] (it needs a renderer).
+fn lock_done_logical(state: &mut Loop) {
+    let compositor_orchestration_core_state_base::state::Status::Locked { sleep, time, pending } =
         state.inner.status
     else {
-        abort!("Lock done while not locked")
+        return;
     };
+    if !pending {
+        return; // already done (idempotent)
+    }
 
     if state.inner.worlds.get_mut(compositor_y5_lock_system_base::base::LOCK_WORLD).storage_mut().get_mut(&compositor_y5_lock_system_base::base::LOCK_MUT).active.is_none() {
         abort!("Lock done while not locked ( no active set )");
@@ -144,13 +190,6 @@ pub fn lock_done(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, 
         sleep: false,
         time,
     };
-
-    // Create the bevy handle
-    let bevy = three::create(state, renderer, size);
-    let Some(ref mut active) = &mut state.inner.worlds.get_mut(compositor_y5_lock_system_base::base::LOCK_WORLD).storage_mut().get_mut(&compositor_y5_lock_system_base::base::LOCK_MUT).active else {
-        abort!();
-    };
-    active.bevy = bevy;
 
     // set lock time on ParallaxBackground (the session world being locked ==
     // spawn_target; locking only moved `active` to LOCK_WORLD).

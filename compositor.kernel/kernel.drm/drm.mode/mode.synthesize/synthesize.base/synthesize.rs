@@ -122,10 +122,10 @@ mod gated {
     pub fn to_drm_mode(t: SynthesizedTiming) -> smithay::reexports::drm::control::Mode {
         let vrefresh = ((t.clock_khz as u64 * 1000)
             / (t.htotal as u64 * t.vtotal as u64).max(1)) as u32;
-        let mut name = [0i8; 32];
+        let mut name = [0 as std::ffi::c_char; 32];
         let label = format!("{}x{}@{}", t.hdisplay, t.vdisplay, vrefresh);
         for (i, b) in label.bytes().take(31).enumerate() {
-            name[i] = b as i8;
+            name[i] = b as std::ffi::c_char;
         }
         let raw = drm_ffi::drm_mode_modeinfo {
             clock: t.clock_khz,

@@ -1,7 +1,18 @@
 //! The settings-window message type, shared by the view + tab builders + the
 //! surface protocol/handler. iced-free so the protocol crate can name it.
 use compositor_developer_environment_config_base::base::Environment;
-use compositor_orchestration_driver_output_base::base::{ApplyResult, ModeInfo};
+use compositor_orchestration_driver_output_base::base::{ApplyResult, DisplayInfo, ModeInfo};
+
+/// A provisional display change the user can Keep/Revert: a target monitor
+/// (by EDID identity key), the mode to drive it at, and whether this switches
+/// the ACTIVE output (different monitor → output-switch gate) or just changes
+/// the mode on the active monitor.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Applied {
+    pub edid_key: String,
+    pub mode: ModeInfo,
+    pub switch: bool,
+}
 use compositor_y5_audio_controller_interface::interface::AudioState;
 use compositor_configurator_network_backend_base::base::WifiSnapshot;
 use compositor_configurator_bluetooth_backend_base::base::BtSnapshot;
@@ -53,11 +64,17 @@ pub enum SettingsMessage {
     /// sets the reboot-dirty banner). Carrying the whole struct keeps one
     /// message variant instead of 19 field-specific ones.
     Env(Environment),
-    /// Provisionally apply an advertised output mode (forwarded).
-    PickMode(ModeInfo),
-    /// Keep the provisional mode (forwarded: confirm + persist per-EDID).
-    Keep(ModeInfo),
-    /// Revert the provisional mode (forwarded).
+    /// Select a monitor in the Display picker (UI-local: syncs the mode list).
+    SelectDisplay(String),
+    /// Select a mode for the selected monitor (UI-local).
+    SelectMode(ModeInfo),
+    /// Provisionally apply the selected monitor + mode (forwarded): a mode change
+    /// on the active monitor, or an active-output switch to another monitor.
+    Apply(Applied),
+    /// Keep the provisional change (forwarded: confirm + persist preferred
+    /// monitor and/or per-EDID mode).
+    Keep(Applied),
+    /// Revert the provisional change (forwarded: reverts whichever gate is armed).
     Revert,
     /// Rebind a shortcut: `(action_id, combo_string)` (forwarded: parsed +
     /// persisted to keybinding.json).
@@ -66,6 +83,9 @@ pub enum SettingsMessage {
     ResetBind(String),
     /// Live system snapshots pushed in by the per-frame reconciler (NOT forwarded).
     SyncSystem(AudioState, WifiSnapshot, BtSnapshot),
+    /// Live connected-monitor list pushed in on hotplug (NOT forwarded): refreshes
+    /// the Display picker for the open session.
+    SyncDisplays(Vec<DisplayInfo>),
     /// Audio (forwarded): make a sink default / set a sink's volume.
     SetDefaultSink(String),
     SetSinkVolume(String, f32),

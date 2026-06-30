@@ -8,10 +8,18 @@
 
 use smithay::backend::renderer::gles::GlesRenderer;
 use smithay::utils::{Physical, Point, Size};
+use std::cell::RefCell;
 use compositor_orchestration_core_state_base::Loop;
 use compositor_orchestration_draw_layer_base::base::Layer;
 use compositor_support_bevy_core_compositor_base::{BevyRenderElement, Transform};
 use compositor_y5_picker_system_base::base::{PICKER_MUT, PICKER_WORLD};
+
+thread_local! {
+    /// Output size the embedded globe scene was last built for. The sphere scene
+    /// (camera/projection) is created once at this size; on an output/mode change
+    /// it must be rebuilt, or the globe renders at a stale aspect.
+    static GLOBE_SIZE: RefCell<Option<Size<i32, Physical>>> = const { RefCell::new(None) };
+}
 
 /// Ensure the embedded picker session + sphere exist, advance the orientation,
 /// and render the picker world's bevy registry. Returns the bevy elements.
@@ -20,6 +28,12 @@ pub fn prepare_world(
     gles: &mut GlesRenderer,
     size: Size<i32, Physical>,
 ) -> Vec<BevyRenderElement> {
+    // Output size changed (mode/output switch while the overview is open) → tear the
+    // embedded globe down so it rebuilds at the new size below.
+    let size_changed = GLOBE_SIZE.with(|s| { let mut s = s.borrow_mut(); if *s != Some(size) { *s = Some(size); true } else { false } });
+    if size_changed {
+        compositor_y5_picker_interface_embed::embed::embed_close(state);
+    }
     compositor_y5_picker_interface_embed::embed::embed_open(state);
 
     // Build the sphere scene once (the picker world's own registry).
