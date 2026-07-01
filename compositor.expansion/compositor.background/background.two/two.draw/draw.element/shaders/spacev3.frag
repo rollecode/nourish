@@ -7,7 +7,8 @@ uniform float u_zoom;
 uniform vec2  u_resolution;
 uniform float alpha;
 uniform float u_lock_amount;   // 0 = space, 1 = locked; CPU eases between
-uniform vec4  u_param0;         // @prop slots 0..3 (drift/density/nebula/vignette)
+uniform vec4  u_param0;         // @prop slots 0..3 (drift/density/nebula/vignette amount)
+uniform vec4  u_param1;         // @prop slots 4..7 (vignette radius/softness, ...)
 
 float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 float noise(vec2 p){
@@ -102,8 +103,13 @@ void main() {
     float star_density = u_param0.y;
     float nebula = u_param0.z;
     float vignette = u_param0.w;
+    float vigRadius = u_param1.x;
+    float vigSoftness = u_param1.y;
 
     vec2 uv = (gl_FragCoord.xy - 0.5*u_resolution) / u_resolution.y;
+    // screenUv is zoom-independent so the vignette frames the display, not the
+    // world; the scene uv below is divided by zoom as usual.
+    vec2 screenUv = uv;
     uv /= u_zoom;
 
     vec2 pan = vec2(u_pan.x, -u_pan.y);
@@ -211,7 +217,9 @@ void main() {
         col = mix(col, lcol, L);
     }
 
-    float vig = smoothstep(1.35, 0.2, length(uv));
+    // Optional vignette (slots 3..5): screen-space (zoom-independent) with
+    // knob-driven radius / softness so the framing stays consistent across zoom.
+    float vig = smoothstep(vigRadius, vigRadius - vigSoftness, length(screenUv));
     col *= mix(1.0, vig, clamp(vignette, 0.0, 1.0));
     gl_FragColor = vec4(col, 1.0) * alpha * 0.75;
 }

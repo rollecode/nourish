@@ -94,13 +94,19 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
     let flow = pc.pan_flow.zw;
     let lock_amount = pc.lock_alpha.x;
     let alpha = pc.lock_alpha.y;
-    // @prop-driven knobs (see shader.builtin): drift / density / nebula / vignette.
+    // @prop-driven knobs (see shader.builtin): drift / density / nebula, plus the
+    // vignette amount / radius / softness (slots 3..5).
     let drift_speed = pc.params[0].x;
     let star_density = pc.params[0].y;
     let nebula = pc.params[0].z;
     let vignette = pc.params[0].w;
+    let vig_radius = pc.params[1].x;
+    let vig_softness = pc.params[1].y;
 
     var uv = (frag - 0.5 * res) / res.y;
+    // screen_uv is zoom-independent so the vignette frames the display, not the
+    // world; the scene uv below is divided by zoom as usual.
+    let screen_uv = uv;
     uv = uv / zoom;
     let pan = vec2<f32>(pan_in.x, -pan_in.y);
 
@@ -186,8 +192,10 @@ fn fs_main(in: VsOut) -> @location(0) vec4<f32> {
         col = mix(col, lcol, l);
     }
 
-    // Optional vignette (slot 3): darken toward the edges when enabled.
-    let vig = smoothstep(1.35, 0.2, length(uv));
+    // Optional vignette (slots 3..5): darken toward the edges when amount > 0.
+    // Evaluated in screen space (zoom-independent) with knob-driven radius /
+    // softness so the framing stays consistent as the world zooms.
+    let vig = smoothstep(vig_radius, vig_radius - vig_softness, length(screen_uv));
     col = col * mix(1.0, vig, clamp(vignette, 0.0, 1.0));
     return vec4<f32>(col, 1.0) * (alpha * 0.75);
 }

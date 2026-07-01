@@ -167,8 +167,10 @@ pub struct Pipeline {
 impl Pipeline {
     /// Build + cache the render pipeline for `source` (keyed by its hash). The
     /// `var<immediate>` push block is rewritten to a uniform binding. Invalid
-    /// WGSL is a FATAL wgpu error, so validate with naga first and skip on
-    /// failure (cached) — the preview shows nothing rather than crashing.
+    /// WGSL — and valid WGSL whose resource interface doesn't fit the preview's
+    /// fixed bind layout — is a FATAL wgpu error, so screen for both with naga
+    /// first and skip on failure (cached); the preview shows nothing rather than
+    /// crashing.
     fn ensure(&mut self, device: &wgpu::Device, key: u64, source: &str) {
         if self.pipelines.contains_key(&key) || self.failed.contains(&key) {
             return;
@@ -182,7 +184,7 @@ impl Pipeline {
                 )
                 .validate(&module)
                 .is_ok();
-                if !valid {
+                if !valid || !Self::fits_preview_layout(&module) {
                     self.failed.insert(key);
                     return;
                 }
@@ -213,6 +215,24 @@ impl Pipeline {
             cache: None,
         });
         self.pipelines.insert(key, rp);
+    }
+
+    /// Whether `module`'s resource interface fits the preview's single fixed
+    /// binding: one uniform at group 0 / binding 0, no larger than `Uniforms`.
+    /// wgpu validates the bound buffer size against the shader's block at draw
+    /// time and treats a mismatch as fatal, so a shader that compiles yet expects
+    /// a bigger or differently-placed binding (e.g. the HDR parallax's 96-byte
+    /// `HdrPush` against our 80-byte buffer) must be rejected here, not drawn.
+    fn fits_preview_layout(module: &naga::Module) -> bool {
+        let max = std::mem::size_of::<Uniforms>() as u32;
+        module.global_variables.iter().all(|(_, gv)| match &gv.binding {
+            None => true,
+            Some(rb) if rb.group == 0 && rb.binding == 0 => {
+                gv.space == naga::AddressSpace::Uniform
+                    && module.types[gv.ty].inner.size(module.to_ctx()) <= max
+            }
+            Some(_) => false,
+        })
     }
 }
 

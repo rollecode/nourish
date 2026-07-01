@@ -2,7 +2,9 @@
 //! bundle file, so its property metadata lives here — used by `draw.select` to
 //! seed defaults and by the settings UI to render its controls. The shaders
 //! (`spacev3.frag` / `parallax.wgsl`) read these as `u_param0..` / push `params`:
-//! slot 0 = drift speed, 1 = star density, 2 = nebula intensity, 3 = vignette.
+//! slot 0 = drift speed, 1 = star density, 2 = nebula intensity, 3 = vignette
+//! amount (0 = off), 4 = vignette radius (extent), 5 = vignette softness (feather).
+//! The vignette is evaluated in screen space so it stays consistent across zoom.
 
 use compositor_background_two_shader_property::{PropValue, Property};
 
@@ -21,15 +23,11 @@ pub fn builtin_props() -> Vec<Property> {
         f("drift_speed", 1.0, 0.0, 3.0, "Drift speed"),
         f("star_density", 1.0, 0.0, 2.0, "Star density"),
         f("nebula", 1.0, 0.0, 2.0, "Nebula intensity"),
-        Property {
-            name: "vignette".to_string(),
-            default: PropValue::Bool(true),
-            min: None,
-            max: None,
-            step: None,
-            label: Some("Vignette".to_string()),
-            group: Some("Parallax".to_string()),
-        },
+        // Radius = where darkening reaches full at the edge; softness = how far it
+        // feathers inward. Amount 0 = off.
+        f("vignette", 0.0, 0.0, 1.0, "Vignette amount"),
+        f("vignette_radius", 1.12, 0.5, 2.0, "Vignette radius"),
+        f("vignette_softness", 0.6, 0.05, 2.0, "Vignette softness"),
     ]
 }
 
