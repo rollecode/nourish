@@ -1,0 +1,135 @@
+name: Publish RC
+
+# Release-candidate sibling of docs.yml (Publish). On merge to `candidate` — the single rc
+# release action — build the install bundle ONCE with an X.Y.Z-rc.N version stamped in, and
+# ship it as GitHub Releases:
+#   v<X.Y.Z-rc.N>  immutable, auto-numbered (rc counter from tag history) — marked prerelease
+#   latest-rc      rolling, recreated each push — the stable rc download. Install it like a
+#                  stable release, just from the rc tarball URL (no env vars, no install change):
+#                    curl -fsSL https://github.com/<owner>/<repo>/releases/download/latest-rc/package.tar.gz \
+#                      | tar -xz && y5-install/install.sh
+#
+# NOTE: no GitHub Pages deploy here. Pages is a single site owned by docs.yml (the stable
+# channel); deploying from `candidate` would clobber the marketing site + the stable
+# /release/latest/ bundle. The rolling `latest-rc` Release IS the rc "link" — the install
+# script is unchanged; only the tarball URL differs from the stable channel.
+on:
+  push:
+    branches: [candidate]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SCCACHE_DIR: ${{ github.workspace }}/.sccache
+  CARGO_HOME: ${{ github.workspace }}/.cargo-home
+  CARGO_PROFILE_DEV_DEBUG: "0"
+
+jobs:
+  # Compute the rc version ONCE (committed VERSION base + git-tag history, see
+  # ci/scripts/version-rc.sh) and hand it to the downstream jobs, so the embedded binary
+  # and the v<rc-version> Release can never disagree.
+  version:
+    runs-on: ubuntu-latest
+    container: ghcr.io/${{ github.repository_owner }}/y5-ci:fedora44
+    outputs:
+      version: ${{ steps.compute.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0       # full history + tags so the rc counter sees the series
+          fetch-tags: true
+      - id: compute
+        run: |
+          v="$(ci/scripts/version-rc.sh)"
+          echo ">> rc release version: $v"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+  # The install bundle (installer + binaries + components), built once here.
+  bundle:
+    needs: version
+    runs-on: ubuntu-latest
+    container: ghcr.io/${{ github.repository_owner }}/y5-ci:fedora44
+    steps:
+      - uses: actions/checkout@v4
+      # Stamp the computed rc version into VERSION BEFORE building so the compositor bakes
+      # it in at compile time (include_str! in the loader bin). Never committed — the
+      # working-tree edit keeps git state clean.
+      - name: Set build version
+        run: |
+          echo "${{ needs.version.outputs.version }}" > VERSION
+          echo ">> building compositor as $(cat VERSION)"
+      - uses: actions/cache@v4
+        with:
+          # Same prefix as ci-rc.yml's installer-bundle job, so the candidate-integration
+          # validation build warms this publish build.
+          path: |
+            ${{ env.SCCACHE_DIR }}
+            ${{ env.CARGO_HOME }}/registry
+          key: ${{ runner.os }}-rc-installer-bundle-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-rc-installer-bundle-
+      - name: Build install bundle (installer + binaries + components)
+        run: ci/scripts/package-installer.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: install-bundle-rc
+          path: |
+            dist/package.tar.gz
+            dist/SHA256SUMS
+
+  # Publish the SAME bundle as TWO prerelease GitHub Releases on every `candidate` push, so
+  # the immutable v<rc> assets and the rolling latest-rc download are always identical bytes.
+  # Both are marked prerelease + non-latest so they never steal the stable "Latest release"
+  # pointer that docs.yml's v<version> release owns.
+  release:
+    needs: [bundle, version]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: install-bundle-rc
+          path: dist
+      - name: Publish v<rc-version> and move the rolling "latest-rc"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          common="\`package.tar.gz\` is the install bundle — prebuilt compositor + components
+          + the \`y5-install\` installer. This is a RELEASE CANDIDATE. Install it like a stable
+          release, just from the rc URL (no env vars, no install-script change):
+          \`\`\`
+          curl -fsSL https://github.com/$GH_REPO/releases/download/latest-rc/package.tar.gz | tar -xz && y5-install/install.sh
+          \`\`\`"
+
+          # 1) Immutable, versioned rc release. The `v<rc-version>` tag pins this commit;
+          #    created once, then re-runs of the same commit refresh the attached assets.
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo ">> release v$VERSION exists — refreshing assets"
+            gh release upload "v$VERSION" dist/package.tar.gz dist/SHA256SUMS --clobber
+          else
+            gh release create "v$VERSION" \
+              --target "$GITHUB_SHA" \
+              --title "v$VERSION" \
+              --prerelease \
+              --latest=false \
+              --notes "Nourish v$VERSION (release candidate) — built from \`candidate\` @ ${GITHUB_SHA:0:7}.
+
+          $common" \
+              dist/package.tar.gz dist/SHA256SUMS
+          fi
+
+          # 2) Rolling "latest-rc" — recreated so its tag tracks the current commit. The
+          #    stable URL install can be pointed at via Y5_RELEASE_BASE.
+          gh release delete latest-rc --yes --cleanup-tag 2>/dev/null || true
+          gh release create latest-rc \
+            --target "$GITHUB_SHA" \
+            --title "Latest RC (v$VERSION)" \
+            --prerelease \
+            --latest=false \
+            --notes "Rolling pointer to the newest release candidate (currently **v$VERSION**,
+          \`candidate\` @ ${GITHUB_SHA:0:7}). $common" \
+            dist/package.tar.gz dist/SHA256SUMS

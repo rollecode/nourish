@@ -10,6 +10,8 @@ compositor_configurator_settings_surface_control = { workspace = true }
 compositor_configurator_settings_surface_cursor = { workspace = true }
 compositor_configurator_settings_surface_display = { workspace = true }
 compositor_configurator_settings_surface_environment = { workspace = true }
+compositor_configurator_settings_surface_misc = { workspace = true }
+compositor_developer_environment_preference_base = { workspace = true }
 compositor_configurator_hardware_gpu_base = { workspace = true }
 compositor_configurator_settings_surface_keys = { workspace = true }
 compositor_configurator_audio_tab_base = { workspace = true }

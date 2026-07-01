@@ -1,6 +1,7 @@
 //! The settings-window message type, shared by the view + tab builders + the
 //! surface protocol/handler. iced-free so the protocol crate can name it.
 use compositor_developer_environment_config_base::base::Environment;
+use compositor_developer_environment_preference_base::base::Ime;
 use compositor_orchestration_driver_output_base::base::{ApplyResult, DisplayInfo, ModeInfo};
 
 /// A provisional display change the user can Keep/Revert: a target monitor
@@ -28,6 +29,7 @@ pub enum Tab {
     Bluetooth,
     Performance,
     System,
+    Misc,
 }
 
 impl Tab {
@@ -36,13 +38,13 @@ impl Tab {
     pub fn to_index(self) -> u8 {
         match self {
             Tab::Display => 0, Tab::Audio => 1, Tab::Input => 2, Tab::Network => 3,
-            Tab::Bluetooth => 4, Tab::Performance => 5, Tab::System => 6,
+            Tab::Bluetooth => 4, Tab::Performance => 5, Tab::System => 6, Tab::Misc => 7,
         }
     }
     pub fn from_index(i: u8) -> Self {
         match i {
             1 => Tab::Audio, 2 => Tab::Input, 3 => Tab::Network, 4 => Tab::Bluetooth,
-            5 => Tab::Performance, 6 => Tab::System, _ => Tab::Display,
+            5 => Tab::Performance, 6 => Tab::System, 7 => Tab::Misc, _ => Tab::Display,
         }
     }
 }
@@ -64,6 +66,10 @@ pub enum SettingsMessage {
     /// sets the reboot-dirty banner). Carrying the whole struct keeps one
     /// message variant instead of 19 field-specific ones.
     Env(Environment),
+    /// A full edited input-method command (Misc tab) to persist to preferences.json
+    /// (forwarded). Carries the whole `Ime` like `Env`, so exec + args edits share one
+    /// variant. Applied on the next compositor start.
+    Ime(Ime),
     /// Select a monitor in the Display picker (UI-local: syncs the mode list).
     SelectDisplay(String),
     /// Select a mode for the selected monitor (UI-local).

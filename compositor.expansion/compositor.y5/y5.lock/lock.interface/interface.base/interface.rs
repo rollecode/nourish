@@ -24,6 +24,19 @@ use compositor_monitor_compositor_iced_base::IcedHandle;
 /// (NOT a per-frame flag). The VISUAL (lock screen + capture backdrop + bevy) is
 /// built lazily by [`lock_visual`] on the next real frame. Reads `sleep` from the
 /// status the handler already set.
+/// Drain the one-shot lock-engage request. The lock/sleep keybindings set
+/// `Status::Locked{pending}` + `lock_engage` synchronously (they can't call this
+/// crate — it depends back on the keyboard crates) and wake the control-plane
+/// ping; this runs from that ping (off the input AND render paths), so the lock
+/// engages event-driven, not on a per-frame/per-dispatch poll.
+pub fn drain_engage(state: &mut Loop) {
+    if !state.inner.lock_engage {
+        return;
+    }
+    state.inner.lock_engage = false;
+    lock_logical(state);
+}
+
 pub fn lock_logical(state: &mut Loop) {
     let compositor_orchestration_core_state_base::state::Status::Locked { .. } = state.inner.status
     else {

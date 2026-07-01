@@ -118,6 +118,15 @@ pub(crate) fn press(cx: &mut SystemCx, button: u32, x: f64, y: f64) -> InputFlow
         }
 
         if let Some(candidate) = candidate {
+            // Grabbing a window directly (Move/Scale) brings it to the front and
+            // focuses it, like a plain click — the targeting branch bypasses the
+            // rim's native_press (which used to do this). Select is exempt: it only
+            // mutates the selection set, not focus/stacking.
+            if let PressCandidate::Window(window) = &candidate {
+                if !canvas_grab_selecting {
+                    raise_focus_window(cx, window);
+                }
+            }
             trigger_grab(cx, &candidate, cursor);
         }
     } else {
@@ -208,6 +217,46 @@ fn finalize_non_hand(cx: &mut SystemCx, button: u32) {
     // route through the surface system's slot (we can't touch its registry).
     announce_iced_focus(cx.channels, None);
     announce_iced_button(cx.channels, button, true);
+}
+
+/// Bring a directly-grabbed window to the front and give it keyboard focus —
+/// the equivalent of the click path (`native_press/press.rs:51-61`) which the
+/// canvas targeting branch bypasses. Three parts must stay in sync with that path:
+///   1. smithay space order (`raise_element`) — keyboard/hit fallback ordering,
+///   2. the world DRAW_ORDER authority (the actual rendered top-level z) — routed
+///      through the buffer (`CanvasCmd::RaiseDrawable`) since `Platform` only
+///      exposes the `Space`, not DRAW_ORDER,
+///   3. per-window activation + keyboard focus on the toplevel surface.
+fn raise_focus_window(cx: &mut SystemCx, window: &Window) {
+    let Some(uuid) = window.uuid() else { return };
+
+    // Smithay space order + per-window activation.
+    if let Some(platform) = cx
+        .platform
+        .as_deref_mut()
+        .and_then(|p| p.downcast_mut::<compositor_orchestration_draw_platform_base::platform::Platform>())
+    {
+        platform.space().raise_element(window, true);
+        for w in platform.space().elements() {
+            w.set_activated(w == window);
+            if let Some(toplevel) = w.toplevel() {
+                toplevel.send_pending_configure();
+            }
+        }
+    }
+
+    // Draw-order authority — the actual visual top-level (buffer phase).
+    cx.write(&CANVAS_BUF, CanvasCmd::RaiseDrawable(uuid));
+
+    // Keyboard focus on the window's toplevel surface.
+    if let Some(surface) = window.toplevel().map(|t| t.wl_surface().clone()) {
+        if let Some(dispatch) = cx.seat.as_deref_mut().and_then(|s| s.downcast_mut::<Dispatch>()) {
+            if let Some(keyboard) = dispatch.seat.seat.get_keyboard() {
+                let serial = SERIAL_COUNTER.next_serial();
+                keyboard.set_focus(dispatch, Some(surface), serial);
+            }
+        }
+    }
 }
 
 /// Reimplementation of `compositor_orchestration_seat_keyboard_input::keyboard::

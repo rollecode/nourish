@@ -27,6 +27,7 @@ compositor_orchestration_storage_state_base = { workspace = true }
 compositor_y5_camera_transform_translate = { workspace = true }
 compositor_orchestration_draw_layer_base = { workspace = true }
 compositor_orchestration_draw_platform_base = { workspace = true }
+compositor_support_world_order_track_base = { workspace = true }
 compositor_monitor_compositor_iced_base = { workspace = true }
 smithay = { workspace = true }
 uuid = { workspace = true }

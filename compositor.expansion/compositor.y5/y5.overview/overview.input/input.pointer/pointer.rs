@@ -23,6 +23,12 @@ pub fn button<I: InputBackend>(event: &<I as InputBackend>::PointerButtonEvent, 
     }
     let pressed = event.state() == ButtonState::Pressed;
     let loc = cursor(state);
+    // A press outside any screen surface (menu bar / popup) dismisses an open
+    // logout popup instead of falling through to the grid/globe.
+    if pressed && state.inner.overview().logout.is_some() && !over_bar(state, loc) {
+        compositor_y5_overview_interface_base::base::toggle_logout(state);
+        return true;
+    }
     let bar = surface_under_filtered(state, loc, &|h| h.iced_space() == Some(IcedSpace::Screen))
         .and_then(|h| h.iced_handle());
     if let Some(handle) = bar {

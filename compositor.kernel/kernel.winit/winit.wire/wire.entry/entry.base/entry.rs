@@ -187,5 +187,21 @@ pub fn wire(_loop: &mut Loop, _wayland_socket_name: OsString, event_loop: &mut E
             compositor_kernel_winit_input_route_base::route::route(event, state, &mut context);
         })
         .unwrap();
+
+    // Control-plane ping: same role as the native backend's, minus the DRM
+    // display drains (winit has no modeset). Here it drains the one-shot lock
+    // engage when pinged (`state.inner.ping_control()`), off the input path and
+    // without polling per frame, so the lock keybinding engages on winit too.
+    {
+        let (ping, source) = smithay::reexports::calloop::ping::make_ping()
+            .expect("control-plane ping creation failed");
+        event_loop
+            .handle()
+            .insert_source(source, move |_, _, state| {
+                compositor_y5_lock_interface_base::interface::drain_engage(state);
+            })
+            .expect("control-plane ping source registration failed");
+        _loop.inner.control_ping = Some(ping);
+    }
     info!("winit backend wired: event source registered, entering loop");
 }

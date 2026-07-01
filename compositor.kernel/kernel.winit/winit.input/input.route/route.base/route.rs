@@ -20,6 +20,9 @@ pub fn route(event: &WinitEvent, state: &mut Loop, context: &mut WinitRenderCont
         WinitEvent::Input(input_event) => {
             // Per-event logging omitted: input is a high-frequency path.
             compositor_orchestration_draw_state_lifecycle::lifecycle::input(state, input_event);
+            // (Lock engage is drained in the control-plane ping source — the lock
+            // keybinding calls `ping_control()` — not here, so it never depends on
+            // input arriving and doesn't poll per frame.)
         }
         WinitEvent::Focus(focused) => {
             info!("winit: focus={focused}");

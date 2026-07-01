@@ -276,7 +276,7 @@ mod handler_impls {
     use std::sync::Mutex;
     use smithay::backend::allocator::dmabuf::Dmabuf;
     use smithay::backend::renderer::utils::on_commit_buffer_handler;
-    use smithay::desktop::PopupKind;
+    use smithay::desktop::{PopupKind, PopupManager, find_popup_root_surface};
     use smithay::input::{Seat, SeatState};
     use smithay::input::dnd::{DnDGrab, DndGrabHandler, GrabType, Source};
     use smithay::input::pointer::{Focus, PointerHandle};
@@ -342,9 +342,25 @@ mod handler_impls {
             if let Err(err) = self.popup.state.track_popup(PopupKind::from(surface)) {
                 warn!("failed to track input-method popup err={err:?}");
             }
+            self.schedule_redraw();
         }
-        fn dismiss_popup(&mut self, _surface: smithay::wayland::input_method::PopupSurface) {}
-        fn popup_repositioned(&mut self, _surface: smithay::wayland::input_method::PopupSurface) {}
+        fn dismiss_popup(&mut self, surface: smithay::wayland::input_method::PopupSurface) {
+            // IME-scoped: untrack ONLY this popup from the shared PopupManager, never a
+            // blanket clear (xdg popups live in the same manager). smithay calls this from
+            // deactivate / re-activate while the popup still holds its (old) parent, so the
+            // root surface is resolvable and we remove exactly this node.
+            let kind = PopupKind::from(surface);
+            if let Ok(root) = find_popup_root_surface(&kind) {
+                let _ = PopupManager::dismiss_popup(&root, &kind);
+            }
+            self.schedule_redraw();
+        }
+        fn popup_repositioned(&mut self, _surface: smithay::wayland::input_method::PopupSurface) {
+            // The popup's location is read live from the surface at render time
+            // (`PopupKind::location()` → `set_text_input_rectangle`), so a reposition only
+            // needs a repaint — there is no cached position to update here.
+            self.schedule_redraw();
+        }
         fn parent_geometry(&self, parent: &WlSurface) -> Rectangle<i32, Logical> {
             self.geometries.get(parent).copied().unwrap_or_default()
         }

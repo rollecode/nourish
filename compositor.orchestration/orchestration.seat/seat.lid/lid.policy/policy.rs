@@ -52,4 +52,7 @@ pub fn on_lid_toggle(loop_: &mut Loop, lid_open: bool) {
         position, snapshot.external_present, request
     );
     *loop_.inner.kernel.get_mut(&DISPLAY_REQUEST_MUT) = Some(request);
+    // Wake the control-plane ping so `display.apply` drains this off the loop,
+    // input-independently (a lid switch may arrive with no follow-up input).
+    loop_.inner.ping_control();
 }

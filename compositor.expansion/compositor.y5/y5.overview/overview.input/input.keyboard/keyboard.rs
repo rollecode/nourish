@@ -1,10 +1,8 @@
-//! Overview keyboard handling. The canvas router calls `handle` first; a true
-//! return makes it INTERCEPT (see canvas `input.rs`). While open the overview is
-//! the keyboard DELEGATOR: Super+Tab toggles, Super+Left/Right cycle tabs, the
-//! World tab's arrows/Enter drive the globe, Escape closes — every other key is
-//! routed to the overview's own (screen-space) iced surfaces (menu bar +
-//! settings fields), NEVER to a client window. So while open it consumes ALL
-//! keys: windows receive nothing.
+//! Overview keyboard handling. The canvas router calls `handle` first; returning
+//! true INTERCEPTs (see canvas `input.rs`). While open the overview consumes ALL
+//! keys: Super+Tab toggles, Super+Left/Right cycle tabs, the World globe takes
+//! arrows/Enter, Escape closes, every other key routes to the overview's own
+//! screen-space iced surfaces (menu bar / settings) — never a client window.
 
 use smithay::backend::input::KeyState;
 use smithay::input::keyboard::{Keysym, ModifiersState};
@@ -32,6 +30,11 @@ pub fn handle(
         return false;
     }
     if press {
+        // Escape dismisses the logout popup first (before closing the overlay).
+        if key == Some(Key::Escape) && state.inner.overview().logout.is_some() {
+            compositor_y5_overview_interface_base::base::toggle_logout(state);
+            return true;
+        }
         // Super+Left/Right cycle the tabs in any tab.
         if modkey && key == Some(Key::Left) {
             compositor_y5_overview_interface_surface::surface::cycle_tab(state, false);
@@ -62,16 +65,13 @@ pub fn handle(
         }
     }
     // Non-world tabs (e.g. Settings): delegate to the focused screen-space iced
-    // surface so its text fields edit. Runs on press AND release to keep
-    // modifier state in sync. Either way the overlay owns the key.
+    // surface (text fields). Runs on press AND release; the overlay owns the key.
     route_screen_iced(state, keysym, key_state);
     true
 }
 
 /// Forward a key to the focused iced surface IFF it lives in screen space (the
-/// overview's own menu bar / settings panel). World-space iced and the
-/// unfocused case are left untouched. Modifier keys update the registry's
-/// tracked state; other keys dispatch a translated KeyPressed/Released.
+/// overview's menu bar / settings). Modifiers update the registry; others dispatch.
 fn route_screen_iced(state: &mut Loop, keysym: Keysym, key_state: KeyState) {
     let Some(reg) = state.inner.surface_mut().registry.as_mut() else { return };
     let Some(focus) = reg.keyboard_focus() else { return };

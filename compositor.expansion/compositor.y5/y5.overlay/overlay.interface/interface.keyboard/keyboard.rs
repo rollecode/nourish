@@ -226,14 +226,16 @@ fn sleep(state: &mut Loop) {
     if matches!(state.inner.status, compositor_orchestration_core_state_base::state::Status::Locked { .. }) {
         return; // already locked
     }
-    // Status set SYNCHRONOUSLY (sleep lock); the renderer-free engage runs off-frame
-    // — `wire.input` drains `lock_engage` and schedules `lock_logical` on an idle.
+    // Status set SYNCHRONOUSLY (sleep lock) + flag the engage, then wake the
+    // control-plane ping: its source drains `lock_engage` and runs the renderer-free
+    // `lock_logical` off-frame, event-driven (not polled per frame).
     state.inner.status = compositor_orchestration_core_state_base::state::Status::Locked {
         pending: true,
         sleep: true,
         time: std::time::Instant::now(),
     };
     state.inner.lock_engage = true;
+    state.inner.ping_control();
 }
 
 /// TEMPORARY (sanity test): make test-world `slot` (0=main, 1/2=pre-created

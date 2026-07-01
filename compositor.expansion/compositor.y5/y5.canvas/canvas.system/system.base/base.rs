@@ -27,6 +27,10 @@ pub(crate) enum CanvasCmd {
     /// Update the in-progress SelectBox's `current_cursor` (the rim wrote it on
     /// each motion event). Grab state is our OWN slot, so this goes via our buffer.
     SetSelectBoxCursor(smithay::utils::Point<f64, smithay::utils::Logical>),
+    /// Raise a window to the top of the world's draw-order authority (the actual
+    /// top-level z). Goes via the buffer because the `Platform` hatch handed to
+    /// the press handler only exposes the smithay `Space`, not DRAW_ORDER.
+    RaiseDrawable(uuid::Uuid),
 }
 y5_buffer!(CANVAS_BUF: CanvasCmd);
 
@@ -120,15 +124,20 @@ impl System for CanvasSystem {
     }
 
     fn buffer(&mut self, cx: &mut BufferCx, message: Box<dyn Any>) {
-        let canvas = cx.storage.get_mut(&CANVAS_MUT);
         match *message.downcast::<CanvasCmd>().expect("canvas buffer type") {
-            CanvasCmd::SetGrab(grab) => canvas.Grab = grab,
-            CanvasCmd::PanUpdating(value) => canvas.position_updating = value,
+            CanvasCmd::SetGrab(grab) => cx.storage.get_mut(&CANVAS_MUT).Grab = grab,
+            CanvasCmd::PanUpdating(value) => cx.storage.get_mut(&CANVAS_MUT).position_updating = value,
             CanvasCmd::SetSelectBoxCursor(c) => {
+                let canvas = cx.storage.get_mut(&CANVAS_MUT);
                 if let CanvasGrab::Active(ActiveOption::SelectBox { current_cursor, .. }) = &mut canvas.Grab {
                     current_cursor.x = c.x;
                     current_cursor.y = c.y;
                 }
+            }
+            CanvasCmd::RaiseDrawable(uuid) => {
+                cx.storage
+                    .get_mut(&compositor_support_world_order_track_base::base::DRAW_ORDER_MUT)
+                    .raise(compositor_support_world_order_track_base::base::ComponentId(uuid));
             }
         }
     }

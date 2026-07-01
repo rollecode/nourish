@@ -57,6 +57,24 @@ pub struct Preference {
     /// Fallback mode for monitors without a per-output profile (manual only).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub outputs_default_mode: Option<DefaultMode>,
+    /// The input method the compositor launches at startup. y5 spawns exactly this
+    /// process and grants the input-method / virtual-keyboard globals (system-wide
+    /// input power) ONLY to that process group — so identity is the spawned pid, never
+    /// a guessed `/proc` match. When unset (or `exec` empty), y5 launches no input
+    /// method — there is no built-in default.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ime: Option<Ime>,
+}
+
+/// The input-method program y5 launches, e.g. `{ "exec": "fcitx5", "args": ["-r"] }`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Ime {
+    /// Executable to run (looked up on `PATH`). Empty = launch nothing.
+    pub exec: String,
+    /// Arguments passed to `exec`. Do NOT pass a daemonizing flag (`-d`): y5 must keep
+    /// the process as a direct child to know its pid/process-group.
+    #[serde(default)]
+    pub args: Vec<String>,
 }
 
 impl Default for Preference {
@@ -66,6 +84,7 @@ impl Default for Preference {
             input_natural_scroll: true,
             outputs: Vec::new(),
             outputs_default_mode: None,
+            ime: None,
         }
     }
 }

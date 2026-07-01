@@ -100,6 +100,22 @@ fn should_forward<I: InputBackend>(
         return false; // overlay shortcut consumed it
     }
 
+    // While DARK (no visible output — DPMS-off / lid-closed / all monitors gone),
+    // stop after the fixed/overlay shortcuts above: canvas/navigator shortcuts and
+    // forwarding to the focused client are suppressed (there's nothing on screen to
+    // drive). EXCEPTION: an output change mid-provisioning (an Apply awaiting the
+    // user's Keep/Revert) shows its countdown dialog in the settings window — keep
+    // feeding keys to iced so the user can confirm/revert blind, otherwise the only
+    // way out of a bad (black) mode is to wait for the auto-revert timeout.
+    if is_dark(_loop) {
+        if output_provisioning(_loop) {
+            if let Some(result) = iced_handle(_loop, keysym, key_state) {
+                return !result;
+            }
+        }
+        return false; // intercept everything else while dark
+    }
+
     let screen_handler =
         compositor_y5_launcher_input_base::keyboard::keyboard_received(key_state, modifiers, _loop)
             .is_none();
@@ -123,6 +139,31 @@ fn should_forward<I: InputBackend>(
         return !result;
     }
     true
+}
+
+/// The compositor currently has no visible output (DPMS-off, lid closed, or every
+/// monitor unplugged). Set/cleared by the display apply/switch paths.
+fn is_dark(_loop: &Loop) -> bool {
+    *_loop
+        .inner
+        .kernel
+        .get(&compositor_orchestration_driver_lid_base::base::DISPLAY_OFF)
+}
+
+/// An output mode / preferred-monitor change is provisionally applied and awaiting
+/// the user's Keep/Revert (the settings window shows the countdown dialog). True
+/// only inside that confirm window — cleared once the transaction confirms/reverts.
+fn output_provisioning(_loop: &Loop) -> bool {
+    use compositor_orchestration_driver_output_base::base::{
+        ApplyResult, OUTPUT_MODE_RESULT, OUTPUT_SWITCH_RESULT,
+    };
+    matches!(
+        _loop.inner.kernel.get(&OUTPUT_MODE_RESULT),
+        Some(ApplyResult::Provisional)
+    ) || matches!(
+        _loop.inner.kernel.get(&OUTPUT_SWITCH_RESULT),
+        Some(ApplyResult::Provisional)
+    )
 }
 
 fn wayland_handle(state: &mut Loop) -> Option<bool> {

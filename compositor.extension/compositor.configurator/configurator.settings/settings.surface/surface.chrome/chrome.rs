@@ -2,6 +2,7 @@
 //! scrollable section content, and a bottom status/apply bar — built from plain
 //! data so the `IcedUi` owner stays tiny. Section bodies live in surface.* builders.
 use compositor_developer_environment_config_base::base::Environment;
+use compositor_developer_environment_preference_base::base::Ime;
 use compositor_developer_environment_keybinding_base::base::KeyRow;
 use compositor_configurator_hardware_gpu_base::base::RenderDevice;
 use compositor_orchestration_driver_output_base::base::{DisplayInfo, ModeInfo};
@@ -13,6 +14,7 @@ use compositor_configurator_settings_surface_display::display;
 use compositor_configurator_settings_surface_cursor::cursor;
 use compositor_configurator_settings_surface_keys::keys as keybinds;
 use compositor_configurator_settings_surface_environment::environment;
+use compositor_configurator_settings_surface_misc::misc;
 use compositor_configurator_audio_tab_base::base as audio_tab;
 use compositor_configurator_network_tab_base::base as network_tab;
 use compositor_configurator_bluetooth_tab_base::base as bluetooth_tab;
@@ -44,6 +46,7 @@ fn sidebar<'a>(sel: Tab) -> El<'a> {
         module("❖", "BLUETOOTH", Tab::Bluetooth, sel),
         module("▲", "PERFORMANCE", Tab::Performance, sel),
         module("⚙", "SYSTEM", Tab::System, sel),
+        module("⋯", "MISC", Tab::Misc, sel),
     ].spacing(4).padding(14);
     container(list).width(fixed(224.0)).height(Length::Fill).style(style::sidebar).into()
 }
@@ -71,6 +74,7 @@ pub fn render<'a>(
     selected_mode: Option<ModeInfo>, pending: Option<&'a Applied>, confirming: bool,
     keys: &'a [KeyRow], audio: &'a AudioState, wifi: &'a WifiSnapshot, bt: &'a BtSnapshot,
     wifi_selected: Option<&'a str>, wifi_password: &'a str, devices: &'a [RenderDevice], fps: u32,
+    ime: &'a Ime,
 ) -> El<'a> {
     let body: El<'a> = match tab {
         Tab::Display => display::build(displays, active_edid, selected_display, selected_mode, confirming, pending),
@@ -83,6 +87,7 @@ pub fn render<'a>(
         Tab::Bluetooth => bluetooth_tab::build(bt),
         Tab::Performance => performance(fps),
         Tab::System => environment::build(env, devices),
+        Tab::Misc => misc::build(ime),
     };
     // No outer scrollable — each section scrolls its own lists independently. The
     // Display tab owns its own CHECK/APPLY/REVERT row, so there is no global bar.

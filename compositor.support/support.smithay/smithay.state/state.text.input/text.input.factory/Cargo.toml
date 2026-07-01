@@ -10,6 +10,7 @@ bitflags = { workspace = true }
 smithay = { workspace = true }
 compositor_support_smithay_dispatch_state_base.workspace = true
 compositor_support_smithay_state_text_input_base.workspace = true
+compositor_support_smithay_state_text_input_launch.workspace = true
 
 [lib]
 path = "lib.rs"

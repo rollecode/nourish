@@ -234,8 +234,13 @@ pub fn view_directional(state: &mut Loop, direction: Direction, alternative: boo
                     // Window-specific: raise, activate, configure.
                     // CHECK : This can happen after position changes.
                     state.inner.space_state_mut().state.raise_element(target_window, true);
+                    // Visual top-level z is the draw-order authority, not the smithay
+                    // space order — raise it too (mirrors native_press/press.rs).
+                    if let Some(uuid) = target_window.uuid() {
+                        state.inner.raise_drawable(uuid);
+                    }
                     for w in state.inner.space_state().state.elements() {
-                        target_window.set_activated(w == target_window);
+                        w.set_activated(w == target_window);
                         if let Some(toplevel) = w.toplevel() {
                             toplevel.send_pending_configure();
                         }

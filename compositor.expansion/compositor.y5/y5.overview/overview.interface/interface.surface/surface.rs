@@ -6,7 +6,7 @@ use smithay::utils::{Point, Rectangle, Size};
 use std::sync::mpsc::Sender;
 use compositor_orchestration_core_state_base::Loop;
 use compositor_monitor_compositor_iced_base::IcedHandle;
-use compositor_monitor_overview_ui_base::base::{OverviewMenu, OverviewMessage, Section};
+use compositor_monitor_overview_ui_base::base::{LogoutMessage, LogoutPopup, OverviewMenu, OverviewMessage, Section};
 use compositor_y5_overview_state_base::base::{OverviewSurfaceMessage, Tab, MENU_BAR_HEIGHT};
 use compositor_y5_surface_protocol_base::protocol::{SurfaceMessage, SurfaceMessageType};
 
@@ -81,6 +81,7 @@ pub fn open(state: &mut Loop, renderer: &mut GlesRenderer) {
 }
 
 pub fn close(state: &mut Loop) {
+    close_logout(state);
     if let Some(id) = state.inner.overview_mut().menu.take() {
         if let Some(registry) = state.inner.surface_mut().registry.as_mut() {
             registry.destroy_by_id(id);
@@ -88,17 +89,77 @@ pub fn close(state: &mut Loop) {
     }
 }
 
+/// Create the logout-confirmation popup, anchored just below the username brand at
+/// the top-left. Idempotent. Its buttons route a `LogoutMessage` back via `dispatch_logout`.
+pub fn open_logout(state: &mut Loop, renderer: &mut GlesRenderer) {
+    if state.inner.overview().logout.is_some() {
+        return;
+    }
+    let rect = Rectangle::new(Point::new(16, MENU_BAR_HEIGHT), Size::new(210, 124));
+    let user = std::env::var("USER").unwrap_or_else(|_| "user".to_string());
+    let handle = compositor_y5_surface_draw_handle::handle::load(
+        state,
+        renderer,
+        LogoutPopup::new(user),
+        rect,
+        compositor_y5_surface_draw_handle::handle::IcedSpace::Screen,
+        compositor_orchestration_draw_layer_base::base::Layer::SCENE.bits(),
+    );
+
+    let tx = state.inner.surface_mut().surface_message_buffer_channel.0.clone();
+    state
+        .inner
+        .surface_mut()
+        .registry
+        .as_mut()
+        .unwrap_or_else(|| abort!("surface registry"))
+        .instance_mut(handle)
+        .unwrap_or_else(|| abort!("logout popup instance"))
+        .runtime_mut()
+        .set_message_handler(move |message: &LogoutMessage| dispatch_logout(message, &tx));
+
+    state.inner.overview_mut().logout = Some(handle.id);
+    // Draw on top of the menu bar / overlay content.
+    if let Some(reg) = state.inner.surface_mut().registry.as_mut() {
+        reg.raise(handle.id);
+    }
+}
+
+/// Destroy the logout popup if open (idempotent).
+pub fn close_logout(state: &mut Loop) {
+    if let Some(id) = state.inner.overview_mut().logout.take() {
+        if let Some(reg) = state.inner.surface_mut().registry.as_mut() {
+            reg.destroy_by_id(id);
+        }
+    }
+}
+
 fn dispatch(message: &OverviewMessage, tx: &Sender<SurfaceMessage>) {
-    let section = match message {
-        OverviewMessage::Select(s) => s,
-        OverviewMessage::Clock(_) => return,
-    };
-    let tab = match section {
-        Section::World => Tab::World,
-        Section::Layout => Tab::Layout,
-        Section::Settings => Tab::Settings,
+    let overview = match message {
+        OverviewMessage::Select(s) => {
+            let tab = match s {
+                Section::World => Tab::World,
+                Section::Layout => Tab::Layout,
+                Section::Settings => Tab::Settings,
+            };
+            OverviewSurfaceMessage::SetTab(tab)
+        }
+        // Clicking the username toggles the logout popup.
+        OverviewMessage::ToggleUser => OverviewSurfaceMessage::ToggleLogout,
+        // Pushed-in indicators — nothing to forward.
+        OverviewMessage::Clock(_) | OverviewMessage::Battery(_) => return,
     };
     let _ = tx.send(SurfaceMessage {
-        message: SurfaceMessageType::Overview(OverviewSurfaceMessage::SetTab(tab)),
+        message: SurfaceMessageType::Overview(overview),
+    });
+}
+
+fn dispatch_logout(message: &LogoutMessage, tx: &Sender<SurfaceMessage>) {
+    let overview = match message {
+        LogoutMessage::Confirm => OverviewSurfaceMessage::Logout,
+        LogoutMessage::Close => OverviewSurfaceMessage::ToggleLogout,
+    };
+    let _ = tx.send(SurfaceMessage {
+        message: SurfaceMessageType::Overview(overview),
     });
 }

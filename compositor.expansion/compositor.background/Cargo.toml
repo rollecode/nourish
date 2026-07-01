@@ -56,6 +56,7 @@ compositor_background_two_system_base = { path = "background.two/two.system/syst
 compositor_configurator_audio_tab_base = { path = "../../compositor.extension/compositor.configurator/configurator.audio/audio.tab/tab.base" }
 compositor_configurator_bluetooth_backend_base = { path = "../../compositor.extension/compositor.configurator/configurator.bluetooth/bluetooth.backend/backend.base" }
 compositor_configurator_bluetooth_tab_base = { path = "../../compositor.extension/compositor.configurator/configurator.bluetooth/bluetooth.tab/tab.base" }
+compositor_configurator_hardware_battery_base = { path = "../../compositor.extension/compositor.configurator/configurator.hardware/hardware.battery/battery.base" }
 compositor_configurator_hardware_gpu_base = { path = "../../compositor.extension/compositor.configurator/configurator.hardware/hardware.gpu/gpu.base" }
 compositor_configurator_network_backend_base = { path = "../../compositor.extension/compositor.configurator/configurator.network/network.backend/backend.base" }
 compositor_configurator_network_tab_base = { path = "../../compositor.extension/compositor.configurator/configurator.network/network.tab/tab.base" }
@@ -67,6 +68,7 @@ compositor_configurator_settings_surface_display = { path = "../../compositor.ex
 compositor_configurator_settings_surface_environment = { path = "../../compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.environment" }
 compositor_configurator_settings_surface_keys = { path = "../../compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.keys" }
 compositor_configurator_settings_surface_message = { path = "../../compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.message" }
+compositor_configurator_settings_surface_misc = { path = "../../compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.misc" }
 compositor_configurator_settings_surface_style = { path = "../../compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.style" }
 compositor_configurator_settings_surface_view = { path = "../../compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.view" }
 compositor_developer_debug_instance_channel = { path = "../../compositor.developer/developer.debug/debug.instance/instance.channel" }
@@ -523,6 +525,7 @@ compositor_support_smithay_state_space_base = { path = "../../compositor.support
 compositor_support_smithay_state_space_factory = { path = "../../compositor.support/support.smithay/smithay.state/state.space/space.factory" }
 compositor_support_smithay_state_text_input_base = { path = "../../compositor.support/support.smithay/smithay.state/state.text.input/text.input.base" }
 compositor_support_smithay_state_text_input_factory = { path = "../../compositor.support/support.smithay/smithay.state/state.text.input/text.input.factory" }
+compositor_support_smithay_state_text_input_launch = { path = "../../compositor.support/support.smithay/smithay.state/state.text.input/text.input.launch" }
 compositor_support_smithay_state_viewporter_base = { path = "../../compositor.support/support.smithay/smithay.state/state.viewporter/viewporter.base" }
 compositor_support_smithay_state_viewporter_dispatch = { path = "../../compositor.support/support.smithay/smithay.state/state.viewporter/viewporter.dispatch" }
 compositor_support_smithay_state_viewporter_factory = { path = "../../compositor.support/support.smithay/smithay.state/state.viewporter/viewporter.factory" }

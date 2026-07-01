@@ -446,6 +446,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // orchestration as the general per-world `Executed` event.
     launch_executor::install(&mut state, &event_loop.handle());
 
+    // Launch the compositor-owned input method configured in `preferences.json`
+    // (`ime: { exec, args }`); unset ⇒ none is launched. Must be AFTER WAYLAND_DISPLAY is exported
+    // (above) so it connects to OUR socket; the spawned process group is the ONLY client
+    // authorized to bind the input-method / virtual-keyboard globals (see `text.input.launch`).
+    compositor_support_smithay_state_text_input_launch::launch::launch(
+        state.inner.preference.ime.clone(),
+    );
+
     // Sampling heartbeat — a sparing, multi-level demo of live developer logs (so the
     // viewer shows activity over time and its level filters can be exercised). Remove when
     // not demoing.
@@ -468,7 +476,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // the thread to exit cleanly when state's sampler field is dropped.
     info!("Event Loop start");
     event_loop.run(None, &mut state, move |_| {
-        // Is now running
+        // Is now running. (Input-independent control-plane work — display drains,
+        // lock engage — is ping-driven via `state.inner.ping_control()`, drained
+        // in the backend's control-plane ping source, NOT polled per dispatch.)
     })?;
 
     Ok(())

@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use std::time::Instant;
 use smithay::utils::{Physical, Size};
 use compositor_orchestration_core_state_base::Loop;
-use compositor_monitor_compositor_iced_base::IcedHandle;
+use compositor_monitor_compositor_iced_base::{HandleId, IcedHandle};
 use compositor_monitor_overview_ui_base::base::{OverviewMenu, OverviewMessage};
 use compositor_configurator_settings_surface_message::message::SettingsMessage;
 use compositor_configurator_settings_surface_view::Settings;
@@ -18,6 +18,9 @@ const MON: [&str; 12] = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG",
 thread_local! {
     static CLOCK_MIN: RefCell<i64> = const { RefCell::new(-1) };
     static FPS: RefCell<(Option<Instant>, f32, u64)> = const { RefCell::new((None, 0.0, 0)) };
+    /// Last battery push, keyed by the menu surface id so a freshly-(re)opened menu
+    /// always receives the current reading. `None` reading = desktop (no battery).
+    static BATTERY: RefCell<Option<(HandleId, Option<(u8, bool)>)>> = const { RefCell::new(None) };
     /// Output width the menu bar was last sized to — re-size the full-width header
     /// when the output width drifts (mode/resolution/monitor change), mirroring the
     /// settings panel's resize (the menu bar is created once at the open-time width).
@@ -28,6 +31,7 @@ thread_local! {
 pub fn per_frame(state: &mut Loop, size: Size<i32, Physical>) {
     resize_menu(state, size);
     clock(state);
+    battery(state);
     fps(state);
 }
 
@@ -65,6 +69,29 @@ fn clock(state: &mut Loop) {
     let label = format!("{dow} {:02} {mon}   ·   {:02}:{:02}", tm.tm_mday, tm.tm_hour, tm.tm_min);
     if let Some(reg) = state.inner.surface_mut().registry.as_mut() {
         let _ = reg.dispatch_message(IcedHandle::<OverviewMenu>::from_id(menu), OverviewMessage::Clock(label));
+    }
+}
+
+/// Push the laptop battery indicator to the menu bar. On desktops (no battery)
+/// nothing is shown. Only pushes when the level or charging state changes.
+fn battery(state: &mut Loop) {
+    let Some(menu) = state.inner.overview().menu else { return };
+    let now = compositor_configurator_hardware_battery_base::base::read().map(|b| (b.capacity, b.charging));
+    let changed = BATTERY.with(|c| {
+        let mut c = c.borrow_mut();
+        if *c != Some((menu, now)) {
+            *c = Some((menu, now));
+            true
+        } else {
+            false
+        }
+    });
+    if !changed {
+        return;
+    }
+    let label = now.map(|(cap, charging)| format!("{} {cap}%", if charging { "CHG" } else { "BAT" }));
+    if let Some(reg) = state.inner.surface_mut().registry.as_mut() {
+        let _ = reg.dispatch_message(IcedHandle::<OverviewMenu>::from_id(menu), OverviewMessage::Battery(label));
     }
 }
 

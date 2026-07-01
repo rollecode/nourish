@@ -12,6 +12,7 @@ smithay.workspace = true
 
 # Compositor dependencies (CI ensures availability in workspace)
 compositor_kernel_winit_input_route_base.workspace = true
+compositor_y5_lock_interface_base.workspace = true
 compositor_kernel_winit_scene_compose_base.workspace = true
 compositor_kernel_graphic_draw_plan_tap.workspace = true
 compositor_kernel_winit_window_factory_base.workspace = true

@@ -8,7 +8,11 @@ use smithay::{
             zwp_input_method_manager_v2::ZwpInputMethodManagerV2,
             zwp_input_method_v2::ZwpInputMethodV2,
         },
-        wayland_server::{Client, Dispatch, DisplayHandle, GlobalDispatch},
+        wayland_protocols_misc::zwp_virtual_keyboard_v1::server::{
+            zwp_virtual_keyboard_manager_v1::ZwpVirtualKeyboardManagerV1,
+            zwp_virtual_keyboard_v1::ZwpVirtualKeyboardV1,
+        },
+        wayland_server::{Dispatch, DisplayHandle, GlobalDispatch},
     },
     wayland::{
         GlobalData,
@@ -16,10 +20,14 @@ use smithay::{
             InputMethodManagerGlobalData, InputMethodManagerState, InputMethodUserData,
         },
         text_input::{TextInputManagerState, TextInputUserData},
+        virtual_keyboard::{
+            VirtualKeyboardManagerGlobalData, VirtualKeyboardManagerState, VirtualKeyboardUserData,
+        },
     },
 };
 use compositor_support_smithay_dispatch_state_base::state::DispatchWire;
 use compositor_support_smithay_state_text_input_base::state::TextInput;
+use compositor_support_smithay_state_text_input_launch::launch::is_authorized;
 
 pub fn new<I: DispatchWire>(display_handle: &DisplayHandle) -> TextInput
 where
@@ -30,64 +38,32 @@ where
     I: GlobalDispatch<ZwpInputMethodManagerV2, InputMethodManagerGlobalData>,
     I: Dispatch<ZwpInputMethodManagerV2, GlobalData>,
     I: Dispatch<ZwpInputMethodV2, InputMethodUserData<I>>,
+    I: GlobalDispatch<ZwpVirtualKeyboardManagerV1, VirtualKeyboardManagerGlobalData>,
+    I: Dispatch<ZwpVirtualKeyboardManagerV1, GlobalData>,
+    I: Dispatch<ZwpVirtualKeyboardV1, VirtualKeyboardUserData<I>>,
     I: SeatHandler,
     I: 'static,
 {
+    // `can_view` gate for both managers: these grant system-wide input power (keyboard grab ==
+    // keylogger; key/text injection), so ONLY the compositor-launched IME process group may bind
+    // them (see `text.input.launch`). Same predicate for the virtual keyboard — it injects keys
+    // into the focused app, so it is exactly as sensitive.
     let ime_dh = display_handle.clone();
-    let ime_bound = Arc::new(AtomicBool::new(false));
     let input_method_manager_state =
         InputMethodManagerState::new::<I, _>(&display_handle, move |client| {
-            return filter(client, &ime_bound, &ime_dh);
+            is_authorized(client, &ime_dh)
         });
     let text_input_manager_state = TextInputManagerState::new::<I>(&display_handle);
+
+    let vk_dh = display_handle.clone();
+    let virtual_keyboard_manager_state =
+        VirtualKeyboardManagerState::new::<I, _>(&display_handle, move |client| {
+            is_authorized(client, &vk_dh)
+        });
 
     TextInput {
         input_method_manager_state,
         text_input_manager_state,
+        virtual_keyboard_manager_state,
     }
-}
-
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-// The main purpose of the filter function is to disallow malicious applications from becoming IMEs.
-// CHECK: This may be incomplete. It should make IMEs connect explicitly to exclusive IME wayland socket.
-fn filter(client: &Client, ime_bound: &Arc<AtomicBool>, handle: &DisplayHandle) -> bool {
-    let ime_bound_filter = Arc::clone(ime_bound);
-
-    // FIlter by UID.
-    // if creds.uid != my_uid {
-    //         tracing::warn!(uid = creds.uid, "denied input-method bind: foreign UID");
-    //         return false;
-    // }
-
-    let exec_filter = filter_1(client, handle);
-    if !exec_filter{
-        return false
-    }
-
-    // compare_exchange: only the first caller flips false→true and wins
-    match ime_bound_filter.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst) {
-        Ok(_) => {
-            info!("input-method bound set");
-            true
-        }
-        Err(_) => {
-            warn!("denied input-method bind: already bound");
-            false
-        }
-    }
-}
-
-const ALLOWED_IME_EXES: &[&str] = &[
-    "/usr/bin/ibus-daemon",
-    "/usr/libexec/ibus-daemon", // some builds put it here
-];
-fn filter_1(client: &Client, display_handle: &DisplayHandle) -> bool {
-    let Ok(creds) = client.get_credentials(display_handle) else {
-        return false;
-    };
-
-    let exe = std::fs::read_link(format!("/proc/{}/exe", creds.pid)).ok();
-    matches!(exe, Some(p) if ALLOWED_IME_EXES.iter().any(|a| p == PathBuf::from(a)))
 }

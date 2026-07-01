@@ -1913,6 +1913,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_configurator_hardware_battery_base"
+version = "0.0.1"
+
+[[package]]
 name = "compositor_configurator_hardware_gpu_base"
 version = "0.0.1"
 
@@ -3381,6 +3385,8 @@ dependencies = [
  "bitflags 2.13.0",
  "compositor_monitor_compositor_iced_base",
  "compositor_orchestration_core_state_base",
+ "compositor_orchestration_driver_lid_base",
+ "compositor_orchestration_driver_output_base",
  "compositor_orchestration_input_drive_base",
  "compositor_support_iced_core_engine_base",
  "compositor_support_system_input_event_base",
@@ -5983,6 +5989,7 @@ dependencies = [
  "compositor_support_system_storage_slot_base",
  "compositor_support_system_storage_token_base",
  "compositor_support_system_trait_system_base",
+ "compositor_support_world_order_track_base",
  "compositor_y5_camera_state_base",
  "compositor_y5_camera_transform_translate",
  "compositor_y5_canvas_input_state",
@@ -6793,6 +6800,7 @@ dependencies = [
 name = "compositor_y5_overview_draw_status"
 version = "0.0.1"
 dependencies = [
+ "compositor_configurator_hardware_battery_base",
  "compositor_configurator_settings_surface_message",
  "compositor_configurator_settings_surface_view",
  "compositor_developer_debug_instance_record",
@@ -6848,6 +6856,7 @@ dependencies = [
  "compositor_orchestration_driver_settings_base",
  "compositor_y5_camera_transform_translate",
  "compositor_y5_overview_interface_activate",
+ "compositor_y5_overview_interface_base",
  "compositor_y5_picker_seat_embed",
  "compositor_y5_picker_seat_pointer",
  "compositor_y5_surface_interface_base",

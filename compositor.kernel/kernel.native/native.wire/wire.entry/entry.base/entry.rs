@@ -327,6 +327,28 @@ pub fn wire(
         ctx_rc.clone(),
     );
 
+    // Control-plane ping: drains the input-independent control-plane OFF the
+    // libinput source, on its own loop iteration when pinged (via
+    // `state.inner.ping_control()`) — the display request queues (output mode /
+    // preferred-monitor switch / lid apply) and the one-shot lock engage. So a
+    // settings-window mode change, a lid action, or a lock keybinding all apply
+    // without waiting for the next input event, and none of them poll per frame.
+    {
+        let (ping, source) = smithay::reexports::calloop::ping::make_ping()
+            .expect("control-plane ping creation failed");
+        let ctx = ctx_rc.clone();
+        event_loop
+            .handle()
+            .insert_source(source, move |_, _, state| {
+                compositor_kernel_native_context_display_apply::apply::drain(state, &ctx);
+                compositor_kernel_native_context_display_mode::mode::drain(state, &ctx);
+                compositor_kernel_native_context_display_switch::switch::drain(state, &ctx);
+                compositor_y5_lock_interface_base::interface::drain_engage(state);
+            })
+            .expect("control-plane ping source registration failed");
+        _loop.inner.control_ping = Some(ping);
+    }
+
     // Retained udev watch (panics internally if udev vanished post-snapshot).
     let watch = compositor_kernel_udev_loop_watch_base::watch::watch(&display.seat_name);
     compositor_kernel_native_wire_plugin_base::plugin::register(
