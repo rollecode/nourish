@@ -231,6 +231,7 @@ dependencies = [
  "compositor_developer_stats_registry_counter",
  "compositor_developer_stats_registry_hdr",
  "compositor_developer_stats_registry_meta",
+ "compositor_developer_stats_registry_shader",
  "compositor_developer_stats_registry_snapshot",
 ]
 
@@ -244,6 +245,10 @@ version = "0.0.1"
 
 [[package]]
 name = "compositor_developer_stats_registry_meta"
+version = "0.0.1"
+
+[[package]]
+name = "compositor_developer_stats_registry_shader"
 version = "0.0.1"
 
 [[package]]

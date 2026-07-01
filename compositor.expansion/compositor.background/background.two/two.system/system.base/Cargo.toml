@@ -14,6 +14,10 @@ compositor_support_system_storage_token_base = { workspace = true }
 compositor_support_system_trait_system_base = { workspace = true }
 compositor_background_two_state_base = { workspace = true }
 compositor_background_two_draw_element = { workspace = true }
+compositor_developer_stats_registry_base = { workspace = true }
+compositor_support_system_persist_trait_base = { workspace = true }
+compositor_support_system_persist_entry_base = { workspace = true }
+serde = { workspace = true }
 bitflags = { workspace = true }
 smithay = { workspace = true }
 # Developer logging — provides error!/warn!/info!/trace!/abort! (see lib.rs).
@@ -21,3 +25,7 @@ compositor_developer_debug_instance_record = { workspace = true }
 
 [lib]
 path = "lib.rs"
+
+[package.metadata.lint]
+allow = ["size"]
+reason = "Owns the per-world BG_TWO slot and its persistence as one unit: the system's update/draw/buffer plus the BackgroundDoc that projects/rehydrates this world's background_shader override into that same slot — the tokens live here, so the Document can't move out without a tokens-in-state refactor."

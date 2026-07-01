@@ -44,4 +44,5 @@ compositor_developer_stats_registry_base = { path = "developer.stats/stats.regis
 compositor_developer_stats_registry_counter = { path = "developer.stats/stats.registry/registry.counter" }
 compositor_developer_stats_registry_hdr = { path = "developer.stats/stats.registry/registry.hdr" }
 compositor_developer_stats_registry_meta = { path = "developer.stats/stats.registry/registry.meta" }
+compositor_developer_stats_registry_shader = { path = "developer.stats/stats.registry/registry.shader" }
 compositor_developer_stats_registry_snapshot = { path = "developer.stats/stats.registry/registry.snapshot" }

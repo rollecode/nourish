@@ -16,9 +16,10 @@ use compositor_configurator_settings_surface_environment::environment;
 use compositor_configurator_audio_tab_base::base as audio_tab;
 use compositor_configurator_network_tab_base::base as network_tab;
 use compositor_configurator_bluetooth_tab_base::base as bluetooth_tab;
-use compositor_configurator_settings_surface_message::message::{Applied, SettingsMessage, Tab};
+use compositor_configurator_settings_surface_message::message::{Applied, SettingsMessage, ShaderProp, Tab};
 use compositor_configurator_settings_surface_style::style;
 use compositor_configurator_settings_surface_control::control;
+use compositor_configurator_settings_surface_world::world;
 use iced_core::{Alignment, Element, Length, Padding, Theme};
 use iced_widget::{button, column, container, row, text};
 
@@ -37,6 +38,7 @@ fn module<'a>(icon: &'a str, label: &'a str, t: Tab, sel: Tab) -> El<'a> {
 fn sidebar<'a>(sel: Tab) -> El<'a> {
     let list = column![
         text("CONFIG MODULES").size(10).color(style::MUTED),
+        module("◑", "CURRENT WORLD", Tab::World, sel),
         module("▦", "DISPLAY", Tab::Display, sel),
         module("♪", "AUDIO", Tab::Audio, sel),
         module("⌨", "INPUT", Tab::Input, sel),
@@ -64,13 +66,14 @@ fn performance<'a>(fps: u32) -> El<'a> {
 }
 
 #[allow(clippy::too_many_arguments)]
-#[allow(clippy::too_many_arguments)]
 pub fn render<'a>(
     tab: Tab, dirty: bool, cursor_sensitivity: f32, natural: bool, env: &'a Environment,
     displays: &'a [DisplayInfo], active_edid: &'a str, selected_display: &'a str,
     selected_mode: Option<ModeInfo>, pending: Option<&'a Applied>, confirming: bool,
     keys: &'a [KeyRow], audio: &'a AudioState, wifi: &'a WifiSnapshot, bt: &'a BtSnapshot,
     wifi_selected: Option<&'a str>, wifi_password: &'a str, devices: &'a [RenderDevice], fps: u32,
+    shaders: &'a [String], shader_current: Option<&'a str>, shader_props: &'a [ShaderProp],
+    preview_source: &'a str, shader_status: Option<&'a str>,
 ) -> El<'a> {
     let body: El<'a> = match tab {
         Tab::Display => display::build(displays, active_edid, selected_display, selected_mode, confirming, pending),
@@ -83,6 +86,7 @@ pub fn render<'a>(
         Tab::Bluetooth => bluetooth_tab::build(bt),
         Tab::Performance => performance(fps),
         Tab::System => environment::build(env, devices),
+        Tab::World => world::build(shaders, shader_current, shader_props, preview_source, shader_status),
     };
     // No outer scrollable — each section scrolls its own lists independently. The
     // Display tab owns its own CHECK/APPLY/REVERT row, so there is no global bar.

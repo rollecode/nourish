@@ -93,6 +93,57 @@ pub fn handle(state: &mut Loop, _renderer: &mut GlesRenderer, m: SettingsMessage
         SettingsMessage::BtScan(b) => bt::command(BtCmd::Scan(b)),
         SettingsMessage::BtPair(p) => bt::command(BtCmd::Pair(p)),
         SettingsMessage::BtConnect(p) => bt::command(BtCmd::Connect(p)),
+        // Set the CURRENT world's background-shader override: write it into the
+        // world's own `Two` slot (persisted by `BackgroundDoc` on mark), and clear
+        // the instance so `TwoSystem::update` rebuilds next frame. Empty = default.
+        SettingsMessage::SetWorldShader(name) => {
+            let world = state.inner.worlds.active_id();
+            if let Some(two) = state
+                .inner
+                .worlds
+                .active_mut()
+                .storage_mut()
+                .try_get_mut(&compositor_background_two_system_base::base::BG_TWO_MUT)
+            {
+                two.background_shader = if name.is_empty() { None } else { Some(name) };
+                two.instance = None;
+                compositor_support_system_persist_mark_base::base::mark_world(world, true);
+            }
+        }
+        // Set the current world's shader params: store the full vector on the
+        // world's `Two` slot (persisted, debounced — drags fire fast) and update
+        // the live instance in place so the background reacts without a rebuild.
+        SettingsMessage::SetWorldShaderParams(values) => {
+            let world = state.inner.worlds.active_id();
+            if let Some(two) = state
+                .inner
+                .worlds
+                .active_mut()
+                .storage_mut()
+                .try_get_mut(&compositor_background_two_system_base::base::BG_TWO_MUT)
+            {
+                two.params = values.clone();
+                // Map the name-keyed overrides onto the live instance's param
+                // slots (slot = the prop's index in the selected shader's props).
+                let selection = two.background_shader.clone().or_else(
+                    compositor_developer_stats_registry_base::base::background_shader_default,
+                );
+                let props = match &selection {
+                    Some(sel) => compositor_background_two_shader_load::properties_for(sel),
+                    None => compositor_background_two_shader_builtin::builtin_props(),
+                };
+                if let Some(inst) = two.instance.as_mut() {
+                    for (name, val) in &values {
+                        if let Some(slot) = props.iter().position(|p| &p.name == name) {
+                            if slot < 8 {
+                                inst.params[slot] = *val;
+                            }
+                        }
+                    }
+                }
+                compositor_support_system_persist_mark_base::base::mark_world(world, false);
+            }
+        }
         SettingsMessage::Close => {
             state.inner.kernel.get_mut(&SETTINGS_MUT).open = false;
         }
@@ -111,9 +162,14 @@ pub fn handle(state: &mut Loop, _renderer: &mut GlesRenderer, m: SettingsMessage
             }
         }
         SettingsMessage::Fps(_)
+        | SettingsMessage::Tick
         | SettingsMessage::ModeResult(_)
         | SettingsMessage::SyncSystem(..)
         | SettingsMessage::SyncDisplays(_)
+        | SettingsMessage::SyncShaders(..)
+        | SettingsMessage::SyncShaderProps(..)
+        | SettingsMessage::SyncShaderPreview(..)
+        | SettingsMessage::SyncShaderStatus(..)
         | SettingsMessage::SelectDisplay(_)
         | SettingsMessage::SelectMode(_)
         | SettingsMessage::WifiSelect(_)

@@ -10,7 +10,7 @@ use compositor_configurator_network_backend_base::base::WifiSnapshot;
 use compositor_configurator_bluetooth_backend_base::base::BtSnapshot;
 use compositor_configurator_hardware_gpu_base::base::{render_devices, RenderDevice};
 use compositor_configurator_settings_surface_chrome::chrome;
-use compositor_configurator_settings_surface_message::message::{Applied, SettingsMessage, Tab};
+use compositor_configurator_settings_surface_message::message::{Applied, SettingsMessage, ShaderProp, Tab};
 use iced_core::{Element, Theme};
 
 pub struct Settings {
@@ -43,6 +43,16 @@ pub struct Settings {
     pub render_devices: Vec<RenderDevice>,
     /// Live frames-per-second (pushed by the embed), shown on the Display panel.
     pub fps: u32,
+    /// Available background-shader bundle names (pushed in via `SyncShaders`).
+    pub shader_options: Vec<String>,
+    /// The active world's current shader override (`None` = default/built-in).
+    pub shader_current: Option<String>,
+    /// The selected shader's editable variables (pushed via `SyncShaderProps`).
+    pub shader_props: Vec<ShaderProp>,
+    /// The selected shader's WGSL source for the live preview.
+    pub preview_source: String,
+    /// The selected shader's compile error (active renderer), if it failed.
+    pub shader_status: Option<String>,
 }
 
 /// The mode to seed the picker selection with for a display: its current mode if
@@ -78,6 +88,11 @@ impl Settings {
             wifi_password: String::new(),
             render_devices: render_devices(),
             fps: 0,
+            shader_options: Vec::new(),
+            shader_current: None,
+            shader_props: Vec::new(),
+            preview_source: String::new(),
+            shader_status: None,
         }
     }
 
@@ -99,6 +114,8 @@ impl IcedUi for Settings {
         match message {
             SettingsMessage::Tab(t) => self.tab = t,
             SettingsMessage::Fps(f) => self.fps = f,
+            // Forces a re-render so the live preview animates off its wall clock.
+            SettingsMessage::Tick => {}
             // Kernel outcome of the provisional apply: commit on Confirmed (a
             // switch makes the target the active monitor), reset otherwise.
             SettingsMessage::ModeResult(r) => match r {
@@ -186,6 +203,25 @@ impl IcedUi for Settings {
                 self.wifi_selected = Some(ssid);
                 self.wifi_password.clear();
             }
+            SettingsMessage::SyncShaders(options, current) => {
+                self.shader_options = options;
+                self.shader_current = current;
+            }
+            // UI mirror; also forwarded to persist + rebuild. Empty = default.
+            SettingsMessage::SetWorldShader(s) => {
+                self.shader_current = if s.is_empty() { None } else { Some(s) };
+            }
+            SettingsMessage::SyncShaderProps(props) => self.shader_props = props,
+            SettingsMessage::SyncShaderPreview(src) => self.preview_source = src,
+            SettingsMessage::SyncShaderStatus(status) => self.shader_status = status,
+            // UI mirror of an edit; also forwarded to persist + drive the shader.
+            SettingsMessage::SetWorldShaderParams(values) => {
+                for p in &mut self.shader_props {
+                    if let Some((_, v)) = values.iter().find(|(n, _)| n == &p.name) {
+                        p.value = *v;
+                    }
+                }
+            }
             SettingsMessage::WifiPassword(p) => self.wifi_password = p,
             SettingsMessage::WifiConnect(..) => {
                 self.wifi_selected = None;
@@ -225,6 +261,11 @@ impl IcedUi for Settings {
             &self.wifi_password,
             &self.render_devices,
             self.fps,
+            &self.shader_options,
+            self.shader_current.as_deref(),
+            &self.shader_props,
+            &self.preview_source,
+            self.shader_status.as_deref(),
         )
     }
 }

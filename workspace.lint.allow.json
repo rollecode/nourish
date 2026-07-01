@@ -1,4 +1,22 @@
 {
+  "compositor.expansion/compositor.background/background.two/two.shader/shader.property": [
+    "size"
+  ],
+  "compositor.expansion/compositor.background/background.two/two.shader/shader.load": [
+    "size"
+  ],
+  "compositor.expansion/compositor.background/background.two/two.draw/draw.parallax": [
+    "size"
+  ],
+  "compositor.expansion/compositor.background/background.two/two.draw/draw.motion": [
+    "size"
+  ],
+  "compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.world": [
+    "size"
+  ],
+  "compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.preview": [
+    "size"
+  ],
   "compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.display": [
     "size"
   ],

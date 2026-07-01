@@ -57,6 +57,11 @@ pub struct Preference {
     /// Fallback mode for monitors without a per-output profile (manual only).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub outputs_default_mode: Option<DefaultMode>,
+    /// Default background shader for new worlds: a bundle folder name under
+    /// `~/.local/share/y5/background/shader/`, or an absolute path. A world may
+    /// override it in its own record; unset = the built-in parallax.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub background_shader: Option<String>,
 }
 
 impl Default for Preference {
@@ -66,6 +71,7 @@ impl Default for Preference {
             input_natural_scroll: true,
             outputs: Vec::new(),
             outputs_default_mode: None,
+            background_shader: None,
         }
     }
 }

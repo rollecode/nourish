@@ -150,6 +150,11 @@ impl Orchestrator {
         // Live user preferences (cursor speed, touch natural-scroll) loaded fresh
         // from preferences.json to seed the runtime cells below.
         let prefs = compositor_developer_environment_preference_base::base::load();
+        // Seed the process-global default background shader so `background.two`'s
+        // system (no preference access in `update()`) can resolve it per world.
+        compositor_developer_stats_registry_base::base::set_background_shader_default(
+            prefs.background_shader.clone(),
+        );
         // Keyboard-shortcut overrides loaded fresh from keybinding.json.
         let keybinding = compositor_developer_environment_keybinding_base::base::load();
 

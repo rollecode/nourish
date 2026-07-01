@@ -7,6 +7,7 @@ uniform float u_zoom;
 uniform vec2  u_resolution;
 uniform float alpha;
 uniform float u_lock_amount;   // 0 = space, 1 = locked; CPU eases between
+uniform vec4  u_param0;         // @prop slots 0..3 (drift/density/nebula/vignette)
 
 float hash(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 float noise(vec2 p){
@@ -96,6 +97,12 @@ float galaxy(vec2 uv, vec2 c, float rot, vec2 scale){
 }
 
 void main() {
+    // @prop-driven knobs (see shader.builtin): drift / density / nebula / vignette.
+    float drift_speed = u_param0.x;
+    float star_density = u_param0.y;
+    float nebula = u_param0.z;
+    float vignette = u_param0.w;
+
     vec2 uv = (gl_FragCoord.xy - 0.5*u_resolution) / u_resolution.y;
     uv /= u_zoom;
 
@@ -103,11 +110,11 @@ void main() {
 
     vec3 col = mix(vec3(0.01, 0.015, 0.04), vec3(0.04, 0.02, 0.09), gl_FragCoord.y/u_resolution.y);
 
-    vec2 nebUv = uv*1.5 + pan*0.0002 + u_flow_offset*0.0003 + vec2(u_time*0.01, u_time*0.005);
+    vec2 nebUv = uv*1.5 + pan*0.0002 + u_flow_offset*0.0003 + vec2(u_time*0.01, u_time*0.005)*drift_speed;
     float n = fbm(nebUv);
-    float n2 = fbm(nebUv * 2.5 - vec2(u_time * 0.015));
-    col += mix(vec3(0.25, 0.05, 0.35), vec3(0.05, 0.20, 0.45), n) * pow(n, 1.8) * 0.5;
-    col += vec3(0.1, 0.3, 0.4) * pow(n2, 3.0) * 0.25;
+    float n2 = fbm(nebUv * 2.5 - vec2(u_time * 0.015)*drift_speed);
+    col += mix(vec3(0.25, 0.05, 0.35), vec3(0.05, 0.20, 0.45), n) * pow(n, 1.8) * 0.5 * nebula;
+    col += vec3(0.1, 0.3, 0.4) * pow(n2, 3.0) * 0.25 * nebula;
 
     for(int i=1; i<=3; i++){
         float fi = float(i);
@@ -116,7 +123,7 @@ void main() {
         vec2 id = floor(sp);
         vec2 fp = fract(sp) - 0.5;
         float h = hash(id);
-        if (h > 0.96) {
+        if (h > 1.0 - 0.04 * star_density) {
             float twink = 0.5 + 0.5*sin(u_time*1.5 + h*50.0);
             float d = length(fp);
             vec3 starCol = mix(vec3(0.7, 0.9, 1.0), vec3(1.0, 0.85, 0.7), fract(h * 133.7));
@@ -126,7 +133,7 @@ void main() {
     }
 
     {
-        vec2 drift = -u_flow_offset * 0.0007 + vec2(u_time*0.12, 0.0);
+        vec2 drift = -u_flow_offset * 0.0007 + vec2(u_time*0.12*drift_speed, 0.0);
         vec2 p = uv * vec2(1.8, 12.0) + drift;
         vec2 id = floor(p);
         vec2 f  = fract(p) - 0.5;
@@ -204,5 +211,7 @@ void main() {
         col = mix(col, lcol, L);
     }
 
+    float vig = smoothstep(1.35, 0.2, length(uv));
+    col *= mix(1.0, vig, clamp(vignette, 0.0, 1.0));
     gl_FragColor = vec4(col, 1.0) * alpha * 0.75;
 }

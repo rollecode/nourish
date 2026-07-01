@@ -54,6 +54,7 @@ compositor_y5_overview_state_base.workspace = true
 compositor_orchestration_driver_output_base.workspace = true
 compositor_orchestration_driver_settings_base.workspace = true
 compositor_developer_environment_preference_base.workspace = true
+compositor_developer_stats_registry_base.workspace = true
 compositor_developer_environment_keybinding_base.workspace = true
 compositor_orchestration_seat_pointer_texture.workspace = true
 compositor_orchestration_seat_pointer_state.workspace = true
