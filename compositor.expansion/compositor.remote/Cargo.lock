@@ -1885,6 +1885,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_developer_environment_experimental_base"
+version = "0.0.1"
+dependencies = [
+ "bitflags 2.11.1",
+ "compositor_developer_environment_config_base",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "compositor_developer_environment_keybinding_base"
 version = "0.0.1"
 dependencies = [
@@ -1907,6 +1917,7 @@ name = "compositor_developer_stats_registry_base"
 version = "0.0.1"
 dependencies = [
  "compositor_developer_stats_registry_counter",
+ "compositor_developer_stats_registry_gpu",
  "compositor_developer_stats_registry_hdr",
  "compositor_developer_stats_registry_meta",
  "compositor_developer_stats_registry_snapshot",
@@ -1914,6 +1925,10 @@ dependencies = [
 
 [[package]]
 name = "compositor_developer_stats_registry_counter"
+version = "0.0.1"
+
+[[package]]
+name = "compositor_developer_stats_registry_gpu"
 version = "0.0.1"
 
 [[package]]
@@ -1929,6 +1944,7 @@ name = "compositor_developer_stats_registry_snapshot"
 version = "0.0.1"
 dependencies = [
  "compositor_developer_stats_registry_counter",
+ "compositor_developer_stats_registry_gpu",
  "compositor_developer_stats_registry_meta",
 ]
 
@@ -2739,6 +2755,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_kernel_graphic_bridge_negotiate_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_environment_experimental_base",
+ "compositor_kernel_graphic_bridge_negotiate_classify",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_kernel_graphic_bridge_negotiate_classify"
+version = "0.0.1"
+dependencies = [
+ "smithay",
+]
+
+[[package]]
+name = "compositor_kernel_graphic_bridge_negotiate_wgpu"
+version = "0.0.1"
+dependencies = [
+ "ash",
+ "libc",
+ "pollster",
+ "smithay",
+ "wgpu",
+]
+
+[[package]]
 name = "compositor_kernel_graphic_color_surface_base"
 version = "0.0.1"
 dependencies = [
@@ -2773,6 +2816,12 @@ name = "compositor_monitor_runtime_surface_base"
 version = "0.1.0"
 dependencies = [
  "compositor_developer_debug_instance_record",
+ "compositor_developer_environment_config_base",
+ "compositor_developer_environment_experimental_base",
+ "compositor_developer_stats_registry_gpu",
+ "compositor_kernel_graphic_bridge_negotiate_base",
+ "compositor_kernel_graphic_bridge_negotiate_classify",
+ "compositor_kernel_graphic_bridge_negotiate_wgpu",
  "compositor_y5_graphic_card_constant",
  "gbm",
  "pollster",
@@ -3700,6 +3749,8 @@ name = "compositor_support_bevy_core_alloc_base"
 version = "0.0.1"
 dependencies = [
  "compositor_developer_debug_instance_record",
+ "compositor_developer_stats_registry_gpu",
+ "compositor_kernel_graphic_bridge_negotiate_classify",
  "compositor_support_bevy_core_fault_base",
  "gbm",
  "smithay",
@@ -3747,8 +3798,12 @@ name = "compositor_support_bevy_core_context_base"
 version = "0.0.1"
 dependencies = [
  "compositor_developer_debug_instance_record",
+ "compositor_developer_environment_config_base",
+ "compositor_developer_environment_experimental_base",
+ "compositor_kernel_graphic_bridge_negotiate_wgpu",
  "compositor_support_bevy_core_fault_base",
  "pollster",
+ "smithay",
  "wgpu",
 ]
 
@@ -3986,6 +4041,7 @@ name = "compositor_support_bevy_core_surface_base"
 version = "0.0.1"
 dependencies = [
  "compositor_developer_debug_instance_record",
+ "compositor_kernel_graphic_bridge_negotiate_base",
  "compositor_support_bevy_core_alloc_base",
  "compositor_support_bevy_core_context_base",
  "compositor_support_bevy_core_fault_base",
@@ -5495,6 +5551,7 @@ dependencies = [
  "compositor_support_system_storage_slot_base",
  "compositor_support_system_storage_token_base",
  "compositor_support_system_trait_system_base",
+ "compositor_support_world_order_track_base",
  "compositor_y5_camera_state_base",
  "compositor_y5_camera_transform_translate",
  "compositor_y5_canvas_input_state",
@@ -5558,6 +5615,7 @@ name = "compositor_y5_graphic_capture_registry"
 version = "0.1.0"
 dependencies = [
  "compositor_developer_debug_instance_record",
+ "compositor_kernel_graphic_bridge_negotiate_base",
  "compositor_support_bevy_core_runtime_base",
  "smithay",
  "thiserror 2.0.18",

@@ -74,6 +74,7 @@ compositor_developer_debug_instance_channel = { path = "../../compositor.develop
 compositor_developer_debug_instance_level = { path = "../../compositor.developer/developer.debug/debug.instance/instance.level" }
 compositor_developer_debug_instance_record = { path = "../../compositor.developer/developer.debug/debug.instance/instance.record" }
 compositor_developer_environment_config_base = { path = "../../compositor.developer/developer.environment/environment.config/config.base" }
+compositor_developer_environment_experimental_base = { path = "../../compositor.developer/developer.environment/environment.experimental/experimental.base" }
 compositor_developer_environment_keybinding_base = { path = "../../compositor.developer/developer.environment/environment.keybinding/keybinding.base" }
 compositor_developer_environment_preference_base = { path = "../../compositor.developer/developer.environment/environment.preference/preference.base" }
 compositor_developer_log_process_instance = { path = "../../compositor.developer/developer.log/log.process/process.instance" }
@@ -85,6 +86,7 @@ compositor_developer_log_process_instance_shared = { path = "../../compositor.de
 compositor_developer_log_process_main = { path = "../../compositor.developer/developer.log/log.process/process.main" }
 compositor_developer_stats_registry_base = { path = "../../compositor.developer/developer.stats/stats.registry/registry.base" }
 compositor_developer_stats_registry_counter = { path = "../../compositor.developer/developer.stats/stats.registry/registry.counter" }
+compositor_developer_stats_registry_gpu = { path = "../../compositor.developer/developer.stats/stats.registry/registry.gpu" }
 compositor_developer_stats_registry_hdr = { path = "../../compositor.developer/developer.stats/stats.registry/registry.hdr" }
 compositor_developer_stats_registry_meta = { path = "../../compositor.developer/developer.stats/stats.registry/registry.meta" }
 compositor_developer_stats_registry_snapshot = { path = "../../compositor.developer/developer.stats/stats.registry/registry.snapshot" }
@@ -201,6 +203,9 @@ compositor_kernel_gpu_preference_select_base = { path = "../../compositor.kernel
 compositor_kernel_gpu_registry_node_base = { path = "../../compositor.kernel/kernel.gpu/gpu.registry/registry.node/node.base" }
 compositor_kernel_gpu_topology_role_base = { path = "../../compositor.kernel/kernel.gpu/gpu.topology/topology.role/role.base" }
 compositor_kernel_gpu_topology_route_base = { path = "../../compositor.kernel/kernel.gpu/gpu.topology/topology.route/route.base" }
+compositor_kernel_graphic_bridge_negotiate_base = { path = "../../compositor.kernel/kernel.graphic/graphic.bridge/bridge.negotiate/negotiate.base" }
+compositor_kernel_graphic_bridge_negotiate_classify = { path = "../../compositor.kernel/kernel.graphic/graphic.bridge/bridge.negotiate/negotiate.classify" }
+compositor_kernel_graphic_bridge_negotiate_wgpu = { path = "../../compositor.kernel/kernel.graphic/graphic.bridge/bridge.negotiate/negotiate.wgpu" }
 compositor_kernel_graphic_color_surface_base = { path = "../../compositor.kernel/kernel.graphic/graphic.color/color.surface/surface.base" }
 compositor_kernel_graphic_draw_plan_frame = { path = "../../compositor.kernel/kernel.graphic/graphic.draw/draw.plan/plan.frame" }
 compositor_kernel_graphic_draw_plan_tap = { path = "../../compositor.kernel/kernel.graphic/graphic.draw/draw.plan/plan.tap" }

@@ -273,6 +273,7 @@ name = "compositor_developer_stats_registry_base"
 version = "0.0.1"
 dependencies = [
  "compositor_developer_stats_registry_counter",
+ "compositor_developer_stats_registry_gpu",
  "compositor_developer_stats_registry_hdr",
  "compositor_developer_stats_registry_meta",
  "compositor_developer_stats_registry_snapshot",
@@ -280,6 +281,10 @@ dependencies = [
 
 [[package]]
 name = "compositor_developer_stats_registry_counter"
+version = "0.0.1"
+
+[[package]]
+name = "compositor_developer_stats_registry_gpu"
 version = "0.0.1"
 
 [[package]]
@@ -295,6 +300,7 @@ name = "compositor_developer_stats_registry_snapshot"
 version = "0.0.1"
 dependencies = [
  "compositor_developer_stats_registry_counter",
+ "compositor_developer_stats_registry_gpu",
  "compositor_developer_stats_registry_meta",
 ]
 

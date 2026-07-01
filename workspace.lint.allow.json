@@ -1,4 +1,19 @@
 {
+  "compositor.support/support.bevy/bevy.core/core.alloc/alloc.base": [
+    "size"
+  ],
+  "compositor.support/support.bevy/bevy.core/core.import/import.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.graphic/graphic.bridge/bridge.negotiate/negotiate.base": [
+    "size"
+  ],
+  "compositor.kernel/kernel.graphic/graphic.bridge/bridge.negotiate/negotiate.wgpu": [
+    "size"
+  ],
+  "compositor.support/support.bevy/bevy.core/core.context/context.base": [
+    "size"
+  ],
   "compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.display": [
     "size"
   ],
