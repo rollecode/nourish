@@ -68,7 +68,7 @@ pub fn tick(state: &mut Loop, renderer: &mut GlesRenderer) -> Option<ParallaxBac
 /// picker's custom render path doesn't drain `TwoSystem`'s buffer, so the normal
 /// `update()→SetInstance` never lands) and give it the subtle "distant" look.
 fn ensure_distant_parallax(state: &mut Loop, renderer: &mut GlesRenderer) {
-    let (w, h) = state.size_context().screen_size_physical;
+    let (w, h) = state.size_ctx_all().screen_size_physical;
     if let Some(two) = state
         .inner
         .worlds

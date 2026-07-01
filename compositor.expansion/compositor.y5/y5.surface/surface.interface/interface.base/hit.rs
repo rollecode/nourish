@@ -63,7 +63,7 @@ where
     F: Fn(Rectangle<f64, Logical>, Rectangle<f64, Logical>) -> bool,
 {
     let mut hits = Vec::new();
-    let ctx: XformCtx = _loop.size_context();
+    let ctx: XformCtx = _loop.size_ctx_all();
 
     // Project the world bbox into the three coordinate systems we
     // compare against.

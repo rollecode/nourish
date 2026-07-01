@@ -1184,7 +1184,7 @@ fn target_crop_physical(
 /// the dmabuf allocation/import and silently discard the capture. The
 /// `window_render_job` fit-scale draws the content into whatever size we return.
 fn render_entry_size(state: &Loop, target: &CaptureTarget) -> Option<Size<i32, Physical>> {
-    let scale = state.size_context().scale;
+    let scale = state.size_ctx_all().scale;
     let world = match target {
         CaptureTarget::WorldRegion(r) => *r,
         CaptureTarget::Windows(_) => state.inner.kernel.get(&compositor_orchestration_driver_capture_base::base::CAPTURE).windows_bbox?,
@@ -1256,7 +1256,7 @@ fn live_windows_bbox(state: &Loop) -> Option<Rectangle<i32, Logical>> {
 }
 
 fn world_to_phys(state: &Loop, r: Rectangle<i32, Logical>) -> Rectangle<i32, Physical> {
-    let t: Transform = (r, state.size_context()).into();
+    let t: Transform = (r, state.size_ctx_all()).into();
     t.into()
 }
 
@@ -1265,7 +1265,7 @@ fn phys_to_world(state: &Loop, r: Rectangle<i32, Physical>) -> Rectangle<i32, Lo
     // coordinates inside the Transform; extract the RAW world rect via
     // `into_storage_rect()`. (A plain `.into()` would re-apply the forward
     // camera projection, double-projecting the region — the world-region bug.)
-    let t: Transform = (r, state.size_context()).into();
+    let t: Transform = (r, state.size_ctx_all()).into();
     t.into_storage_rect()
 }
 

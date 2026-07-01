@@ -832,6 +832,10 @@ compositor_y5_surface_interface_core = { path = "y5.surface/surface.interface/in
 compositor_y5_surface_protocol_base = { path = "y5.surface/surface.protocol/protocol.base" }
 compositor_y5_surface_state_base = { path = "y5.surface/surface.state/state.base" }
 compositor_y5_surface_system_base = { path = "y5.surface/surface.system/system.base" }
+compositor_y5_viewport_interface_base = { path = "y5.viewport/viewport.interface/interface.base" }
+compositor_y5_viewport_layout_base = { path = "y5.viewport/viewport.layout/layout.base" }
+compositor_y5_viewport_persist_doc = { path = "y5.viewport/viewport.persist/persist.doc" }
+compositor_y5_viewport_state_base = { path = "y5.viewport/viewport.state/state.base" }
 compositor_y5_window_decoration_element = { path = "y5.window/window.decoration/decoration.element" }
 compositor_y5_window_draw_element = { path = "y5.window/window.draw/draw.element" }
 compositor_y5_window_draw_frame = { path = "y5.window/window.draw/draw.frame" }

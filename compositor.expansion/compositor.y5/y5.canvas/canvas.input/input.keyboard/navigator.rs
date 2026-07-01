@@ -9,6 +9,7 @@ use compositor_support_action_camera_fit_aspect::aspect;
 use compositor_y5_camera_zone_state::state::{Zone, ZoneSpecifier};
 use compositor_orchestration_core_state_base::Loop;
 use compositor_orchestration_core_state_base::state::Status;
+use compositor_orchestration_core_state_base::state::CoordinateTrait;
 use compositor_y5_navigator_interface_base::interface::move_direction;
 use compositor_y5_navigator_travel_state::state::{Target, Travel};
 use compositor_support_library_input_keyboard_base::keyboard::combo::KeyCombo;
@@ -56,6 +57,32 @@ pub fn input_received(
 
 fn launcher_delegate(p0: &mut Loop) {
     compositor_y5_launcher_interface_base::interface::start_defered(p0)
+}
+
+/// Split the active viewport slot into two panes along `axis` (Super+V vertical,
+/// Super+Alt+V horizontal). The new pane becomes active.
+fn viewport_split_delegate(state: &mut Loop, axis: compositor_y5_viewport_state_base::state::Axis) {
+    let viewports = state.inner.viewports_mut();
+    compositor_y5_viewport_interface_base::interface::split(viewports, axis);
+}
+
+/// Detach the active viewport pane into a floating pane (Super+D), placed at a
+/// half-size, centred rect over the output.
+fn viewport_detach_delegate(state: &mut Loop) {
+    let (w, h) = state.size_ctx_all().screen_size_physical;
+    let (rw, rh) = ((w * 0.5) as i32, (h * 0.5) as i32);
+    let rect = smithay::utils::Rectangle::<i32, smithay::utils::Physical>::from_loc_and_size(
+        ((w as i32 - rw) / 2, (h as i32 - rh) / 2),
+        (rw, rh),
+    );
+    let viewports = state.inner.viewports_mut();
+    compositor_y5_viewport_interface_base::interface::detach(viewports, rect);
+}
+
+/// Remove the active viewport pane (Super+Alt+D).
+fn viewport_remove_delegate(state: &mut Loop) {
+    let viewports = state.inner.viewports_mut();
+    compositor_y5_viewport_interface_base::interface::remove_active(viewports);
 }
 
 fn zone_delegate(state: &mut Loop, zone: &str, register: bool) {
@@ -317,6 +344,10 @@ fn bindings() -> Vec<Bind> {
         Bind { id: "zone_set_6", label: "Set zone 6", default: shortcut!(Super + Shift + Num6), action: Box::new(|s| { zone_delegate(s, "f6", true); true }) },
         Bind { id: "group_all", label: "Group (join)", default: shortcut!(Super + Alt + G), action: Box::new(|s| { group_delegate(s, true); true }) },
         Bind { id: "group", label: "Group", default: shortcut!(Super + G), action: Box::new(|s| { group_delegate(s, false); true }) },
+        Bind { id: "viewport_split", label: "Split viewport (vertical)", default: shortcut!(Super + V), action: Box::new(|s| { viewport_split_delegate(s, compositor_y5_viewport_state_base::state::Axis::Vertical); true }) },
+        Bind { id: "viewport_split_alt", label: "Split viewport (horizontal)", default: shortcut!(Super + Alt + V), action: Box::new(|s| { viewport_split_delegate(s, compositor_y5_viewport_state_base::state::Axis::Horizontal); true }) },
+        Bind { id: "viewport_detach", label: "Detach viewport (float)", default: shortcut!(Super + D), action: Box::new(|s| { viewport_detach_delegate(s); true }) },
+        Bind { id: "viewport_remove", label: "Remove viewport", default: shortcut!(Super + Alt + D), action: Box::new(|s| { viewport_remove_delegate(s); true }) },
         Bind { id: "zoom_fit", label: "Zoom: fit", default: shortcut!(Super + Alt + F), action: Box::new(|s| { zoom_delegate(s, false, false); true }) },
         Bind { id: "zoom_focus", label: "Zoom: focus", default: shortcut!(Super + F), action: Box::new(|s| { zoom_delegate(s, true, false); true }) },
         Bind { id: "zoom_focus_max", label: "Fit to screen", default: shortcut!(Super + Shift + Alt + F), action: Box::new(|s| { zoom_delegate(s, true, true); true }) },

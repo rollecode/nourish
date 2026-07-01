@@ -4732,6 +4732,7 @@ dependencies = [
  "compositor_y5_audio_controller_interface",
  "compositor_y5_camera_state_base",
  "compositor_y5_camera_transform_translate",
+ "compositor_y5_canvas_input_state",
  "compositor_y5_canvas_state_base",
  "compositor_y5_canvas_system_base",
  "compositor_y5_graphic_capture_registry",
@@ -4748,6 +4749,8 @@ dependencies = [
  "compositor_y5_select_state_base",
  "compositor_y5_surface_state_base",
  "compositor_y5_surface_system_base",
+ "compositor_y5_viewport_layout_base",
+ "compositor_y5_viewport_state_base",
  "compositor_y5_window_interface_record",
  "compositor_y5_window_lifecycle_event",
  "compositor_y5_window_lifecycle_state",
@@ -4872,6 +4875,8 @@ dependencies = [
  "compositor_y5_surface_draw_scene",
  "compositor_y5_surface_interface_base",
  "compositor_y5_surface_system_base",
+ "compositor_y5_viewport_layout_base",
+ "compositor_y5_viewport_state_base",
  "compositor_y5_window_interface_record",
  "compositor_y5_window_lifecycle_interface",
  "smithay",
@@ -5158,6 +5163,7 @@ dependencies = [
  "compositor_y5_camera_system_base",
  "compositor_y5_camera_transform_translate",
  "compositor_y5_canvas_input_keyboard",
+ "compositor_y5_canvas_input_state",
  "compositor_y5_canvas_system_base",
  "compositor_y5_lock_system_base",
  "compositor_y5_overview_input_pointer",
@@ -6615,6 +6621,7 @@ version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
  "compositor_support_smithay_dispatch_state_base",
+ "compositor_support_smithay_state_fractional_debounce",
  "smithay",
  "tracing",
  "tracing-subscriber",
@@ -7555,6 +7562,7 @@ dependencies = [
  "compositor_support_system_channel_token_base",
  "compositor_support_system_input_event_base",
  "compositor_support_system_input_layer_base",
+ "compositor_support_system_persist_document_entry",
  "compositor_support_system_storage_slot_base",
  "compositor_support_system_storage_token_base",
  "compositor_support_system_trait_system_base",
@@ -7565,6 +7573,8 @@ dependencies = [
  "compositor_y5_group_state_base",
  "compositor_y5_navigator_state_base",
  "compositor_y5_surface_interface_core",
+ "compositor_y5_viewport_persist_doc",
+ "compositor_y5_viewport_state_base",
  "compositor_y5_window_interface_record",
  "smithay",
 ]
@@ -7710,6 +7720,8 @@ dependencies = [
  "compositor_y5_overlay_interface_keyboard",
  "compositor_y5_overview_input_keyboard",
  "compositor_y5_select_system_base",
+ "compositor_y5_viewport_interface_base",
+ "compositor_y5_viewport_state_base",
  "compositor_y5_window_interface_draw",
  "compositor_y5_window_interface_record",
  "compositor_y5_window_lifecycle_interface",
@@ -7759,7 +7771,6 @@ dependencies = [
  "compositor_support_system_storage_token_base",
  "compositor_support_system_trait_system_base",
  "compositor_support_world_order_track_base",
- "compositor_y5_camera_state_base",
  "compositor_y5_camera_transform_translate",
  "compositor_y5_canvas_input_state",
  "compositor_y5_canvas_state_base",
@@ -7771,6 +7782,7 @@ dependencies = [
  "compositor_y5_surface_interface_core",
  "compositor_y5_surface_protocol_base",
  "compositor_y5_surface_system_base",
+ "compositor_y5_viewport_state_base",
  "compositor_y5_window_interface_record",
  "smithay",
  "uuid",
@@ -8365,10 +8377,10 @@ version = "0.0.1"
 dependencies = [
  "compositor_support_library_ease_velocity_base",
  "compositor_support_system_trait_system_base",
- "compositor_y5_camera_state_base",
  "compositor_y5_navigator_state_base",
  "compositor_y5_navigator_tick_warp",
  "compositor_y5_navigator_travel_state",
+ "compositor_y5_viewport_state_base",
 ]
 
 [[package]]
@@ -9521,6 +9533,8 @@ dependencies = [
  "compositor_y5_select_state_base",
  "compositor_y5_surface_state_base",
  "compositor_y5_surface_system_base",
+ "compositor_y5_viewport_layout_base",
+ "compositor_y5_viewport_state_base",
  "compositor_y5_window_interface_record",
  "smithay",
  "uuid",
@@ -9576,6 +9590,46 @@ dependencies = [
  "compositor_support_system_trait_system_base",
  "compositor_y5_surface_state_base",
  "smithay",
+]
+
+[[package]]
+name = "compositor_y5_viewport_interface_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_y5_camera_state_base",
+ "compositor_y5_viewport_state_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_y5_viewport_layout_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_y5_viewport_state_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_y5_viewport_persist_doc"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_persist_document_trait",
+ "compositor_y5_camera_state_base",
+ "compositor_y5_camera_transform_state",
+ "compositor_y5_viewport_state_base",
+ "serde",
+ "serde_json",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_y5_viewport_state_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_storage_token_base",
+ "compositor_y5_camera_state_base",
+ "smithay",
+ "uuid",
 ]
 
 [[package]]

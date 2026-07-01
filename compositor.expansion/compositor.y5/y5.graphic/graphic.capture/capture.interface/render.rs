@@ -109,7 +109,7 @@ pub fn window_render_job(state: &Loop) -> Option<WindowRenderJob> {
         return None;
     };
     let entry_id = a.capture.entry_id();
-    let scale = state.size_context().scale;
+    let scale = state.size_ctx_all().scale;
 
     let size = a.capture.size()?;
     if size.w < 1 || size.h < 1 {

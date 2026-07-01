@@ -48,6 +48,8 @@ smithay = { workspace = true }
 compositor_support_smithay_dispatch_wire_base.workspace = true
 compositor_support_smithay_dispatch_wire_trait.workspace = true
 compositor_y5_camera_state_base.workspace = true
+compositor_y5_viewport_state_base.workspace = true
+compositor_y5_viewport_layout_base.workspace = true
 compositor_y5_camera_transform_translate.workspace = true
 compositor_y5_surface_state_base.workspace = true
 compositor_y5_overview_state_base.workspace = true
@@ -60,6 +62,7 @@ compositor_orchestration_seat_pointer_state.workspace = true
 compositor_remote_message_state_base.workspace = true
 compositor_remote_message_server_base.workspace = true
 compositor_y5_canvas_state_base.workspace = true
+compositor_y5_canvas_input_state.workspace = true
 compositor_y5_navigator_state_base.workspace = true
 tokio.workspace = true
 uuid.workspace = true

@@ -16,23 +16,35 @@ pub fn absolute<I: InputBackend>(
     // point BEFORE the bus so the motion systems receive precisely what the rim
     // computed (the pan delta uses the physical screen, transforms +
     // pointer.motion use the world point).
-    let ctx = _loop.size_context();
+    // Full-output context maps the normalized absolute event → physical cursor.
+    let screen = _loop.size_ctx_all();
 
     // position_transformed wants Size<_, Logical>. Pass the panel's
     // physical size wrapped as Logical — the values are physical even
     // if the marker says otherwise. We immediately re-tag the result
     // as Physical (which is what it really is).
     let physical_size_as_logical = smithay::utils::Size::<i32, Logical>::from((
-        ctx.screen_size_physical.0.round() as i32,
-        ctx.screen_size_physical.1.round() as i32,
+        screen.screen_size_physical.0.round() as i32,
+        screen.screen_size_physical.1.round() as i32,
     ));
     let raw_pos: Point<f64, Logical> = event.position_transformed(physical_size_as_logical);
 
     // The numbers are in physical units; re-tag.
     let position_screen = Point::<f64, Physical>::from((raw_pos.x, raw_pos.y));
 
+    // Resolve the pane under the cursor (records it as the `pointer` slot) and map
+    // physical → world through THAT pane's camera/region, so input follows the
+    // pane the cursor is over, not the keyboard-active pane.
+    let ctx = _loop.pointer_context(position_screen);
     let t: Transform = (position_screen, ctx).into();
     let position_normalized = &t.into_storage_point_f64();
+
+    // Separator / floating-pane drag in progress → apply it and move the cursor,
+    // but do not route to the canvas/window grab systems.
+    if _loop.update_separator_drag(position_screen) || _loop.update_floating_drag(position_screen) {
+        native_motion::absolute::input_received_normalized::<I>(event, _loop, position_normalized, &raw_pos);
+        return;
+    }
 
     {
         // World input bus first (Pass-1): CameraSystem handles the canvas PAN
@@ -53,7 +65,7 @@ pub fn absolute<I: InputBackend>(
         }
     }
 
-    // let ctx = _loop.size_context();
+    // let ctx = _loop.size_ctx_all();
     // let output = _loop.inner.space_state().state.outputs().next().unwrap();
     // let logical_geom = _loop.inner.space_state().state.output_geometry(output).unwrap();
 
@@ -75,7 +87,7 @@ pub fn absolute<I: InputBackend>(
     // let position_screen = event.position_transformed(compositor_output_geometry.size)
     //     + compositor_output_geometry.loc.to_f64();
 
-    // let ctx = _loop.size_context();
+    // let ctx = _loop.size_ctx_all();
     // let cursor_phys = Point::<f64, Physical>::from((position_screen.x, position_screen.y));
 
     // let t: Transform = (cursor_phys, ctx).into();
@@ -106,9 +118,8 @@ pub fn relative<I: InputBackend>(
     event: &<I as InputBackend>::PointerMotionEvent,
     _loop: &mut Loop,
 ) {
-    let ctx = _loop.size_context();
-
-    let ctx = _loop.size_context();
+    // Full-output context for the physical-accumulator clamp bounds.
+    let screen = _loop.size_ctx_all();
 
     let dt = event.delta();
     let dt_unaccelerated = event.delta_unaccel();
@@ -122,6 +133,8 @@ pub fn relative<I: InputBackend>(
 
     // Snapshot previous position in both spaces.
     let previous_phys = _loop.inner.pointer_mut().motion.clone();
+    // Pane under the cursor (records the `pointer` slot); map world through it.
+    let ctx = _loop.pointer_context(Point::<f64, Physical>::from((previous_phys.x, previous_phys.y)));
     let previous_world: Point<f64, Logical> = {
         let pt = Point::<f64, Physical>::from((previous_phys.x, previous_phys.y));
         let t: Transform = (pt, ctx).into();
@@ -159,8 +172,8 @@ pub fn relative<I: InputBackend>(
         _loop.inner.pointer_mut().motion.y = final_phys.y;
         constrained_world
     } else {
-        // No constraint: clamp physical to panel, re-derive world.
-        let (pw, ph) = ctx.screen_size_physical;
+        // No constraint: clamp physical to the full panel.
+        let (pw, ph) = screen.screen_size_physical;
         _loop.inner.pointer_mut().motion.x = _loop.inner.pointer_mut().motion.x.clamp(0.0, pw);
         _loop.inner.pointer_mut().motion.y = _loop.inner.pointer_mut().motion.y.clamp(0.0, ph);
 
@@ -269,6 +282,21 @@ pub fn relative<I: InputBackend>(
     //     _loop.inner.space_state().default_scale()
     // );
     // 4. Notify canvas of input to handle camera movement
+
+    // Separator / floating drag in progress → apply + move cursor, skip canvas.
+    // `position_screen` carries physical values under a Logical marker; re-tag.
+    let cursor_phys = Point::<f64, Physical>::from((position_screen.x, position_screen.y));
+    if _loop.update_separator_drag(cursor_phys) || _loop.update_floating_drag(cursor_phys) {
+        native_motion::relative::input_received_normalized::<I>(
+            event,
+            _loop,
+            position_normalized,
+            &position_screen,
+            (dt, dt_unaccelerated),
+            was_constrained_locked,
+        );
+        return;
+    }
 
     // World input bus first (Pass-1), AFTER position_normalized + the
     // pointer-constraint reconciliation: the systems receive the post-constraint

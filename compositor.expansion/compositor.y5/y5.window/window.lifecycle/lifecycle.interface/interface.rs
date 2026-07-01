@@ -82,7 +82,7 @@ fn _initial_mapped(state: &mut Loop, window: Window) {
     let x = cam.x - geometry.size.w as f64 / 2.0;
     let y = cam.y - geometry.size.h as f64 / 2.0;
 
-    let t: Transform = ((x, y), state.size_context()).into();
+    let t: Transform = ((x, y), state.size_ctx_all()).into();
 
     state
         .inner.space_state_mut()
