@@ -29,15 +29,21 @@ where
     // let is_active = window.toplevel().map(|t| t.current_state().activated).unwrap_or(false);
     let is_active = state.inner.select().get(window.clone());
     let is_primary = state.inner.select().primary(window.clone());
+    let cfg = compositor_developer_environment_config_base::base::get();
     let (color, bw_logical) = if is_active {
         if is_primary {
-            ([0.0, 0.0, 1.0, 1.0], 12.0)
+            ([0.0, 0.0, 1.0, 1.0], cfg.window_border_active)
         } else {
-            ([0.0, 0.5, 1.0, 1.0], 6.0)
+            ([0.0, 0.5, 1.0, 1.0], cfg.window_border_secondary)
         }
     } else {
         ([0.2, 0.2, 0.2, 0.0], 3.0)
     };
+
+    // A configured width of zero disables the frame for this window entirely.
+    if bw_logical <= 0.0 {
+        return elements;
+    }
 
     // let ctx = state.size_context();
     // let bbox = state
