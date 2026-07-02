@@ -63,6 +63,9 @@ pub struct Environment {
     pub window_border_active: f64,
     /// Border width (logical px) framing other selected windows; `0` disables them.
     pub window_border_secondary: f64,
+    /// `true` = a closed window leaves a relaunchable placeholder tile on the
+    /// canvas (Edit / Launch / Dismiss); `false` = closing a window leaves nothing.
+    pub window_close_placeholder: bool,
     // NOTE: live user preferences (cursor sensitivity, touchpad natural-scroll,
     // per-EDID output modes) intentionally do NOT live here. They are not
     // reboot-bound, so they live in `environment.preference` (preferences.json),
@@ -159,6 +162,7 @@ pub fn default_settings() -> Environment {
         window_subsurface_shrinks: false,
         window_border_active: 12.0,
         window_border_secondary: 6.0,
+        window_close_placeholder: true,
     }
 }
 

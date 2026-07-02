@@ -74,6 +74,7 @@ pub fn build<'a>(e: &'a Environment, devices: &'a [RenderDevice]) -> El<'a> {
     rows.push(choice("Capture re-encode", e, e.capture_background_encoder.clone(), opts(&["ffmpeg", ""]), d.capture_background_encoder.clone(), |x, v| x.capture_background_encoder = v));
     rows.push(boolean("NVENC readback fallback", e, e.capture_nvenc_allow_readback_fallback, d.capture_nvenc_allow_readback_fallback, |x, v| x.capture_nvenc_allow_readback_fallback = v));
     rows.push(boolean("Capture variable frame rate", e, e.capture_variable_frame_rate, d.capture_variable_frame_rate, |x, v| x.capture_variable_frame_rate = v));
+    rows.push(boolean("Closed-window placeholder tiles", e, e.window_close_placeholder, d.window_close_placeholder, |x, v| x.window_close_placeholder = v));
     rows.push(textfield("Desktop name", e, &e.desktop_name, d.desktop_name.clone(), |x, v| x.desktop_name = v));
     rows.push(textfield("Log level", e, &e.log_level, d.log_level.clone(), |x, v| x.log_level = v));
     rows.push(choice("Window border (active)", e, num(e.window_border_active), opts(&["0", "2", "4", "6", "12"]), num(d.window_border_active), |x, v| x.window_border_active = v.parse().unwrap_or(12.0)));
