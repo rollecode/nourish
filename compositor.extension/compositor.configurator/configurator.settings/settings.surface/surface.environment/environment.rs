@@ -23,6 +23,11 @@ fn opts(xs: &[&str]) -> Vec<String> {
     xs.iter().map(|s| s.to_string()).collect()
 }
 
+/// Whole numbers render without a trailing `.0` so they match the option strings.
+fn num(v: f64) -> String {
+    if v.fract() == 0.0 { format!("{}", v as i64) } else { v.to_string() }
+}
+
 fn choice<'a>(label: &'a str, e: &Environment, cur: String, options: Vec<String>, def: String, set: fn(&mut Environment, String)) -> El<'a> {
     let e2 = e.clone();
     let picker = pick_list(Some(cur), options, |s: &String| s.clone())
@@ -71,6 +76,8 @@ pub fn build<'a>(e: &'a Environment, devices: &'a [RenderDevice]) -> El<'a> {
     rows.push(boolean("Capture variable frame rate", e, e.capture_variable_frame_rate, d.capture_variable_frame_rate, |x, v| x.capture_variable_frame_rate = v));
     rows.push(textfield("Desktop name", e, &e.desktop_name, d.desktop_name.clone(), |x, v| x.desktop_name = v));
     rows.push(textfield("Log level", e, &e.log_level, d.log_level.clone(), |x, v| x.log_level = v));
+    rows.push(choice("Window border (active)", e, num(e.window_border_active), opts(&["0", "2", "4", "6", "12"]), num(d.window_border_active), |x, v| x.window_border_active = v.parse().unwrap_or(12.0)));
+    rows.push(choice("Window border (secondary)", e, num(e.window_border_secondary), opts(&["0", "1", "2", "3", "6"]), num(d.window_border_secondary), |x, v| x.window_border_secondary = v.parse().unwrap_or(6.0)));
     // Render device: dropdown of detected render nodes (estimated GPU names).
     if !devices.is_empty() {
         let cur = devices.iter().find(|r| r.node == e.render_node).map(|r| r.name.clone()).unwrap_or_else(|| e.render_node.clone());

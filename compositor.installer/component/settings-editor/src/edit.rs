@@ -93,6 +93,10 @@ pub fn interactive(base: Environment) -> Environment {
         // Experimental window-sizing flags — always disabled, never prompted.
         window_client_size_fallback: false,
         window_subsurface_shrinks: false,
+        // Window border widths: carried through unprompted (edit in the
+        // in-compositor settings window instead).
+        window_border_active: base.window_border_active,
+        window_border_secondary: base.window_border_secondary,
     }
 }
 

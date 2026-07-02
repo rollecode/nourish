@@ -59,6 +59,10 @@ pub struct Environment {
     pub window_client_size_fallback: bool,
     /// `false` = fit only the root toplevel; `true` = fit the whole surface tree.
     pub window_subsurface_shrinks: bool,
+    /// Border width (logical px) framing the primary selected window; `0` disables it.
+    pub window_border_active: f64,
+    /// Border width (logical px) framing other selected windows; `0` disables them.
+    pub window_border_secondary: f64,
     // NOTE: live user preferences (cursor sensitivity, touchpad natural-scroll,
     // per-EDID output modes) intentionally do NOT live here. They are not
     // reboot-bound, so they live in `environment.preference` (preferences.json),
@@ -131,7 +135,7 @@ pub fn get() -> &'static Environment {
 /// NOT used by the compositor at runtime — [`init`] still requires a fully-populated file
 /// and never falls back to these, so a real config can't be silently half-default. Living
 /// here (with the struct) means the editor and the installer agree on one set of values
-/// across the full 19-field schema, so any seeded file is always complete and valid.
+/// across the full schema, so any seeded file is always complete and valid.
 pub fn default_settings() -> Environment {
     Environment {
         renderer: "vulkan".to_string(),
@@ -153,6 +157,8 @@ pub fn default_settings() -> Environment {
         capture_variable_frame_rate: false,
         window_client_size_fallback: false,
         window_subsurface_shrinks: false,
+        window_border_active: 12.0,
+        window_border_secondary: 6.0,
     }
 }
 
