@@ -242,6 +242,13 @@ pub fn on_window_destroy(state: &mut Loop, uuid: Uuid, renderer: &mut GlesRender
         return;
     }
 
+    // A user setting can turn the closed-window tiles off entirely: the
+    // placeholder record was already erased above, so returning here means a
+    // closed window leaves nothing on the canvas.
+    if !compositor_developer_environment_config_base::base::get().window_close_placeholder {
+        return;
+    }
+
     spawn_visible(state, renderer, ph);
 }
 
