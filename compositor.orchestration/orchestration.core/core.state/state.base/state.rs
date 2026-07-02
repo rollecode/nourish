@@ -192,15 +192,13 @@ pub struct Orchestrator {
     /// The teleport placement the cursor is currently within (disambiguates
     /// duplicate placements of one monitor). `None` until the pointer resolves it.
     pub cursor_placement: Option<u64>,
-    /// When true, the relative-motion path clamps at output edges instead of
-    /// teleporting to an adjacent monitor. Derived from `buttons_held` in the pointer
-    /// button handler: a drag is in progress, so the cursor must NOT jump monitors
-    /// mid-drag (which would break panning the settings layout canvas, a window/pane
-    /// move/resize, a selection, etc.). Restored to normal teleport on button release.
-    pub suppress_teleport: bool,
     /// Count of pointer buttons currently held (tracked synchronously in the button
     /// handler, in the same input pipeline as motion — no message-round-trip race).
-    /// Drives `suppress_teleport`.
+    /// A held button with NO compositor world/pane grab (`world_grab_active`) means an
+    /// iced/screen-surface drag (the settings layout-canvas pan), during which the
+    /// relative-motion path suppresses cursor teleportation so the view drag can't
+    /// jump the cursor to another monitor. A held button WITH a world grab (grab-to-
+    /// move a window/pane) keeps teleport enabled, so windows move across monitors.
     pub buttons_held: u32,
 }
 
@@ -336,7 +334,6 @@ impl Orchestrator {
             // sane defaults.
             teleport: build_teleport(&prefs),
             cursor_placement: None,
-            suppress_teleport: false,
             buttons_held: 0,
             preference: prefs,
             keybinding,
@@ -477,6 +474,16 @@ impl Orchestrator {
     pub fn output_views(&self) -> &compositor_y5_viewport_state_base::state::OutputViews {
         let target = self.worlds.spawn_target();
         self.worlds.get(target).storage().get(&compositor_y5_viewport_state_base::state::OUTPUT_VIEWS)
+    }
+
+    /// A COMPOSITOR-managed pointer drag is in progress: a canvas/world grab (window/
+    /// pane move, scale, select-box, hand) or a separator/floating-pane drag. During
+    /// these the cursor may legitimately cross monitors (grab-to-move a window over
+    /// the shared edge), so teleport stays enabled. Only a held-button drag with NONE
+    /// of these active is an iced/screen-surface drag (the settings layout-canvas pan),
+    /// where the relative-motion path suppresses teleport.
+    pub fn world_grab_active(&self) -> bool {
+        self.separator_drag.is_some() || self.floating_drag.is_some() || self.canvas().active_grab()
     }
 
     /// FOCUS ACCESSOR: the focused world's canvas slot (input grab, …).

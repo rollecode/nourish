@@ -127,9 +127,12 @@ fn teleport_cross(
     ph: f64,
 ) -> Option<(Point<f64, Physical>, compositor_y5_camera_transform_translate::transform::Context)> {
     use compositor_orchestration_seat_pointer_teleport::teleport::Edge;
-    // Suppressed while the settings layout canvas is being panned (a drag) — clamp at
-    // the edge instead, so panning the view can't jump the cursor to another monitor.
-    if _loop.inner.suppress_teleport || _loop.inner.teleport.is_empty() {
+    // Suppress teleport for a SCREEN-SURFACE drag (a held button with no compositor
+    // world/pane grab) — e.g. panning the settings layout canvas: clamp at the edge
+    // instead of jumping the cursor to another monitor. A compositor grab-to-move
+    // (window/pane) keeps teleport enabled so a window can be moved across monitors.
+    let screen_surface_drag = _loop.inner.buttons_held > 0 && !_loop.inner.world_grab_active();
+    if screen_surface_drag || _loop.inner.teleport.is_empty() {
         return None;
     }
     // Which edge did the cursor cross, and where along it (proportionally 0..1)?
