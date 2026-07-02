@@ -60,7 +60,7 @@ struct Bind {
 fn bindings() -> Vec<Bind> {
     vec![
         Bind { id: "sleep", label: "Sleep", default: shortcut!(Super + Alt + L), action: Box::new(|s| { sleep(s); true }) },
-        Bind { id: "world_picker", label: "Open world picker", default: shortcut!(Super + K), action: Box::new(|s| { compositor_y5_picker_interface_entry::entry::toggle(s); true }) },
+        Bind { id: "world_picker", label: "Open world picker", default: shortcut!(Super + N), action: Box::new(|s| { compositor_y5_picker_interface_entry::entry::toggle(s); true }) },
         // (Settings has no global shortcut — reachable only via the overview Settings tab.)
         // Removed (per request): world-switch test shortcuts, Escape/cancel-picker,
         // VT switches, and all sink/media shortcuts — deactivated AND not listed.

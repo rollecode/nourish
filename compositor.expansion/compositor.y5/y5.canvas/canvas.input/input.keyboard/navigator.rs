@@ -302,7 +302,7 @@ struct Bind {
 /// Single source of truth for the canvas/navigation/zone/lock shortcuts.
 fn bindings() -> Vec<Bind> {
     vec![
-        Bind { id: "launcher", label: "Open launcher", default: shortcut!(Super + N), action: Box::new(|s| { launcher_delegate(s); true }) },
+        Bind { id: "launcher", label: "Open launcher", default: shortcut!(Super + K), action: Box::new(|s| { launcher_delegate(s); true }) },
         Bind { id: "capture", label: "Screen capture", default: shortcut!(Super + S), action: Box::new(|s| { compositor_y5_graphic_capture_interface::interface::request_setup(s); true }) },
         Bind { id: "fullscreen_exit", label: "Exit fullscreen", default: shortcut!(F11), action: Box::new(|s| fullscreen_unset_focused(s)) },
         Bind { id: "zone_1", label: "Zone 1", default: shortcut!(Super + Num1), action: Box::new(|s| { zone_delegate(s, "f1", false); true }) },
