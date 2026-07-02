@@ -32,6 +32,21 @@ pub fn handle(state: &mut Loop, _renderer: &mut GlesRenderer, m: SettingsMessage
             state.inner.preference.ime = Some(ime);
             let _ = pref::save(&state.inner.preference);
         }
+        SettingsMessage::Keyboard(kl) => {
+            // Persist AND apply the keyboard layout live: mutate the preference, save,
+            // then recompile the keymap on the seat's keyboard. `get_keyboard()` hands
+            // back an owned handle, so `&mut state.state` can be borrowed alongside the
+            // `&state.inner.preference` read (disjoint fields of `Loop`).
+            state.inner.preference.keyboard = kl;
+            let _ = pref::save(&state.inner.preference);
+            if let Some(keyboard) = state.state.seat.seat.get_keyboard() {
+                compositor_support_smithay_state_seat_xkb::xkb::apply(
+                    &keyboard,
+                    &mut state.state,
+                    &state.inner.preference.keyboard,
+                );
+            }
+        }
         SettingsMessage::Apply(a) => {
             if a.switch {
                 *state.inner.kernel.get_mut(&OUTPUT_SWITCH_REQUEST_MUT) = Some(OutputSwitchRequest::Apply {

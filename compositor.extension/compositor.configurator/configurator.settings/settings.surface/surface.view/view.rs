@@ -2,7 +2,7 @@
 //! `surface.chrome`. All edit messages forward to the surface handler; `Tab`, the
 //! display selection, and the optimistic confirm state are handled locally.
 use compositor_developer_environment_config_base::base::Environment;
-use compositor_developer_environment_preference_base::base::Ime;
+use compositor_developer_environment_preference_base::base::{Ime, KeyboardLayout};
 use compositor_developer_environment_keybinding_base::base::KeyRow;
 use compositor_orchestration_driver_output_base::base::{ApplyResult, DisplayInfo, ModeInfo, OutputsSnapshot};
 use compositor_support_iced_core_engine_base::{IcedUi, Renderer};
@@ -21,6 +21,8 @@ pub struct Settings {
     pub env: Environment,
     /// Input-method launch command (Misc tab), persisted to preferences.json.
     pub ime: Ime,
+    /// Keyboard layout (Misc tab), persisted + applied live.
+    pub keyboard: KeyboardLayout,
     pub dirty: bool,
     /// Every connected monitor (active + connected-but-inactive), for the picker.
     pub displays: Vec<DisplayInfo>,
@@ -57,7 +59,7 @@ fn default_mode(d: &DisplayInfo) -> Option<ModeInfo> {
 }
 
 impl Settings {
-    pub fn new(env: Environment, cursor: f32, natural: bool, snap: OutputsSnapshot, keys: Vec<KeyRow>, tab: Tab, ime: Ime) -> Self {
+    pub fn new(env: Environment, cursor: f32, natural: bool, snap: OutputsSnapshot, keys: Vec<KeyRow>, tab: Tab, ime: Ime, keyboard: KeyboardLayout) -> Self {
         let active = snap.displays.iter().find(|d| d.active).cloned();
         let active_edid = active.as_ref().map(|d| d.edid_key.clone()).unwrap_or_default();
         let selected_mode = active.as_ref().and_then(default_mode);
@@ -67,6 +69,7 @@ impl Settings {
             natural_scroll: natural,
             env,
             ime,
+            keyboard,
             dirty: false,
             displays: snap.displays,
             active_edid: active_edid.clone(),
@@ -143,6 +146,7 @@ impl IcedUi for Settings {
                 self.dirty = true;
             }
             SettingsMessage::Ime(i) => self.ime = i,
+            SettingsMessage::Keyboard(k) => self.keyboard = k,
             SettingsMessage::SelectDisplay(key) => {
                 self.selected_display = key.clone();
                 self.selected_mode = self.display(&key).and_then(default_mode);
@@ -231,6 +235,7 @@ impl IcedUi for Settings {
             &self.render_devices,
             self.fps,
             &self.ime,
+            &self.keyboard,
         )
     }
 }

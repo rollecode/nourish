@@ -1,7 +1,7 @@
 //! The settings-window message type, shared by the view + tab builders + the
 //! surface protocol/handler. iced-free so the protocol crate can name it.
 use compositor_developer_environment_config_base::base::Environment;
-use compositor_developer_environment_preference_base::base::Ime;
+use compositor_developer_environment_preference_base::base::{Ime, KeyboardLayout};
 use compositor_orchestration_driver_output_base::base::{ApplyResult, DisplayInfo, ModeInfo};
 
 /// A provisional display change the user can Keep/Revert: a target monitor
@@ -70,6 +70,11 @@ pub enum SettingsMessage {
     /// (forwarded). Carries the whole `Ime` like `Env`, so exec + args edits share one
     /// variant. Applied on the next compositor start.
     Ime(Ime),
+    /// A full edited keyboard-layout preference (Misc tab) to persist to
+    /// preferences.json AND apply live (forwarded). Carries the whole
+    /// `KeyboardLayout` like `Ime`/`Env`, so the source toggle + layout/variant/
+    /// options edits share one variant.
+    Keyboard(KeyboardLayout),
     /// Select a monitor in the Display picker (UI-local: syncs the mode list).
     SelectDisplay(String),
     /// Select a mode for the selected monitor (UI-local).

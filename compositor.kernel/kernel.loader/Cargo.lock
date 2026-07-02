@@ -1954,6 +1954,7 @@ dependencies = [
  "compositor_orchestration_driver_audio_base",
  "compositor_orchestration_driver_output_base",
  "compositor_orchestration_driver_settings_base",
+ "compositor_support_smithay_state_seat_xkb",
  "compositor_y5_audio_controller_interface",
  "smithay",
 ]
@@ -2036,6 +2037,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "compositor_configurator_settings_surface_keyboard"
+version = "0.0.1"
+dependencies = [
+ "compositor_configurator_settings_surface_control",
+ "compositor_configurator_settings_surface_message",
+ "compositor_configurator_settings_surface_style",
+ "compositor_developer_environment_preference_base",
+ "compositor_support_iced_core_engine_base",
+ "iced_core",
+ "iced_widget",
+]
+
+[[package]]
 name = "compositor_configurator_settings_surface_keys"
 version = "0.0.1"
 dependencies = [
@@ -2065,6 +2079,7 @@ name = "compositor_configurator_settings_surface_misc"
 version = "0.0.1"
 dependencies = [
  "compositor_configurator_settings_surface_control",
+ "compositor_configurator_settings_surface_keyboard",
  "compositor_configurator_settings_surface_message",
  "compositor_configurator_settings_surface_style",
  "compositor_developer_environment_preference_base",
@@ -6913,6 +6928,7 @@ dependencies = [
  "bitflags 2.13.0",
  "compositor_support_smithay_dispatch_state_base",
  "compositor_support_smithay_state_seat_base",
+ "compositor_support_smithay_state_seat_xkb",
  "smithay",
  "tracing",
  "tracing-subscriber",
@@ -6923,6 +6939,14 @@ name = "compositor_support_smithay_state_seat_focus"
 version = "0.0.1"
 dependencies = [
  "compositor_support_smithay_dispatch_state_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_support_smithay_state_seat_xkb"
+version = "0.0.1"
+dependencies = [
+ "compositor_developer_environment_preference_base",
  "smithay",
 ]
 

@@ -4,6 +4,7 @@ use iced_widget::button::{Status as BStatus, Style as Button};
 use iced_widget::slider::{Handle, HandleShape, Rail, Status as SStatus, Style as Slider};
 use iced_widget::toggler::{Status as TStatus, Style as Toggler};
 use iced_widget::pick_list::{Status as PStatus, Style as PickList};
+use iced_widget::text_input::{Status as IStatus, Style as TextInput};
 use iced_widget::overlay::menu::Style as Menu;
 use compositor_configurator_settings_surface_style::style::{rgba, ACCENT, LINE, MUTED, TEXT};
 
@@ -87,6 +88,25 @@ pub fn menu(_t: &Theme) -> Menu {
         selected_text_color: Color::BLACK,
         selected_background: bg(ACCENT),
         shadow: Shadow::default(),
+    }
+}
+
+/// Text field. Greys itself out when the widget is `Disabled` (i.e. rendered with
+/// no `.on_input(..)`), so a field can be visually disabled just by omitting its
+/// input handler — no layout shift and no separate "disabled field" widget.
+pub fn field(_t: &Theme, s: IStatus) -> TextInput {
+    let off = matches!(s, IStatus::Disabled);
+    TextInput {
+        background: bg(rgba(1.0, 1.0, 1.0, if off { 0.02 } else { 0.03 })),
+        border: Border {
+            color: if off { rgba(1.0, 1.0, 1.0, 0.06) } else { LINE },
+            width: 1.0,
+            radius: 3.0.into(),
+        },
+        icon: MUTED,
+        placeholder: rgba(1.0, 1.0, 1.0, if off { 0.15 } else { 0.35 }),
+        value: if off { rgba(1.0, 1.0, 1.0, 0.25) } else { TEXT },
+        selection: ACCENT,
     }
 }
 

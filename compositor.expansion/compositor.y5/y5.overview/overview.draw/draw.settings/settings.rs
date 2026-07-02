@@ -113,7 +113,8 @@ fn create(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Physica
     keys.extend(compositor_y5_overlay_interface_keyboard::keyboard::fixed());
     let tab = compositor_configurator_settings_surface_message::message::Tab::from_index(state.inner.kernel.get(&SETTINGS).tab);
     let ime = state.inner.preference.ime.clone().unwrap_or_default();
-    let ui = Settings::new(env, cursor, natural, snap, keys, tab, ime);
+    let keyboard = state.inner.preference.keyboard.clone();
+    let ui = Settings::new(env, cursor, natural, snap, keys, tab, ime, keyboard);
     let handle = load(state, renderer, ui, rect, IcedSpace::Screen, Layer::SCENE.bits());
     install_handler(state, handle);
     let untyped = handle.untyped();

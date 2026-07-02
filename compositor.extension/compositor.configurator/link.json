@@ -3,5 +3,6 @@
   "../../compositor.orchestration",
   "../../compositor.extension/compositor.monitor",
   "../../compositor.support/support.iced",
+  "../../compositor.support/support.smithay",
   "../../compositor.expansion/compositor.y5"
 ]

@@ -1,0 +1,11 @@
+[package]
+name = "compositor_support_smithay_state_seat_xkb"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+smithay = { workspace = true }
+compositor_developer_environment_preference_base = { workspace = true }
+
+[lib]
+path = "lib.rs"

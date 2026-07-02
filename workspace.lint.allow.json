@@ -294,6 +294,9 @@
   "compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.environment": [
     "size"
   ],
+  "compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.keyboard": [
+    "size"
+  ],
   "compositor.extension/compositor.monitor/monitor.overview/overview.ui/ui.base": [
     "size"
   ],

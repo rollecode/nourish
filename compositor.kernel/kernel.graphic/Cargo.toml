@@ -85,6 +85,7 @@ compositor_configurator_settings_surface_control = { path = "../../compositor.ex
 compositor_configurator_settings_surface_cursor = { path = "../../compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.cursor" }
 compositor_configurator_settings_surface_display = { path = "../../compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.display" }
 compositor_configurator_settings_surface_environment = { path = "../../compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.environment" }
+compositor_configurator_settings_surface_keyboard = { path = "../../compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.keyboard" }
 compositor_configurator_settings_surface_keys = { path = "../../compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.keys" }
 compositor_configurator_settings_surface_message = { path = "../../compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.message" }
 compositor_configurator_settings_surface_misc = { path = "../../compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.misc" }
@@ -534,6 +535,7 @@ compositor_support_smithay_state_seat_base = { path = "../../compositor.support/
 compositor_support_smithay_state_seat_dispatch = { path = "../../compositor.support/support.smithay/smithay.state/state.seat/seat.dispatch" }
 compositor_support_smithay_state_seat_factory = { path = "../../compositor.support/support.smithay/smithay.state/state.seat/seat.factory" }
 compositor_support_smithay_state_seat_focus = { path = "../../compositor.support/support.smithay/smithay.state/state.seat/seat.focus" }
+compositor_support_smithay_state_seat_xkb = { path = "../../compositor.support/support.smithay/smithay.state/state.seat/seat.xkb" }
 compositor_support_smithay_state_shm_base = { path = "../../compositor.support/support.smithay/smithay.state/state.shm/shm.base" }
 compositor_support_smithay_state_shm_dispatch = { path = "../../compositor.support/support.smithay/smithay.state/state.shm/shm.dispatch" }
 compositor_support_smithay_state_shm_factory = { path = "../../compositor.support/support.smithay/smithay.state/state.shm/shm.factory" }

@@ -51,8 +51,11 @@ where
     // `seat.get_keyboard().unwrap().input(...)`. That method translates the raw scancodes into
     // Wayland events and flushes them to the currently focused client.
     //
-    // The parameters here set the repeat rate (200ms delay, 25 repeats/sec).
-    let keyboard = seat.add_keyboard(Default::default(), 200, 25).unwrap();
+    // Repeat rate: 200ms delay, 25/sec. The keymap comes from the saved layout
+    // preference (see `seat.xkb`); the settings window hot-reloads it via `apply`.
+    let layout = compositor_support_smithay_state_seat_xkb::xkb::load();
+    let cfg = compositor_support_smithay_state_seat_xkb::xkb::config(&layout);
+    let keyboard = seat.add_keyboard(cfg, 200, 25).unwrap();
 
     // Enable NumLock at startup. In Wayland the compositor owns the xkb state,
     // so this is our responsibility (no external `numlockx` equivalent). Set it
