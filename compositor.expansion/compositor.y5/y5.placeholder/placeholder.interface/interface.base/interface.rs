@@ -242,6 +242,13 @@ pub fn on_window_destroy(state: &mut Loop, uuid: Uuid, renderer: &mut GlesRender
         return;
     }
 
+    // A user setting can turn the closed-window tiles off entirely: the
+    // placeholder record was already erased above, so returning here means a
+    // closed window leaves nothing on the canvas.
+    if !compositor_developer_environment_config_base::base::get().window_close_placeholder {
+        return;
+    }
+
     spawn_visible(state, renderer, ph);
 }
 
@@ -286,6 +293,12 @@ pub fn spawn_visible(state: &mut Loop, renderer: &mut GlesRenderer, ph: Placehol
 /// pending; defers a frame if the iced registry isn't up yet (early startup).
 pub fn promote_restored(state: &mut Loop, renderer: &mut GlesRenderer) {
     if state.inner.placeholder().pending_restore.is_empty() {
+        return;
+    }
+    // Tiles disabled: leave the disk-restored records pending instead of
+    // promoting them, so nothing is lost. They promote normally again once
+    // the setting is re-enabled (a restart, like every Environment change).
+    if !compositor_developer_environment_config_base::base::get().window_close_placeholder {
         return;
     }
     if state.inner.surface().registry.is_none() {

@@ -59,6 +59,9 @@ pub struct Environment {
     pub window_client_size_fallback: bool,
     /// `false` = fit only the root toplevel; `true` = fit the whole surface tree.
     pub window_subsurface_shrinks: bool,
+    /// `true` = a closed window leaves a relaunchable placeholder tile on the
+    /// canvas (Edit / Launch / Dismiss); `false` = closing a window leaves nothing.
+    pub window_close_placeholder: bool,
     // NOTE: live user preferences (cursor sensitivity, touchpad natural-scroll,
     // per-EDID output modes) intentionally do NOT live here. They are not
     // reboot-bound, so they live in `environment.preference` (preferences.json),
@@ -153,6 +156,7 @@ pub fn default_settings() -> Environment {
         capture_variable_frame_rate: false,
         window_client_size_fallback: false,
         window_subsurface_shrinks: false,
+        window_close_placeholder: true,
     }
 }
 
