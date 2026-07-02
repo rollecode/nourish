@@ -151,7 +151,7 @@ fn fullscreen_target(
 }
 
 /// The window backing the current keyboard focus, if any.
-fn focused_window(_loop: &Loop) -> Option<Window> {
+pub fn focused_window(_loop: &Loop) -> Option<Window> {
     let focus = _loop
         .state
         .seat
