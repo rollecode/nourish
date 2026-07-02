@@ -97,6 +97,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         nested = true;
     }
 
+    // Session compositor (native backend): scrub WAYLAND_DISPLAY / DISPLAY from
+    // OUR OWN environment before ANY GPU init. The Mesa `VK_LAYER_MESA_device_select`
+    // Vulkan layer, inside `vkEnumeratePhysicalDevices`, connects to $WAYLAND_DISPLAY
+    // and does a BLOCKING wl_display roundtrip to discover the "current" compositor's
+    // GPU — while holding the Vulkan loader's global mutex. We are the compositor, not
+    // a client; worse, an inherited *stale* WAYLAND_DISPLAY (leaked into the systemd
+    // user-manager env by a prior session's `announce_session` and reused as our own
+    // not-yet-listening socket name) makes that roundtrip block forever. Two Vulkan
+    // instances come up concurrently at startup — the `VulkanRenderer` on this thread
+    // and the wgpu context on a worker — so the worker stalls inside the layer holding
+    // the loader mutex and this thread's `vkCreateInstance` deadlocks on it: the
+    // compositor hangs BEFORE the event loop starts (no seat/DRM-master involvement —
+    // confirmed by backtrace). First-boot login has no WAYLAND_DISPLAY so it works;
+    // every login after a successful session inherits the stale one and hangs. We
+    // re-export WAYLAND_DISPLAY to our REAL socket for children later, after the
+    // backend is wired. Nested/winit dev keeps it: there the host display is live, so
+    // the layer's roundtrip is both wanted and non-blocking.
+    if !nested {
+        unsafe {
+            std::env::remove_var("WAYLAND_DISPLAY");
+            std::env::remove_var("DISPLAY");
+        }
+        info!("cleared inherited WAYLAND_DISPLAY/DISPLAY before GPU init (native session compositor)");
+    }
+
     info!("Creating the loop loader");
     // Create loader properties to add to state
     let state_loader = Loader {
