@@ -58,6 +58,25 @@ fn launcher_delegate(p0: &mut Loop) {
     compositor_y5_launcher_interface_base::interface::start_defered(p0)
 }
 
+/// Politely close the window under keyboard focus: send `xdg_toplevel.close`, the
+/// same "click the X" semantics the selection overlay's Request mode uses. Without
+/// keyboard focus, fall back to the primary selected window, then the first selected
+/// one; nothing focused or selected is a no-op.
+fn close_focused(state: &mut Loop) {
+    let window = compositor_y5_window_interface_draw::fullscreen::focused_window(state).or_else(|| {
+        let selection = state.inner.select().Selection.clone();
+        selection
+            .iter()
+            .find(|w| state.inner.select().primary((***w).clone()))
+            .or_else(|| selection.first())
+            .map(|w| (**w).clone())
+    });
+    let Some(window) = window else { return };
+    if let Some(toplevel) = window.toplevel() {
+        toplevel.send_close();
+    }
+}
+
 fn zone_delegate(state: &mut Loop, zone: &str, register: bool) {
     if register {
         // CHECK: From given selection, it must be availabvle windows only. doesnt matter since they wont participate next step.
@@ -302,8 +321,9 @@ struct Bind {
 /// Single source of truth for the canvas/navigation/zone/lock shortcuts.
 fn bindings() -> Vec<Bind> {
     vec![
-        Bind { id: "launcher", label: "Open launcher", default: shortcut!(Super + N), action: Box::new(|s| { launcher_delegate(s); true }) },
+        Bind { id: "launcher", label: "Open launcher", default: shortcut!(Super + K), action: Box::new(|s| { launcher_delegate(s); true }) },
         Bind { id: "capture", label: "Screen capture", default: shortcut!(Super + S), action: Box::new(|s| { compositor_y5_graphic_capture_interface::interface::request_setup(s); true }) },
+        Bind { id: "close", label: "Close window", default: shortcut!(Super + C), action: Box::new(|s| { close_focused(s); true }) },
         Bind { id: "fullscreen_exit", label: "Exit fullscreen", default: shortcut!(F11), action: Box::new(|s| fullscreen_unset_focused(s)) },
         Bind { id: "zone_1", label: "Zone 1", default: shortcut!(Super + Num1), action: Box::new(|s| { zone_delegate(s, "f1", false); true }) },
         Bind { id: "zone_2", label: "Zone 2", default: shortcut!(Super + Num2), action: Box::new(|s| { zone_delegate(s, "f2", false); true }) },
