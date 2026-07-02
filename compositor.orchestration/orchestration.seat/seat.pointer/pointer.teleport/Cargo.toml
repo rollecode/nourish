@@ -1,0 +1,11 @@
+[package]
+name = "compositor_orchestration_seat_pointer_teleport"
+version = "0.0.1"
+edition = "2024"
+
+# Pure geometry: the cursor-teleport layout (abstract-space squares) and the
+# edge-crossing lookup. No smithay/DRM/logging deps — std only, unit-testable.
+[dependencies]
+
+[lib]
+path = "lib.rs"

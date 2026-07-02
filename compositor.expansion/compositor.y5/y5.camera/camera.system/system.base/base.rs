@@ -5,7 +5,7 @@ use compositor_support_system_input_layer_base::base as input_layer;
 use compositor_support_system_storage_slot_base::base::Storage;
 use compositor_support_system_trait_system_base::base::{BufferCx, System, SystemCx, WorldBuilder};
 use compositor_support_system_world_frame_base::base::FrameTick;
-use compositor_y5_viewport_state_base::state::{Viewports, VIEWPORTS, VIEWPORTS_MUT};
+use compositor_y5_viewport_state_base::state::{OutputViews, OUTPUT_VIEWS, OUTPUT_VIEWS_MUT};
 use compositor_y5_canvas_input_state::state::{ActiveOption, CanvasGrab};
 use compositor_y5_canvas_system_base::base::CANVAS;
 use compositor_y5_group_state_base::state::{GroupVisibility, GROUP};
@@ -118,7 +118,7 @@ impl System for CameraSystem {
     }
 
     fn register(&mut self, builder: &mut WorldBuilder) {
-        builder.storage.insert(&VIEWPORTS, Viewports::default());
+        builder.storage.insert(&OUTPUT_VIEWS, OutputViews::default());
         builder.input(input_layer::WORLD);
     }
 
@@ -205,7 +205,7 @@ impl System for CameraSystem {
             // A manual zoom is direct user intent: drop any active navigator travel
             // so the easing doesn't fight (and immediately overwrite) the gesture.
             cancel_travel(cx);
-            let old_zoom = *cx.storage.get(&VIEWPORTS).focus_camera().transform.zoom();
+            let old_zoom = *cx.storage.get(&OUTPUT_VIEWS).current_views().focus_camera().transform.zoom();
             let base_step = 0.05 * old_zoom;
             let distance_from_normal = (old_zoom - 1.0).abs();
             let normal_dampener = 0.4 + (0.6 * (distance_from_normal / (distance_from_normal + 1.0)));
@@ -222,7 +222,7 @@ impl System for CameraSystem {
         // Announce active-viewport changes (split/click/detach/remove) so
         // listeners (e.g. the fractional-scale publish) can recompute for the new
         // pane's camera.
-        let active = cx.storage.get(&VIEWPORTS).active;
+        let active = cx.storage.get(&OUTPUT_VIEWS).current_views().active;
         if self.last_active != Some(active) {
             self.last_active = Some(active);
             cx.channels.send(&ACTIVE_VIEWPORT_CHANGED_TX, ActiveViewportChanged { slot: active });
@@ -251,7 +251,7 @@ impl System for CameraSystem {
         // directly, so cancel any coast while it runs; otherwise step the coast.
         // Only emit when there is pan state to advance, to avoid per-frame churn.
         let nav_driving = output.is_some_and(|o| o.position.is_some());
-        let camera = cx.storage.get(&VIEWPORTS).focus_camera();
+        let camera = cx.storage.get(&OUTPUT_VIEWS).current_views().focus_camera();
         let pan_active = camera.panning
             || camera.pan_velocity.x != 0.0
             || camera.pan_velocity.y != 0.0
@@ -267,7 +267,7 @@ impl System for CameraSystem {
     }
 
     fn buffer(&mut self, cx: &mut BufferCx, message: Box<dyn Any>) {
-        let camera = cx.storage.get_mut(&VIEWPORTS_MUT).focus_camera_mut();
+        let camera = cx.storage.get_mut(&OUTPUT_VIEWS_MUT).current_views_mut().focus_camera_mut();
         match *message.downcast::<CamCmd>().expect("camera buffer type") {
             CamCmd::SetPosition(x, y) => {
                 // NOTE: do NOT touch `position_previous` here. It is the canvas-PAN
@@ -426,7 +426,7 @@ fn canvas_owns_gesture(cx: &mut SystemCx, cursor: Point<f64, Logical>) -> bool {
 /// rapid gesture accumulates (each step reads the just-written zoom).
 fn apply_zoom(cx: &mut SystemCx, cursor: Point<f64, Logical>, factor: f64) {
     let (old_zoom, cam_position) = {
-        let camera = cx.storage.get(&VIEWPORTS).focus_camera();
+        let camera = cx.storage.get(&OUTPUT_VIEWS).current_views().focus_camera();
         (*camera.transform.zoom(), camera.transform.position())
     };
     let new_zoom = (old_zoom * factor).clamp(MIN_ZOOM, MAX_ZOOM);

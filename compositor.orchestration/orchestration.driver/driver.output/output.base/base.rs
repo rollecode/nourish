@@ -7,6 +7,14 @@
 
 use compositor_support_system_storage_token_base::base::{Token, TokenMut};
 
+/// Stable cross-layer key for one physical monitor: the EDID identity
+/// "make model serial" (the same string as `DisplayInfo::edid_key` and
+/// `MonitorIdentity::key()`). Used to key per-output view state and the
+/// cursor-teleport layout. A plain `String` so this primitive-only driver crate
+/// stays free of smithay/DRM types; the `smithay::Output` → key mapping lives in
+/// the orchestration core (`output_key`), where an `Output` is available.
+pub type OutputKey = String;
+
 /// One advertised mode, primitive form (refresh in mHz to match DRM `vrefresh*1000`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ModeInfo {
@@ -19,9 +27,14 @@ pub struct ModeInfo {
 /// `Apply` provisionally switches and arms the confirm/revert watchdog; `Confirm`
 /// (user kept it) makes it permanent; `Revert` (user declined / dialog closed)
 /// restores the previous mode now. The kernel drains at most one per loop.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+///
+/// `Apply` carries the target monitor's `edid_key` so the kernel changes the mode
+/// of the SELECTED output's pipe (multi-output), not always the primary. Only one
+/// provisional change is in flight at a time, so `Confirm`/`Revert` need no target
+/// — the kernel resolves the pipe with the armed watchdog.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum OutputModeRequest {
-    Apply { width: u16, height: u16, refresh_mhz: u32 },
+    Apply { edid_key: String, width: u16, height: u16, refresh_mhz: u32 },
     Confirm,
     Revert,
 }

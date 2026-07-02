@@ -59,6 +59,7 @@ compositor_developer_environment_preference_base.workspace = true
 compositor_developer_environment_keybinding_base.workspace = true
 compositor_orchestration_seat_pointer_texture.workspace = true
 compositor_orchestration_seat_pointer_state.workspace = true
+compositor_orchestration_seat_pointer_teleport.workspace = true
 compositor_remote_message_state_base.workspace = true
 compositor_remote_message_server_base.workspace = true
 compositor_y5_canvas_state_base.workspace = true

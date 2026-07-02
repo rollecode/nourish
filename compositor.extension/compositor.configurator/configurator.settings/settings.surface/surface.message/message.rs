@@ -102,4 +102,22 @@ pub enum SettingsMessage {
     BtConnect(String),
     /// Close the settings window (forwarded).
     Close,
+
+    // --- Cursor-teleport layout canvas (Display tab, multi-monitor) ------------
+    /// Drop monitor `edid_key` onto the canvas at abstract-layout `(x, y)` as a new
+    /// square (UI-local: appends a placement, snapped + nudged off overlaps).
+    LayoutPlace(String, f32, f32),
+    /// Move placement `id` to abstract-layout `(x, y)` (UI-local: snap + no-overlap).
+    LayoutMove(u64, f32, f32),
+    /// Resize placement `id` to square side `size` (UI-local: min size + no-overlap).
+    /// Teleport geometry only — never scale/resolution.
+    LayoutResize(u64, f32),
+    /// Select placement `id` (UI-local: also selects its monitor so the mode/res
+    /// controls below populate).
+    LayoutSelect(u64),
+    /// Remove placement `id` from the canvas (UI-local).
+    LayoutRemove(u64),
+    /// Commit the whole arrangement (forwarded on drag-end): persisted to
+    /// `preferences.json` and rebuilt into the live teleport layout.
+    LayoutCommit(Vec<compositor_developer_environment_preference_base::base::LayoutPlacement>),
 }

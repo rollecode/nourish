@@ -93,9 +93,10 @@ pub fn lock_visual(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32
             surface_element.push(surface.id);
             surface_input = Some(surface);
         }
+        let output_id = OutputId::from_key(&state.inner.active_output_key());
         let capture = if let Some(registry_capture) = state.inner.kernel.get_mut(&compositor_orchestration_driver_capture_base::base::CAPTURE_REGISTRY_MUT).as_mut() {
             if let Some(cap) = registry_capture
-                .request(&state.inner.environment.GPU.as_str(), renderer, CaptureSource::OutputFramebuffer(OutputId(0)))
+                .request(&state.inner.environment.GPU.as_str(), renderer, CaptureSource::OutputFramebuffer(output_id))
                 .ok()
             {
                 LockActiveCapture::Capture(cap)

@@ -83,7 +83,7 @@ pub fn register(
             }
             // Refresh the rim's display snapshot after any topology change so the
             // lid policy sees current external/internal presence.
-            let active = ctx_rc.borrow().connector;
+            let active = ctx_rc.borrow().pipe().connector;
             let ctx = ctx_rc.borrow();
             let manager = ctx.drm_output_manager.borrow();
             let snap = compositor_kernel_native_context_display_base::base::compute(

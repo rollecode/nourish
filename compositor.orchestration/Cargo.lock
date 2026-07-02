@@ -1973,6 +1973,7 @@ dependencies = [
  "compositor_configurator_settings_surface_style",
  "compositor_developer_environment_config_base",
  "compositor_developer_environment_keybinding_base",
+ "compositor_developer_environment_preference_base",
  "compositor_orchestration_driver_output_base",
  "compositor_support_iced_core_engine_base",
  "compositor_y5_audio_controller_interface",
@@ -2009,6 +2010,7 @@ dependencies = [
  "compositor_configurator_settings_surface_control",
  "compositor_configurator_settings_surface_message",
  "compositor_configurator_settings_surface_style",
+ "compositor_developer_environment_preference_base",
  "compositor_orchestration_driver_output_base",
  "compositor_support_iced_core_engine_base",
  "iced_core",
@@ -2049,6 +2051,7 @@ dependencies = [
  "compositor_configurator_bluetooth_backend_base",
  "compositor_configurator_network_backend_base",
  "compositor_developer_environment_config_base",
+ "compositor_developer_environment_preference_base",
  "compositor_orchestration_driver_output_base",
  "compositor_y5_audio_controller_interface",
 ]
@@ -2073,6 +2076,7 @@ dependencies = [
  "compositor_configurator_settings_surface_message",
  "compositor_developer_environment_config_base",
  "compositor_developer_environment_keybinding_base",
+ "compositor_developer_environment_preference_base",
  "compositor_orchestration_driver_output_base",
  "compositor_support_iced_core_engine_base",
  "compositor_y5_audio_controller_interface",
@@ -3086,6 +3090,7 @@ dependencies = [
  "compositor_orchestration_environment_type_base",
  "compositor_orchestration_seat_gesture_state",
  "compositor_orchestration_seat_pointer_state",
+ "compositor_orchestration_seat_pointer_teleport",
  "compositor_orchestration_seat_pointer_texture",
  "compositor_orchestration_seat_system_pointer",
  "compositor_orchestration_storage_state_base",
@@ -3530,6 +3535,7 @@ dependencies = [
  "compositor_orchestration_core_state_base",
  "compositor_orchestration_draw_layer_base",
  "compositor_orchestration_input_drive_base",
+ "compositor_orchestration_seat_pointer_teleport",
  "compositor_orchestration_seat_system_pointer",
  "compositor_support_iced_core_engine_base",
  "compositor_support_smithay_dispatch_state_base",
@@ -3563,6 +3569,10 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
 ]
+
+[[package]]
+name = "compositor_orchestration_seat_pointer_teleport"
+version = "0.0.1"
 
 [[package]]
 name = "compositor_orchestration_seat_pointer_texture"

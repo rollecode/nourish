@@ -80,8 +80,27 @@ impl<'a> HitCx<'a> {
         &self.storage.get(&compositor_support_world_host_space_base::base::SPACE).inner
     }
 
+    /// The output the CURSOR is on — the monitor whose mode/scale the reverse
+    /// projections (screen-space hit-testing) must use, so a physical cursor on a
+    /// secondary monitor is mapped against THAT monitor, not the primary. Resolved
+    /// from `OUTPUT_VIEWS.current` (the key the pointer path keeps in sync with the
+    /// cursor's output) by matching the same "make model serial" `output_key` the
+    /// render/input paths use; falls back to the first output pre-identity.
+    fn current_output(&self) -> &smithay::output::Output {
+        let key = &self.storage.get(&compositor_y5_viewport_state_base::state::OUTPUT_VIEWS).current;
+        self.space_state()
+            .state
+            .outputs()
+            .find(|o| {
+                let p = o.physical_properties();
+                format!("{} {} {}", p.make, p.model, p.serial_number) == *key
+            })
+            .or_else(|| self.space_state().state.outputs().next())
+            .unwrap_or_else(|| abort!("no output for hit-test"))
+    }
+
     fn camera(&self) -> &compositor_y5_camera_state_base::state::Camera {
-        self.storage.get(&compositor_y5_viewport_state_base::state::VIEWPORTS).focus_camera()
+        self.storage.get(&compositor_y5_viewport_state_base::state::OUTPUT_VIEWS).current_views().focus_camera()
     }
 
     fn surface(&self) -> &compositor_y5_surface_state_base::state::SurfaceState {
@@ -103,7 +122,7 @@ impl<'a> HitCx<'a> {
     }
 
     fn size_ctx_all(&self) -> XformCtx {
-        let output = self.space_state().state.outputs().next().unwrap();
+        let output = self.current_output();
         let mode = output.current_mode().unwrap_or_else(|| abort!("output has a current mode"));
         let scale = output.current_scale().fractional_scale();
         let camera = &self.camera().transform;
@@ -120,10 +139,10 @@ impl<'a> HitCx<'a> {
     /// the analog of the renderer's pane context — so screen-space hit-testing
     /// (iced screen, layer-shell) lands where the cursor actually is when split.
     fn pane_context(&self) -> XformCtx {
-        let output = self.space_state().state.outputs().next().unwrap();
+        let output = self.current_output();
         let mode = output.current_mode().unwrap_or_else(|| abort!("output has a current mode"));
         let scale = output.current_scale().fractional_scale();
-        let viewports = self.storage.get(&compositor_y5_viewport_state_base::state::VIEWPORTS);
+        let viewports = self.storage.get(&compositor_y5_viewport_state_base::state::OUTPUT_VIEWS).current_views();
         let bounds = smithay::utils::Rectangle::new(smithay::utils::Point::from((0, 0)), mode.size);
         let computed = compositor_y5_viewport_layout_base::layout::compute(viewports, bounds);
         let rect = computed.regions.iter().find(|r| r.slot == viewports.pointer).map(|r| r.rect).unwrap_or(bounds);
@@ -251,7 +270,7 @@ pub fn pass_all(_: &SurfaceHit) -> bool {
 // ─── Iced camera helper ─────────────────────────────────────────────
 
 pub fn iced_camera_hcx(hcx: &HitCx) -> (IcedTransform, Size<f64, Physical>) {
-    let output = hcx.space_state().state.outputs().next().unwrap();
+    let output = hcx.current_output();
     let mode = output.current_mode().unwrap_or_else(|| abort!("output has mode"));
     let scale = output.current_scale().fractional_scale();
 
@@ -538,9 +557,11 @@ pub fn surface_under_filtered_cx(
     let layer_map = layer_map_for_output(output);
     let check_layer_enabled = hcx.select().Selection.len() > 0;
 
+    // Size of the output the cursor is actually on (found just above), not the
+    // primary — layer-shell positioning on a secondary monitor must use its size.
     let compositor_output_size_logical = hcx.space_state()
         .state
-        .output_geometry(hcx.space_state().state.outputs().next().unwrap())
+        .output_geometry(output)
         .unwrap()
         .size;
 

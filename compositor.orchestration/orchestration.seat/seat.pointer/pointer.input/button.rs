@@ -7,6 +7,17 @@ use compositor_y5_surface_interface_base::hit::surface_under_filtered;
 use compositor_y5_window_interface_draw::visible::DrawWindow;
 
 pub fn button<I: InputBackend>(event: &<I as InputBackend>::PointerButtonEvent, _loop: &mut Loop) {
+    // Track held buttons FIRST (before any early return below), synchronously in the
+    // same input pipeline as motion, so cursor teleportation is suppressed for the
+    // whole duration of ANY drag — panning the settings layout canvas, a window/pane
+    // move/resize, a selection. Teleporting to another monitor mid-drag would break
+    // the interaction. A message-driven flag raced the motion path and was too late.
+    match event.state() {
+        ButtonState::Pressed => _loop.inner.buttons_held = _loop.inner.buttons_held.saturating_add(1),
+        ButtonState::Released => _loop.inner.buttons_held = _loop.inner.buttons_held.saturating_sub(1),
+    }
+    _loop.inner.suppress_teleport = _loop.inner.buttons_held > 0;
+
     // Overview overlay open → the overview layer handles + swallows the click
     // (menu bar / grid cell / globe); windows never receive it.
     if compositor_y5_overview_input_pointer::pointer::button::<I>(event, _loop) {

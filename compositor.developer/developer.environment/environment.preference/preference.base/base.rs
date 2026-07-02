@@ -30,6 +30,25 @@ pub struct OutputProfile {
     pub mode: Option<ModeRequest>,
 }
 
+/// One placed monitor in the cursor-teleport layout (the settings Display-tab
+/// canvas). Purely a cursor-crossing map: `x`/`y`/`size` are abstract layout-space
+/// coordinates (a unit-agnostic arrangement grid), NOT physical pixels, and never
+/// affect a monitor's scale or resolution. `identity` is the EDID key ("make model
+/// serial"); the SAME identity may appear in several placements (each an extra
+/// teleport zone for that monitor). Squares are kept square (`size` = side length).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct LayoutPlacement {
+    /// Stable per-placement id (disambiguates duplicate placements of one monitor).
+    pub id: u64,
+    /// EDID identity ("make model serial") of the monitor this square represents.
+    pub identity: String,
+    /// Top-left in abstract layout space.
+    pub x: f32,
+    pub y: f32,
+    /// Side length of the square in abstract layout space.
+    pub size: f32,
+}
+
 /// Fallback mode for any monitor that has no per-output [`OutputProfile`] mode yet.
 /// Manually set in preferences.json only (no UI). `refresh_mhz` is mHz (e.g.
 /// `60000` = 60 Hz) to match [`ModeRequest::Advertised`]; an implausibly small
@@ -57,6 +76,12 @@ pub struct Preference {
     /// Fallback mode for monitors without a per-output profile (manual only).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub outputs_default_mode: Option<DefaultMode>,
+    /// The cursor-teleport layout: squares placed on the settings Display-tab
+    /// canvas. Empty (the default) = single-monitor / no custom teleport, so the
+    /// pointer clamps to its output exactly as before. Many-per-identity (unlike
+    /// `outputs`, which is one-per-identity), so it is its own list.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub outputs_layout: Vec<LayoutPlacement>,
 }
 
 impl Default for Preference {
@@ -66,6 +91,7 @@ impl Default for Preference {
             input_natural_scroll: true,
             outputs: Vec::new(),
             outputs_default_mode: None,
+            outputs_layout: Vec::new(),
         }
     }
 }
@@ -125,6 +151,12 @@ pub fn upsert_output(outputs: &mut Vec<OutputProfile>, edid_key: &str, mode: Mod
     } else {
         outputs.push(OutputProfile { identity: Some(edid_key.to_string()), mode: Some(mode) });
     }
+}
+
+/// Replace the whole cursor-teleport layout (the settings canvas commits the full
+/// arrangement at once on drag-end, so there is no per-square upsert).
+pub fn set_layout(prefs: &mut Preference, placements: Vec<LayoutPlacement>) {
+    prefs.outputs_layout = placements;
 }
 
 /// Make the profile for `edid_key` the FIRST entry in `outputs` — the default /

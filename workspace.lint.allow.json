@@ -8,10 +8,19 @@
   "compositor.orchestration/orchestration.driver/driver.output/output.base": [
     "size"
   ],
+  "compositor.orchestration/orchestration.seat/seat.pointer/pointer.teleport": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.viewport/viewport.state/state.base": [
+    "size"
+  ],
   "compositor.extension/compositor.configurator/configurator.settings/settings.interface/interface.handle": [
     "size"
   ],
   "compositor.extension/compositor.configurator/configurator.settings/settings.surface/surface.message": [
+    "size"
+  ],
+  "compositor.kernel/kernel.native/native.context/context.render/render.base": [
     "size"
   ],
   "compositor.kernel/kernel.native/native.context/context.display/display.build": [
@@ -167,6 +176,9 @@
     "size"
   ],
   "compositor.expansion/compositor.y5/y5.overview/overview.draw/draw.status": [
+    "size"
+  ],
+  "compositor.expansion/compositor.y5/y5.overview/overview.draw/draw.frame": [
     "size"
   ],
   "compositor.kernel/kernel.gles/gles.element/element.combined/combined.base": [

@@ -305,6 +305,11 @@ fn begin_active(state: &mut Loop, renderer: &mut GlesRenderer) {
     // the per-element render fills it, so the screen position/clamp is
     // irrelevant. Blit-based (ScreenRegion) gets the on-screen crop; FullScreen
     // taps the whole framebuffer.
+    // Capture targets the ACTIVE monitor (the one the user is on), keyed by its
+    // stable EDID-derived id — the same id the render loop tags that output's
+    // capture entries with, so a capture from a secondary monitor reads that
+    // monitor's framebuffer instead of always the primary's (`OutputId(0)`).
+    let output_id = OutputId::from_key(&state.inner.active_output_key());
     let source = match &target {
         CaptureTarget::Windows(_) | CaptureTarget::WorldRegion(_) => {
             let Some(sz) = render_entry_size(state, &target) else {
@@ -312,13 +317,13 @@ fn begin_active(state: &mut Loop, renderer: &mut GlesRenderer) {
                 return;
             };
             CaptureSource::Region {
-                output: OutputId(0),
+                output: output_id,
                 rect: Rectangle::new(Point::from((0, 0)), sz),
             }
         }
         CaptureTarget::ScreenRegion(_) => match target_crop_physical(state, &target, sw, sh) {
             Some(rect) => CaptureSource::Region {
-                output: OutputId(0),
+                output: output_id,
                 rect,
             },
             None => {
@@ -326,7 +331,7 @@ fn begin_active(state: &mut Loop, renderer: &mut GlesRenderer) {
                 return;
             }
         },
-        CaptureTarget::FullScreen => CaptureSource::OutputFramebuffer(OutputId(0)),
+        CaptureTarget::FullScreen => CaptureSource::OutputFramebuffer(output_id),
     };
 
     let gpu = state.inner.environment.GPU.clone();
@@ -1153,10 +1158,9 @@ fn set_countdown(state: &mut Loop, secs: u32) {
 // ---------------------------------------------------------------------------
 
 fn output_size(state: &Loop) -> (i32, i32) {
-    let Some(output) = state.inner.space_state().state.outputs().next() else {
-        return (0, 0);
-    };
-    match output.current_mode() {
+    // The ACTIVE monitor's mode (the one being captured), not the primary — a
+    // ScreenRegion crop on a secondary monitor must size to that monitor.
+    match state.inner.active_output().current_mode() {
         Some(m) => (m.size.w, m.size.h),
         None => (0, 0),
     }

@@ -36,6 +36,15 @@ fn settings_rect(size: Size<i32, Physical>) -> Rectangle<i32, Physical> {
 }
 
 pub fn per_frame(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Physical>) {
+    // Runs once per output in the render loop; the settings window is a screen-space
+    // surface that belongs to the ACTIVE monitor only. Act only on the active
+    // output's pass, so `size` is that monitor's and it isn't created/resized on
+    // every other output. (render_output None = single/non-loop pass → run.)
+    if let Some(k) = &state.inner.render_output {
+        if *k != state.inner.active_output_key() {
+            return;
+        }
+    }
     let shown = state.inner.overview().visible
         && state.inner.overview().overlay_ready()
         && state.inner.overview().is_settings();
@@ -112,7 +121,8 @@ fn create(state: &mut Loop, renderer: &mut GlesRenderer, size: Size<i32, Physica
     keys.extend(compositor_y5_canvas_input_keyboard::navigator::fixed());
     keys.extend(compositor_y5_overlay_interface_keyboard::keyboard::fixed());
     let tab = compositor_configurator_settings_surface_message::message::Tab::from_index(state.inner.kernel.get(&SETTINGS).tab);
-    let ui = Settings::new(env, cursor, natural, snap, keys, tab);
+    let layout = state.inner.preference.outputs_layout.clone();
+    let ui = Settings::new(env, cursor, natural, snap, keys, tab, layout);
     let handle = load(state, renderer, ui, rect, IcedSpace::Screen, Layer::SCENE.bits());
     install_handler(state, handle);
     let untyped = handle.untyped();

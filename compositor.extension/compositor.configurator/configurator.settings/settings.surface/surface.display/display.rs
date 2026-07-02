@@ -4,11 +4,13 @@
 //! and **REVERT** undoes it. All three are always rendered (no layout shift) and
 //! enabled only when relevant. Selecting a different monitor + applying switches
 //! the active output; selecting another mode changes the active monitor's mode.
+use compositor_developer_environment_preference_base::base::LayoutPlacement;
 use compositor_orchestration_driver_output_base::base::{DisplayInfo, ModeInfo};
 use compositor_support_iced_core_engine_base::Renderer;
 use compositor_configurator_settings_surface_message::message::{Applied, SettingsMessage};
 use compositor_configurator_settings_surface_style::style;
 use compositor_configurator_settings_surface_control::control;
+use crate::layout_canvas::layout_canvas;
 use iced_core::{Element, Length, Theme};
 use iced_widget::{button, column, row, scrollable, text, Column};
 
@@ -19,12 +21,14 @@ fn mode_label(m: &ModeInfo) -> String {
 }
 
 pub fn build<'a>(
-    displays: &[DisplayInfo],
+    displays: &'a [DisplayInfo],
     active_edid: &str,
     selected_display: &str,
     selected_mode: Option<ModeInfo>,
     confirming: bool,
     pending: Option<&Applied>,
+    layout: &'a [LayoutPlacement],
+    selected_placement: Option<u64>,
 ) -> El<'a> {
     let head = column![
         text("DISPLAY").size(16).color(style::ACCENT),
@@ -50,13 +54,17 @@ pub fn build<'a>(
 
     // Action row directly below the monitor list — always present, conditionally
     // enabled (a button with no on_press is disabled, so the layout never shifts).
-    let active = displays.iter().find(|d| d.edid_key == active_edid);
-    let changed = selected_display != active_edid
-        || (selected_mode.is_some() && selected_mode != active.and_then(|d| d.current));
-    // CHECK is enabled only when a change is pending (different monitor OR a
-    // different resolution/Hz) AND nothing is currently provisioning. APPLY/REVERT
-    // are enabled only WHILE provisioning. A disabled button gets no `on_press` and
-    // the greyed `disabled` style so it both looks and behaves inert.
+    // Multi-output: every connected monitor is independently driven, so changing a
+    // resolution is always an in-place per-pipe mode change (`switch = false`) — NOT
+    // an active-output switch (which tears the primary down and fails the modeset for
+    // an already-lit secondary → the "reverts immediately" bug). A change is pending
+    // when the picked mode differs from the SELECTED monitor's current mode.
+    let selected = displays.iter().find(|d| d.edid_key == selected_display);
+    let changed = selected_mode.is_some() && selected_mode != selected.and_then(|d| d.current);
+    // CHECK is enabled only when a change is pending AND nothing is currently
+    // provisioning. APPLY/REVERT are enabled only WHILE provisioning. A disabled
+    // button gets no `on_press` and the greyed `disabled` style so it both looks and
+    // behaves inert.
     let check_enabled = !confirming && changed && selected_mode.is_some();
     let check = {
         let b = button(text("CHECK CHANGES")).width(Length::Fill);
@@ -64,7 +72,7 @@ pub fn build<'a>(
             (true, Some(mode)) => b.style(control::action).on_press(SettingsMessage::Apply(Applied {
                 edid_key: selected_display.to_string(),
                 mode,
-                switch: selected_display != active_edid,
+                switch: false,
             })),
             _ => b.style(control::disabled),
         }
@@ -96,10 +104,53 @@ pub fn build<'a>(
         _ => modes.push(text("No advertised modes for this monitor.").size(12).color(style::MUTED).into()),
     }
 
-    column![
-        head,
-        Column::with_children(monitors).spacing(6),
-        actions,
-        scrollable(Column::with_children(modes).spacing(6)).height(Length::Fill),
-    ].spacing(14).into()
+    // Cursor-teleport layout editor — only meaningful with more than one monitor.
+    // The canvas draws each placed monitor as a draggable/resizable square (inner
+    // box = true aspect); "＋" buttons add a monitor to the layout; APPLY LAYOUT
+    // persists it. Clicking a square selects that monitor so the controls below
+    // populate for it.
+    let mut col = column![head].spacing(14);
+    if displays.len() > 1 {
+        let mut adds: Vec<El<'a>> =
+            vec![text("ADD TO CURSOR LAYOUT").size(11).color(style::MUTED).into()];
+        for d in displays {
+            adds.push(
+                button(text(format!("＋ {}", d.name)))
+                    .width(Length::Fill)
+                    .style(control::action)
+                    .on_press(SettingsMessage::LayoutPlace(d.edid_key.clone(), 0.0, 0.0))
+                    .into(),
+            );
+        }
+        let apply_layout = button(text("APPLY LAYOUT"))
+            .width(Length::Fill)
+            .style(control::accent)
+            .on_press(SettingsMessage::LayoutCommit(layout.to_vec()));
+        let remove: El<'a> = match selected_placement {
+            Some(id) => button(text("REMOVE"))
+                .style(control::action)
+                .on_press(SettingsMessage::LayoutRemove(id))
+                .into(),
+            None => button(text("REMOVE")).style(control::disabled).into(),
+        };
+        col = col.push(
+            column![
+                text("CURSOR TELEPORT LAYOUT").size(11).color(style::MUTED),
+                // Canvas (pan/zoom, fills) on the left; the add-monitor list is a
+                // vertical column on its right.
+                row![
+                    layout_canvas(layout, displays, selected_placement),
+                    Column::with_children(adds).spacing(6).width(Length::Fixed(200.0)),
+                ]
+                .spacing(12),
+                row![apply_layout, remove].spacing(8),
+            ]
+            .spacing(8),
+        );
+    }
+
+    col.push(Column::with_children(monitors).spacing(6))
+        .push(actions)
+        .push(scrollable(Column::with_children(modes).spacing(6)).height(Length::Fill))
+        .into()
 }

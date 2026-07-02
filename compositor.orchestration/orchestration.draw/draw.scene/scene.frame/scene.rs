@@ -24,6 +24,59 @@ pub struct Scene<R: Renderer> {
     pub visible_window: Vec<Window>,
 }
 
+thread_local! {
+    /// Last fractional scale emitted per surface — the dedup so `update_fractional`
+    /// only re-sends `wp_fractional_scale` when a window's best-resolution scale
+    /// actually changes, not every frame. Keyed by the surface's protocol id.
+    static FRAC_SENT: std::cell::RefCell<
+        std::collections::HashMap<smithay::reexports::wayland_server::backend::ObjectId, f64>,
+    > = std::cell::RefCell::new(std::collections::HashMap::new());
+}
+
+/// Per-window fractional scale, best-resolution across ALL outputs. A window may be
+/// visible in several viewports spread over several monitors at different zooms; its
+/// preferred scale follows the HIGHEST-zoom (sharpest) one. Derived from the live
+/// per-output view state (`output_views`: each slot's camera zoom + its `visible`
+/// window set), so it's independent of which output is mid-render — and emitted only
+/// on change (via `FRAC_SENT`), which is what stops the per-output flip-flop from
+/// re-sending the scale to clients every frame.
+fn update_fractional(state: &mut Loop) {
+    use smithay::reexports::wayland_server::Resource;
+    // uuid → surface for currently-mapped windows (the `visible` sets store uuids).
+    let uuid_surface: std::collections::HashMap<uuid::Uuid, WlSurface> = state
+        .inner
+        .space_state()
+        .state
+        .elements()
+        .filter_map(|w| Some((w.uuid()?, w.wl_surface()?.into_owned())))
+        .collect();
+    // Highest zoom per surface across every output's viewports.
+    let mut best: std::collections::HashMap<
+        smithay::reexports::wayland_server::backend::ObjectId,
+        (f64, WlSurface),
+    > = std::collections::HashMap::new();
+    for vps in state.inner.output_views().map.values() {
+        for (slot, uuids) in &vps.visible {
+            let zoom = vps.camera_of(*slot).map(|c| c.transform.zoom).unwrap_or(1.0);
+            for u in uuids {
+                if let Some(surf) = uuid_surface.get(u) {
+                    best.entry(surf.id())
+                        .and_modify(|e| if zoom > e.0 { *e = (zoom, surf.clone()); })
+                        .or_insert_with(|| (zoom, surf.clone()));
+                }
+            }
+        }
+    }
+    let per: Vec<(f64, WlSurface)> = best.into_values().collect();
+    FRAC_SENT.with(|sent| {
+        compositor_support_smithay_state_fractional_dispatch::emit_best_per_surface(
+            &state.state.fractional,
+            &mut sent.borrow_mut(),
+            &per,
+        );
+    });
+}
+
 /// Colour of the bar drawn between split viewport panes.
 const SEPARATOR_COLOR: [f32; 4] = [0.16, 0.16, 0.19, 1.0];
 
@@ -227,17 +280,37 @@ where
     // explicit (BACKGROUND..POINTER); contributors no longer rely on push order.
     let mut plan: Plan<R> = Plan::new();
 
-    let pointer = compositor_orchestration_seat_pointer_draw::scene::element(state, renderer, size);
-    plan.extend(layer::POINTER, pointer.into_iter().map(DrawNode::Pointer));
+    // Screen-space overlays (the cursor, layer-shell, and screen iced like the
+    // launcher / settings window) belong to ONE output — the one under the cursor
+    // (fallback: the primary). Because the kernel now calls scene() once PER
+    // physical output, gate them so they aren't duplicated + mispositioned on every
+    // monitor. `render_output == None` = a non-loop pass (winit / single) → draw all.
+    let surfaces_screen = prepared.surfaces_screen;
+    let draw_screen = match state.inner.render_output.clone() {
+        None => true,
+        Some(key) => {
+            let active = state.inner.cursor_output.clone().or_else(|| {
+                state
+                    .inner
+                    .space_state()
+                    .state
+                    .outputs()
+                    .next()
+                    .map(compositor_orchestration_core_state_base::state::output_key)
+            });
+            active.as_deref() == Some(key.as_str())
+        }
+    };
+    if draw_screen {
+        let pointer = compositor_orchestration_seat_pointer_draw::scene::element(state, renderer, size);
+        plan.extend(layer::POINTER, pointer.into_iter().map(DrawNode::Pointer));
 
-    let layer_shell = layershell(state, size);
-    plan.extend(layer::LAYERSHELL, layer_shell.into_iter().map(DrawNode::Surface));
+        let layer_shell = layershell(state, size);
+        plan.extend(layer::LAYERSHELL, layer_shell.into_iter().map(DrawNode::Surface));
 
-    plan.extend(layer::ICED_SCREEN, prepared.surfaces_screen.into_iter().map(DrawNode::Iced));
+        plan.extend(layer::ICED_SCREEN, surfaces_screen.into_iter().map(DrawNode::Iced));
+    }
 
-    // Per-viewport (zoom, visible surfaces) collected during the region pass, for
-    // the per-window fractional scale below.
-    let mut frac_list: Vec<(f64, Vec<WlSurface>)> = Vec::new();
 
     // CONTENT band. The overview overlay (Super+Tab) owns this band when open
     // (backdrop + grid/globe) — its layer handles it and returns the windows it
@@ -348,14 +421,11 @@ where
                         }
                     }
                 }
-                // Track which windows are visible in this pane + its zoom, for the
-                // per-window fractional scale.
-                let region_zoom = state.inner.camera().transform.zoom;
+                // Record which windows are visible in this pane, for the per-window
+                // fractional scale (computed cross-output after the pass — see
+                // `update_fractional`, which reads each slot's camera zoom + visible).
                 let uuids: Vec<uuid::Uuid> = vis.iter().filter_map(|w| w.uuid()).collect();
-                let surfaces: Vec<WlSurface> =
-                    vis.iter().filter_map(|w| w.wl_surface().map(|c| c.into_owned())).collect();
                 state.inner.viewports_mut().visible.insert(region.slot, uuids);
-                frac_list.push((region_zoom, surfaces));
                 cw.extend(vis);
             }
             state.inner.render_target = None;
@@ -399,18 +469,12 @@ where
 
     let elements = plan.lower(renderer);
 
-    // Per-window fractional scale: each window is scaled for its HIGHEST-zoom
-    // viewport (highest resolution wins), from the per-viewport (zoom, visible
-    // surfaces) collected during the region pass.
-    let updated_fractional = compositor_support_smithay_state_fractional_dispatch::hook_per_window(
-        &mut state.state.fractional,
-        &frac_list,
-    );
-    if let Some(_fractional) = updated_fractional {
-        if let Some(_registry) = &mut state.inner.surface_mut().registry {
-            // registry.set_instance_scale(fractional as f32);
-        }
-    }
+    // Per-window fractional scale: each window follows its HIGHEST-zoom viewport
+    // across ALL outputs (best resolution wins), emitted only when a surface's scale
+    // changes. Computed from live per-output view state (not per-output during the
+    // pass), so a window on two differently-zoomed monitors doesn't get its scale
+    // flip-flopped — and re-sent to the client — every frame.
+    update_fractional(state);
 
     // Auto-tick the resize debounce per frame: emit any due (throttled) `send_configure` even
     // without a pointer motion, so a mid-drag pause re-renders the client to the paused size on

@@ -3,6 +3,7 @@
 //! display selection, and the optimistic confirm state are handled locally.
 use compositor_developer_environment_config_base::base::Environment;
 use compositor_developer_environment_keybinding_base::base::KeyRow;
+use compositor_developer_environment_preference_base::base::LayoutPlacement;
 use compositor_orchestration_driver_output_base::base::{ApplyResult, DisplayInfo, ModeInfo, OutputsSnapshot};
 use compositor_support_iced_core_engine_base::{IcedUi, Renderer};
 use compositor_y5_audio_controller_interface::interface::AudioState;
@@ -43,6 +44,43 @@ pub struct Settings {
     pub render_devices: Vec<RenderDevice>,
     /// Live frames-per-second (pushed by the embed), shown on the Display panel.
     pub fps: u32,
+    /// The cursor-teleport layout squares (Display tab canvas, multi-monitor). Each
+    /// is a monitor (`identity`) placed at an abstract `(x,y)` with side `size`.
+    pub layout: Vec<LayoutPlacement>,
+    /// Selected placement on the canvas (highlights it + selects its monitor).
+    pub selected_placement: Option<u64>,
+    /// Next placement id to hand out (monotonic within the session).
+    pub next_placement_id: u64,
+}
+
+/// A new square's side length in abstract layout units.
+const PLACE_SIZE: f32 = 120.0;
+/// Minimum square side.
+const MIN_SIZE: f32 = 60.0;
+/// Edge-snap radius (abstract units).
+const SNAP: f32 = 12.0;
+
+fn rects_overlap(a: &LayoutPlacement, b: &LayoutPlacement) -> bool {
+    a.x < b.x + b.size && b.x < a.x + a.size && a.y < b.y + b.size && b.y < a.y + a.size
+}
+
+/// Snap `p`'s edges to any other placement's edges within [`SNAP`].
+fn snap_edges(p: &mut LayoutPlacement, others: &[LayoutPlacement]) {
+    for o in others {
+        if o.id == p.id {
+            continue;
+        }
+        for (pe, oe) in [(p.x, o.x + o.size), (p.x, o.x), (p.x + p.size, o.x), (p.x + p.size, o.x + o.size)] {
+            if (pe - oe).abs() <= SNAP {
+                p.x += oe - pe;
+            }
+        }
+        for (pe, oe) in [(p.y, o.y + o.size), (p.y, o.y), (p.y + p.size, o.y), (p.y + p.size, o.y + o.size)] {
+            if (pe - oe).abs() <= SNAP {
+                p.y += oe - pe;
+            }
+        }
+    }
 }
 
 /// The mode to seed the picker selection with for a display: its current mode if
@@ -54,10 +92,11 @@ fn default_mode(d: &DisplayInfo) -> Option<ModeInfo> {
 }
 
 impl Settings {
-    pub fn new(env: Environment, cursor: f32, natural: bool, snap: OutputsSnapshot, keys: Vec<KeyRow>, tab: Tab) -> Self {
+    pub fn new(env: Environment, cursor: f32, natural: bool, snap: OutputsSnapshot, keys: Vec<KeyRow>, tab: Tab, layout: Vec<LayoutPlacement>) -> Self {
         let active = snap.displays.iter().find(|d| d.active).cloned();
         let active_edid = active.as_ref().map(|d| d.edid_key.clone()).unwrap_or_default();
         let selected_mode = active.as_ref().and_then(default_mode);
+        let next_placement_id = layout.iter().map(|p| p.id + 1).max().unwrap_or(0);
         Self {
             tab,
             cursor_sensitivity: cursor,
@@ -78,7 +117,15 @@ impl Settings {
             wifi_password: String::new(),
             render_devices: render_devices(),
             fps: 0,
+            layout,
+            selected_placement: None,
+            next_placement_id,
         }
+    }
+
+    /// The layout as forwarded to the handler (persist + rebuild teleport).
+    fn layout_commit(&self) -> SettingsMessage {
+        SettingsMessage::LayoutCommit(self.layout.clone())
     }
 
     fn display(&self, key: &str) -> Option<&DisplayInfo> {
@@ -191,6 +238,62 @@ impl IcedUi for Settings {
                 self.wifi_selected = None;
                 self.wifi_password.clear();
             }
+            // --- Teleport-layout canvas edits (UI-local; APPLY LAYOUT forwards) ---
+            SettingsMessage::LayoutPlace(edid, x, y) => {
+                let id = self.next_placement_id;
+                self.next_placement_id += 1;
+                let mut p = LayoutPlacement { id, identity: edid, x, y, size: PLACE_SIZE };
+                // Nudge right until it doesn't overlap an existing square.
+                while self.layout.iter().any(|o| rects_overlap(&p, o)) {
+                    p.x += PLACE_SIZE + SNAP;
+                }
+                self.selected_display = p.identity.clone();
+                self.selected_mode = self.display(&self.selected_display).and_then(default_mode);
+                self.selected_placement = Some(id);
+                self.layout.push(p);
+            }
+            SettingsMessage::LayoutMove(id, x, y) => {
+                if let Some(mut moved) = self.layout.iter().find(|p| p.id == id).cloned() {
+                    moved.x = x;
+                    moved.y = y;
+                    let others: Vec<_> = self.layout.iter().filter(|p| p.id != id).cloned().collect();
+                    snap_edges(&mut moved, &others);
+                    // Reject the move if it would overlap another square.
+                    if !others.iter().any(|o| rects_overlap(&moved, o)) {
+                        if let Some(slot) = self.layout.iter_mut().find(|p| p.id == id) {
+                            slot.x = moved.x;
+                            slot.y = moved.y;
+                        }
+                    }
+                }
+            }
+            SettingsMessage::LayoutResize(id, size) => {
+                let size = size.max(MIN_SIZE);
+                if let Some(mut resized) = self.layout.iter().find(|p| p.id == id).cloned() {
+                    resized.size = size;
+                    let others: Vec<_> = self.layout.iter().filter(|p| p.id != id).cloned().collect();
+                    if !others.iter().any(|o| rects_overlap(&resized, o)) {
+                        if let Some(slot) = self.layout.iter_mut().find(|p| p.id == id) {
+                            slot.size = size;
+                        }
+                    }
+                }
+            }
+            SettingsMessage::LayoutSelect(id) => {
+                self.selected_placement = Some(id);
+                if let Some(p) = self.layout.iter().find(|p| p.id == id) {
+                    self.selected_display = p.identity.clone();
+                    self.selected_mode = self.display(&self.selected_display).and_then(default_mode);
+                }
+            }
+            SettingsMessage::LayoutRemove(id) => {
+                self.layout.retain(|p| p.id != id);
+                if self.selected_placement == Some(id) {
+                    self.selected_placement = None;
+                }
+            }
+            // Forwarded (persist + rebuild teleport): the UI already holds the data.
+            SettingsMessage::LayoutCommit(_) => {}
             // Forwarded-only actions: no local UI state change.
             SettingsMessage::SetDefaultSink(_)
             | SettingsMessage::SetSinkVolume(_, _)
@@ -225,6 +328,8 @@ impl IcedUi for Settings {
             &self.wifi_password,
             &self.render_devices,
             self.fps,
+            &self.layout,
+            self.selected_placement,
         )
     }
 }

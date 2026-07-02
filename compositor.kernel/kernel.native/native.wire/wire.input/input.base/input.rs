@@ -48,7 +48,7 @@ pub fn register(
             // with — avoids warping the cursor / refocusing against a dead space).
             let dark = *state.inner.kernel.get(
                 &compositor_orchestration_driver_lid_base::base::DISPLAY_OFF,
-            ) || ctx_rc.borrow().drm_output.is_none();
+            ) || ctx_rc.borrow().pipe().drm_output.is_none();
             if !dark || matches!(event, InputEvent::Keyboard { .. }) {
                 compositor_orchestration_draw_state_lifecycle::lifecycle::input(state, &event);
             }

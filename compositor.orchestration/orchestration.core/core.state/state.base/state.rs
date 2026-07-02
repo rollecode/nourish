@@ -54,6 +54,35 @@ pub struct RenderTarget {
     pub size_physical: (f64, f64),
 }
 
+/// The stable per-monitor identity of a smithay `Output`: its EDID key
+/// "make model serial", matching `DisplayInfo::edid_key` / `MonitorIdentity::key()`
+/// and the per-monitor preference keys. The kernel's EDID identity falls back to the
+/// connector name for the serial when the EDID is unreadable / serial-less, so this
+/// is UNIQUE per physical output even for two identical / EDID-less monitors — the
+/// key the per-output render loop, coordinate contexts, settings and teleport all
+/// resolve against.
+pub fn output_key(output: &smithay::output::Output) -> compositor_orchestration_driver_output_base::base::OutputKey {
+    let p = output.physical_properties();
+    format!("{} {} {}", p.make, p.model, p.serial_number)
+}
+
+/// Build the runtime cursor-teleport layout from the persisted placements
+/// (`preferences.json` → `outputs_layout`). Pure projection: `LayoutPlacement`'s
+/// EDID `identity` becomes the placement `key`. Empty when no layout is set (the
+/// single-monitor default), so the pointer clamps to its output as before.
+pub fn build_teleport(
+    prefs: &compositor_developer_environment_preference_base::base::Preference,
+) -> compositor_orchestration_seat_pointer_teleport::teleport::TeleportLayout {
+    use compositor_orchestration_seat_pointer_teleport::teleport::{Placement, TeleportLayout};
+    TeleportLayout::new(
+        prefs
+            .outputs_layout
+            .iter()
+            .map(|p| Placement { id: p.id, key: p.identity.clone(), x: p.x, y: p.y, size: p.size })
+            .collect(),
+    )
+}
+
 /// An in-progress separator drag (resizing two adjacent split slots). Holds the
 /// two slots, the divide axis, and the start geometry so motion can redistribute
 /// their `weight`s. `None` when no separator is being dragged.
@@ -91,6 +120,20 @@ pub struct Orchestrator {
     /// Active per-region render override (see [`RenderTarget`]). Set only inside
     /// the `scene.frame` region loop.
     pub render_target: Option<RenderTarget>,
+    /// The physical output currently being drawn, by [`output_key`]. Set by the
+    /// kernel's per-output render loop around each output's `scene()` call and
+    /// cleared after (mirrors [`RenderTarget`], but at output granularity).
+    /// [`current_output`](Self::current_output) resolves THIS output's mode
+    /// size/scale while set, so the coordinate contexts build against the framebuffer
+    /// being drawn. `None` outside the render loop and on single-output hardware,
+    /// where the resolver falls back to the sole output. The shared `Viewports`
+    /// view state is unchanged — this only selects which output's geometry is used.
+    pub render_output: Option<compositor_orchestration_driver_output_base::base::OutputKey>,
+    /// The physical output currently under the cursor, by [`output_key`]. Updated by
+    /// the pointer path as the cursor crosses between monitors (teleport). Selects
+    /// which output's size/scale the input-path contexts use. `None` until the first
+    /// crossing resolves it; the resolver falls back to the sole/primary output.
+    pub cursor_output: Option<compositor_orchestration_driver_output_base::base::OutputKey>,
     /// In-progress viewport separator drag (resize), if any.
     pub separator_drag: Option<SeparatorDrag>,
     /// In-progress floating-pane move/resize drag, if any.
@@ -141,6 +184,24 @@ pub struct Orchestrator {
     /// handler. Read by the overlay shortcut path on every keypress (parse-or-
     /// default). The inline-reloaded counterpart to the read-once settings.
     pub keybinding: compositor_developer_environment_keybinding_base::base::KeyBindings,
+    /// The live cursor-teleport layout (per-monitor crossing zones). Seeded from
+    /// `preference.outputs_layout` at startup and rebuilt by the settings handler
+    /// when the layout canvas commits. Read by the relative-motion path to cross
+    /// the pointer between monitors. Empty = single-monitor / clamp-only.
+    pub teleport: compositor_orchestration_seat_pointer_teleport::teleport::TeleportLayout,
+    /// The teleport placement the cursor is currently within (disambiguates
+    /// duplicate placements of one monitor). `None` until the pointer resolves it.
+    pub cursor_placement: Option<u64>,
+    /// When true, the relative-motion path clamps at output edges instead of
+    /// teleporting to an adjacent monitor. Derived from `buttons_held` in the pointer
+    /// button handler: a drag is in progress, so the cursor must NOT jump monitors
+    /// mid-drag (which would break panning the settings layout canvas, a window/pane
+    /// move/resize, a selection, etc.). Restored to normal teleport on button release.
+    pub suppress_teleport: bool,
+    /// Count of pointer buttons currently held (tracked synchronously in the button
+    /// handler, in the same input pipeline as motion — no message-round-trip race).
+    /// Drives `suppress_teleport`.
+    pub buttons_held: u32,
 }
 
 pub struct StateDRMBinding {
@@ -254,6 +315,8 @@ impl Orchestrator {
         Self {
             environment,
             render_target: None,
+            render_output: None,
+            cursor_output: None,
             separator_drag: None,
             floating_drag: None,
             lock_engage: false,
@@ -271,6 +334,10 @@ impl Orchestrator {
             // Seed the live preference object from preferences.json (one disk read
             // at startup; refreshed on each settings-window open). Missing file →
             // sane defaults.
+            teleport: build_teleport(&prefs),
+            cursor_placement: None,
+            suppress_teleport: false,
+            buttons_held: 0,
             preference: prefs,
             keybinding,
         }
@@ -301,12 +368,68 @@ impl Orchestrator {
             .inner
     }
 
+    /// The [`OutputKey`](compositor_orchestration_driver_output_base::base::OutputKey)
+    /// of the output the focus accessors resolve against: the one being rendered
+    /// (`render_output`, inside the per-output render loop), else the one under the
+    /// cursor (`cursor_output`), else `""` (the sole / not-yet-identified output,
+    /// whose bootstrap view tree is always present).
+    pub fn current_output_key(&self) -> compositor_orchestration_driver_output_base::base::OutputKey {
+        self.render_output
+            .clone()
+            .or_else(|| self.cursor_output.clone())
+            .unwrap_or_default()
+    }
+
+    /// The ACTIVE output's key: the one under the cursor (`cursor_output`), else the
+    /// primary/first. Unlike [`current_output_key`](Self::current_output_key) this
+    /// IGNORES `render_output` — screen-space surfaces (launcher/settings/menu) live
+    /// on the monitor the user is on, not on whichever output the render loop is
+    /// currently drawing. `None` until the pointer resolves an output.
+    pub fn active_output_key(&self) -> compositor_orchestration_driver_output_base::base::OutputKey {
+        self.cursor_output.clone().unwrap_or_else(|| {
+            self.space_state()
+                .state
+                .outputs()
+                .next()
+                .map(output_key)
+                .unwrap_or_default()
+        })
+    }
+
+    /// The smithay `Output` the user is on (cursor's output, else primary) — the
+    /// target + size source for screen-space surfaces.
+    pub fn active_output(&self) -> &smithay::output::Output {
+        let key = self.active_output_key();
+        let space = self.space_state();
+        space
+            .state
+            .outputs()
+            .find(|o| output_key(o) == key)
+            .or_else(|| space.state.outputs().next())
+            .expect("at least one mapped output")
+    }
+
+    /// The smithay `Output` matching [`current_output_key`](Self::current_output_key),
+    /// falling back to the first mapped output (so single-output paths are unchanged).
+    pub fn current_output(&self) -> &smithay::output::Output {
+        let key = self.current_output_key();
+        let space = self.space_state();
+        space
+            .state
+            .outputs()
+            .find(|o| output_key(o) == key)
+            .or_else(|| space.state.outputs().next())
+            .expect("at least one mapped output")
+    }
+
     /// FOCUS ACCESSOR (document/WORLD_DELEGATION.md): the camera/viewport of the
-    /// focused world. The rim must read/write the camera through this — never a
-    /// literal world id — so view state follows the active/spawn-target world.
+    /// focused world, for the CURRENT output — each monitor is its own viewport with
+    /// its own camera. Resolves the current output's `Viewports` (render output while
+    /// drawing, else cursor output), then the pane within it.
     pub fn camera(&self) -> &compositor_y5_camera_state_base::state::Camera {
         let target = self.worlds.spawn_target();
-        let viewports = self.worlds.get(target).storage().get(&compositor_y5_viewport_state_base::state::VIEWPORTS);
+        let key = self.current_output_key();
+        let viewports = self.worlds.get(target).storage().get(&compositor_y5_viewport_state_base::state::OUTPUT_VIEWS).views(&key);
         // Inside the per-region render loop, resolve the pane being drawn; else
         // the focused (active) slot.
         match self.render_target {
@@ -317,8 +440,9 @@ impl Orchestrator {
 
     pub fn camera_mut(&mut self) -> &mut compositor_y5_camera_state_base::state::Camera {
         let target = self.worlds.spawn_target();
+        let key = self.current_output_key();
         let render_slot = self.render_target.map(|rt| rt.slot);
-        let viewports = self.worlds.get_mut(target).storage_mut().get_mut(&compositor_y5_viewport_state_base::state::VIEWPORTS_MUT);
+        let viewports = self.worlds.get_mut(target).storage_mut().get_mut(&compositor_y5_viewport_state_base::state::OUTPUT_VIEWS_MUT).views_mut(&key);
         // Render target may be a floating pane's slot, so search all panes.
         match render_slot.filter(|id| viewports.camera_of(*id).is_some()) {
             Some(id) => viewports.camera_of_mut(id).expect("checked present"),
@@ -326,15 +450,33 @@ impl Orchestrator {
         }
     }
 
-    /// FOCUS ACCESSOR: the focused world's viewport tree (slots + cameras).
+    /// FOCUS ACCESSOR: the CURRENT output's viewport tree (slots + cameras).
     pub fn viewports(&self) -> &compositor_y5_viewport_state_base::state::Viewports {
         let target = self.worlds.spawn_target();
-        self.worlds.get(target).storage().get(&compositor_y5_viewport_state_base::state::VIEWPORTS)
+        let key = self.current_output_key();
+        self.worlds.get(target).storage().get(&compositor_y5_viewport_state_base::state::OUTPUT_VIEWS).views(&key)
     }
 
     pub fn viewports_mut(&mut self) -> &mut compositor_y5_viewport_state_base::state::Viewports {
         let target = self.worlds.spawn_target();
-        self.worlds.get_mut(target).storage_mut().get_mut(&compositor_y5_viewport_state_base::state::VIEWPORTS_MUT)
+        let key = self.current_output_key();
+        self.worlds.get_mut(target).storage_mut().get_mut(&compositor_y5_viewport_state_base::state::OUTPUT_VIEWS_MUT).views_mut(&key)
+    }
+
+    /// The per-output view map. Used to select/create the current output's view tree
+    /// (the render loop ensures each drawn output has its own `Viewports`; the
+    /// pointer path points `current` at the cursor's output for the systems).
+    pub fn output_views_mut(&mut self) -> &mut compositor_y5_viewport_state_base::state::OutputViews {
+        let target = self.worlds.spawn_target();
+        self.worlds.get_mut(target).storage_mut().get_mut(&compositor_y5_viewport_state_base::state::OUTPUT_VIEWS_MUT)
+    }
+
+    /// Read-only per-output view map — every output's `Viewports` (cameras + visible
+    /// sets). Used to derive cross-output state (e.g. a window's best-resolution
+    /// fractional scale = highest zoom of any viewport across ALL outputs showing it).
+    pub fn output_views(&self) -> &compositor_y5_viewport_state_base::state::OutputViews {
+        let target = self.worlds.spawn_target();
+        self.worlds.get(target).storage().get(&compositor_y5_viewport_state_base::state::OUTPUT_VIEWS)
     }
 
     /// FOCUS ACCESSOR: the focused world's canvas slot (input grab, …).
@@ -580,7 +722,7 @@ pub trait CoordinateTrait {
 }
 impl CoordinateTrait for Loop {
     fn size_ctx_all(&self) -> compositor_y5_camera_transform_translate::transform::Context {
-        let output = self.inner.space_state().state.outputs().next().unwrap();
+        let output = self.inner.current_output();
         let mode = output.current_mode().unwrap_or_else(|| abort!("output has a current mode"));
         let scale = output.current_scale().fractional_scale();
         let camera = &self.inner.camera().transform;
@@ -597,7 +739,7 @@ impl CoordinateTrait for Loop {
         slot: compositor_y5_viewport_state_base::state::SlotId,
     ) -> compositor_y5_camera_transform_translate::transform::Context {
         let (mode_w, mode_h, scale) = {
-            let output = self.inner.space_state().state.outputs().next().unwrap();
+            let output = self.inner.current_output();
             let mode = output.current_mode().unwrap_or_else(|| abort!("output has a current mode"));
             (mode.size.w, mode.size.h, output.current_scale().fractional_scale())
         };
@@ -627,7 +769,7 @@ impl CoordinateTrait for Loop {
         let Some(rt) = self.inner.render_target else {
             return self.size_ctx_all();
         };
-        let output = self.inner.space_state().state.outputs().next().unwrap();
+        let output = self.inner.current_output();
         let scale = output.current_scale().fractional_scale();
         // `camera()` already resolves to the render-target pane's slot camera.
         let camera = &self.inner.camera().transform;
@@ -645,7 +787,7 @@ impl CoordinateTrait for Loop {
         phys: smithay::utils::Point<f64, smithay::utils::Physical>,
     ) -> compositor_y5_camera_transform_translate::transform::Context {
         let (mode_w, mode_h, scale) = {
-            let output = self.inner.space_state().state.outputs().next().unwrap();
+            let output = self.inner.current_output();
             let mode = output.current_mode().unwrap_or_else(|| abort!("output has a current mode"));
             (mode.size.w, mode.size.h, output.current_scale().fractional_scale())
         };
@@ -692,7 +834,7 @@ impl CoordinateTrait for Loop {
 
     fn focus_pane_context(&self) -> compositor_y5_camera_transform_translate::transform::Context {
         let (mode_w, mode_h, scale) = {
-            let output = self.inner.space_state().state.outputs().next().unwrap();
+            let output = self.inner.current_output();
             let mode = output.current_mode().unwrap_or_else(|| abort!("output has a current mode"));
             (mode.size.w, mode.size.h, output.current_scale().fractional_scale())
         };
@@ -720,7 +862,7 @@ impl CoordinateTrait for Loop {
     fn try_begin_separator_drag(&mut self, phys: smithay::utils::Point<f64, smithay::utils::Physical>) -> bool {
         use compositor_y5_viewport_state_base::state::Axis;
         let (mode_w, mode_h) = {
-            let output = self.inner.space_state().state.outputs().next().unwrap();
+            let output = self.inner.current_output();
             let mode = output.current_mode().unwrap_or_else(|| abort!("output has a current mode"));
             (mode.size.w, mode.size.h)
         };

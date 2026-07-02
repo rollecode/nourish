@@ -59,3 +59,27 @@ pub fn hook_per_window(
     }
     Some(fired)
 }
+
+/// Emit each surface's best-resolution fractional scale, but ONLY when it changed
+/// since the last emit (dedup via the caller-owned `sent` map). `per_surface` is the
+/// already-aggregated `(best_zoom, surface)` per surface across ALL outputs' viewports
+/// — the caller derives the cross-output max so a window on two monitors follows the
+/// sharper one. Emit-on-change (not per frame) is what stops the per-output flip-flop
+/// from re-sending `wp_fractional_scale` to clients every frame. `snap` quantises the
+/// zoom to the scale lattice, so a smooth zoom only re-emits at lattice boundaries.
+pub fn emit_best_per_surface(
+    fractional: &fractional_base::Fractional,
+    sent: &mut HashMap<ObjectId, f64>,
+    per_surface: &[(f64, WlSurface)],
+) {
+    let cfg = &fractional.cfg;
+    let mut next: HashMap<ObjectId, f64> = HashMap::with_capacity(per_surface.len());
+    for (zoom, surface) in per_surface {
+        let scale = snap(cfg, zoom + cfg.auto_increment);
+        if sent.get(&surface.id()) != Some(&scale) {
+            emit_to_surfaces(scale, std::iter::once(surface));
+        }
+        next.insert(surface.id(), scale);
+    }
+    *sent = next;
+}

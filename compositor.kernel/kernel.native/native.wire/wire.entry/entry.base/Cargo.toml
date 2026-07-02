@@ -26,6 +26,7 @@ compositor_kernel_native_context_render_base.workspace = true
 compositor_kernel_native_context_topology_base.workspace = true
 compositor_kernel_native_render_execute_base.workspace = true
 compositor_kernel_native_wire_frame_base.workspace = true
+compositor_kernel_native_context_display_switch = { workspace = true }
 compositor_kernel_native_wire_input_base.workspace = true
 compositor_kernel_native_wire_plugin_base.workspace = true
 compositor_kernel_native_wire_session_base.workspace = true

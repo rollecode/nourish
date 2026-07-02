@@ -22,6 +22,7 @@ tracing-subscriber = { workspace = true }
 bitflags = { workspace = true }
 smithay = { workspace = true }
 compositor_orchestration_core_state_base.workspace = true
+compositor_orchestration_seat_pointer_teleport.workspace = true
 compositor_y5_canvas_input_keyboard.workspace = true
 compositor_y5_surface_interface_base.workspace = true
 compositor_y5_overview_input_pointer.workspace = true

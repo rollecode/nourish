@@ -24,7 +24,7 @@ use smithay::backend::drm::DrmDevice;
 use smithay::output::Mode;
 use smithay::reexports::calloop::timer::{TimeoutAction, Timer};
 use smithay::reexports::calloop::RegistrationToken;
-use smithay::reexports::drm::control::{connector, Mode as DrmMode};
+use smithay::reexports::drm::control::{connector, crtc, Mode as DrmMode};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
@@ -49,7 +49,11 @@ fn mode_info(m: DrmMode) -> ModeInfo {
 fn identity_key(drm: &DrmDevice, info: &connector::Info) -> String {
     let raw = compositor_kernel_drm_edid_parse_base::parse::read(drm, info);
     let parsed = raw.as_ref().and_then(compositor_kernel_drm_edid_parse_base::parse::parse);
-    compositor_kernel_drm_edid_identity_base::identity::identity(parsed.as_ref()).key()
+    compositor_kernel_drm_edid_identity_base::identity::identity(
+        parsed.as_ref(),
+        &format!("{:?}-{}", info.interface(), info.interface_id()),
+    )
+    .key()
 }
 
 /// The connected connector whose EDID identity matches `key`.
@@ -67,21 +71,21 @@ fn current_connector_name(ctx: &NativeRenderContext) -> Option<String> {
     let drm = mgr.device();
     let res = compositor_kernel_drm_connector_scan_base::scan::resources(drm);
     let infos = compositor_kernel_drm_connector_scan_base::scan::connectors(drm, &res);
-    infos.iter().find(|i| i.handle() == ctx.connector).map(|i| identity_key(drm, i))
+    infos.iter().find(|i| i.handle() == ctx.pipe().connector).map(|i| identity_key(drm, i))
 }
 
 /// Tear down the current pipe (freeing its CRTC) and bring `target` up as the sole
 /// output, reusing the smithay `Output`. On success the context reflects the new
-/// connector/mode. On failure `ctx.drm_output` is left `None` — the caller must
+/// connector/mode. On failure `ctx.pipe().drm_output` is left `None` — the caller must
 /// rebuild a working output (render frames skip while it is `None`).
 fn bring_up(ctx: &mut NativeRenderContext, target: &connector::Info, requested: Option<ModeInfo>) -> Result<(), String> {
     // Drop the current output FIRST so its CRTC/bandwidth is free for the target
     // (the atomic modeset of a second simultaneous pipe is rejected).
-    ctx.drm_output = None;
+    ctx.pipe_mut().drm_output = None;
     let built = compositor_kernel_native_context_display_build::build::build(
         &ctx.drm_output_manager,
         &ctx.gpu_binding,
-        &ctx.output,
+        &ctx.pipe().output,
         &[],
         target,
         requested,
@@ -89,15 +93,15 @@ fn bring_up(ctx: &mut NativeRenderContext, target: &connector::Info, requested: 
     let env = compositor_developer_environment_config_base::base::get();
     let new_hdr_active = env.hdr && built.hdr.hdr_capable() && ctx.vulkan_mode;
     let new_mode = Mode::from(built.drm_mode);
-    ctx.drm_output = Some(built.drm_output);
-    ctx.mode = new_mode;
-    ctx.current_drm_mode = built.drm_mode;
-    ctx.modes = built.modes;
-    ctx.connector = built.connector;
-    ctx.hdr_caps = built.hdr;
-    ctx.hdr_active = new_hdr_active;
-    ctx.hdr_signalled = false;
-    ctx.output.change_current_state(Some(new_mode), None, None, None);
+    ctx.pipe_mut().drm_output = Some(built.drm_output);
+    ctx.pipe_mut().mode = new_mode;
+    ctx.pipe_mut().current_drm_mode = built.drm_mode;
+    ctx.pipe_mut().modes = built.modes;
+    ctx.pipe_mut().connector = built.connector;
+    ctx.pipe_mut().hdr_caps = built.hdr;
+    ctx.pipe_mut().hdr_active = new_hdr_active;
+    ctx.pipe_mut().hdr_signalled = false;
+    ctx.pipe().output.change_current_state(Some(new_mode), None, None, None);
     Ok(())
 }
 
@@ -115,12 +119,19 @@ fn revert_to(ctx: &mut NativeRenderContext, b: &OutputSwitchBaseline) -> Result<
 /// Rewrite the rim-facing snapshots (full connector list + active modes + lid) for
 /// the connector now driving the compositor.
 fn write_snapshots(state: &mut Loop, ctx: &NativeRenderContext) {
-    let active = ctx.connector;
-    let active_mode = mode_info(ctx.current_drm_mode);
+    let active = ctx.pipe().connector;
+    // Current mode of every DRIVEN pipe, so each connected monitor reports its own
+    // `current` in the snapshot (multi-output), not just the primary.
+    let lit: Vec<(connector::Handle, ModeInfo)> = ctx
+        .outputs
+        .iter()
+        .filter(|p| p.drm_output.is_some())
+        .map(|p| (p.connector, mode_info(p.current_drm_mode)))
+        .collect();
     let snap = {
         let mgr = ctx.drm_output_manager.borrow();
         let drm = mgr.device();
-        let snap = compositor_kernel_native_context_display_enumerate::enumerate::enumerate(drm, active, active_mode);
+        let snap = compositor_kernel_native_context_display_enumerate::enumerate::enumerate(drm, active, &lit);
         let display_snap = compositor_kernel_native_context_display_base::base::compute(drm, active);
         *state.inner.kernel.get_mut(&DISPLAY_SNAPSHOT_MUT) = display_snap;
         snap
@@ -164,7 +175,7 @@ fn apply(state: &mut Loop, ctx_rc: &Ctx, edid_key: String, requested: Option<Mod
     }
     // Capture the current (soon-to-be-previous) connector + mode for revert.
     let prev_name = current_connector_name(&ctx);
-    let prev_mode = mode_info(ctx.current_drm_mode);
+    let prev_mode = mode_info(ctx.pipe().current_drm_mode);
 
     let target = {
         let mgr = ctx.drm_output_manager.borrow();
@@ -291,24 +302,104 @@ fn pick_target(drm: &DrmDevice, connected: &[connector::Info]) -> Option<connect
 
 /// Tear the display down and idle the render loop until a monitor returns.
 fn go_dark(state: &mut Loop, ctx: &mut NativeRenderContext) {
-    ctx.drm_output = None;
+    ctx.pipe_mut().drm_output = None;
     *state.inner.kernel.get_mut(&DISPLAY_OFF_MUT) = true;
     *state.inner.kernel.get_mut(&OUTPUT_MODES_SNAPSHOT_MUT) = OutputModesSnapshot::default();
     *state.inner.kernel.get_mut(&OUTPUTS_SNAPSHOT_MUT) = OutputsSnapshot::default();
 }
 
-/// Hotplug reconciliation: ensure the compositor drives the best connected output
-/// (preferred monitor, mode from preferences — the same flow as startup), or goes
-/// dark and waits when none is connected. Idempotent: a no-op while the current
-/// active output is still connected. Called from the udev hotplug path (its own
-/// loop dispatch, never the vblank callback), not user-confirmed — no revert gate.
+/// Bring a NEW connected monitor online as an ADDITIONAL output: build a fresh
+/// smithay `Output` + a second pipe on a free CRTC (validating the second atomic
+/// modeset over the fallback chain — `Err` on no free CRTC / bandwidth / modeset
+/// failure, so it fails SOFT), place it to the right of the existing outputs, map
+/// it into the `Space`, publish its `wl_output`, and push its `OutputPipe`.
+fn add_output(
+    state: &mut Loop,
+    ctx: &mut NativeRenderContext,
+    target: &connector::Info,
+    requested: Option<ModeInfo>,
+) -> Result<(), String> {
+    // Fresh smithay Output from this connector's EDID identity.
+    let output = {
+        let mgr = ctx.drm_output_manager.borrow();
+        let drm = mgr.device();
+        let raw = compositor_kernel_drm_edid_parse_base::parse::read(drm, target);
+        let parsed = raw.as_ref().and_then(compositor_kernel_drm_edid_parse_base::parse::parse);
+        let identity = compositor_kernel_drm_edid_identity_base::identity::identity(
+            parsed.as_ref(),
+            &format!("{:?}-{}", target.interface(), target.interface_id()),
+        );
+        compositor_kernel_drm_output_physical_base::physical::create(target, &identity)
+    };
+    // Second pipe on a free CRTC (excluding the ones already lit).
+    let busy: Vec<crtc::Handle> = ctx.outputs.iter().map(|p| p.crtc).collect();
+    let built = compositor_kernel_native_context_display_build::build::build(
+        &ctx.drm_output_manager,
+        &ctx.gpu_binding,
+        &output,
+        &busy,
+        target,
+        requested,
+    )?;
+    // Place to the right of the existing outputs (non-overlapping horizontal tiling,
+    // matching `graphic.preference.layout.output::tile_positions`).
+    let x: i32 = ctx.outputs.iter().map(|p| p.mode.size.w).sum();
+    let mode = Mode::from(built.drm_mode);
+    compositor_kernel_drm_output_physical_base::physical::apply_initial_state(&output, mode, None, (x, 0));
+    output.create_global::<compositor_support_smithay_dispatch_state_base::state::Dispatch>(
+        &ctx.display_handle,
+    );
+    state.inner.space_state_mut().state.map_output(&output, (x, 0));
+    let damage_tracker = smithay::backend::renderer::damage::OutputDamageTracker::from_output(&output);
+    let env = compositor_developer_environment_config_base::base::get();
+    let hdr_active = env.hdr && built.hdr.hdr_capable() && ctx.vulkan_mode;
+    info!(
+        "add_output: connector={:?} crtc={:?} mode={}x{} pos=({}, 0) → {} outputs total",
+        built.connector,
+        built.crtc,
+        built.drm_mode.size().0,
+        built.drm_mode.size().1,
+        x,
+        ctx.outputs.len() + 1,
+    );
+    ctx.outputs.push(compositor_kernel_native_context_render_base::render::OutputPipe {
+        crtc: built.crtc,
+        mode,
+        output,
+        damage_tracker,
+        drm_output: Some(built.drm_output),
+        hdr_caps: built.hdr,
+        hdr_active,
+        hdr_signalled: false,
+        connector: built.connector,
+        current_drm_mode: built.drm_mode,
+        modes: built.modes,
+        mode_revert: None,
+        in_flight: false,
+    });
+    Ok(())
+}
+
+/// Dark the PRIMARY pipe (`outputs[0]`) — the always-present anchor kept even when
+/// no monitor is connected (the `outputs` non-empty invariant). Mirrors `go_dark`
+/// but leaves any secondary pipes to the caller's prune step.
+fn go_dark_primary(state: &mut Loop, ctx: &mut NativeRenderContext) {
+    ctx.outputs[0].drm_output = None;
+    *state.inner.kernel.get_mut(&DISPLAY_OFF_MUT) = true;
+}
+
+/// Hotplug reconciliation (SET reconciler): converge the driven outputs to the full
+/// set of connected monitors — add newly-connected ones as additional outputs,
+/// drop the ones that vanished, and keep the primary (`outputs[0]`) as the anchor
+/// (failing over / going dark on it). Used both at startup (light up every monitor)
+/// and on every udev hotplug. Not user-confirmed — no revert gate.
 pub fn reconcile(state: &mut Loop, ctx_rc: &Ctx) -> Option<OutputChange> {
     let mut ctx = ctx_rc.borrow_mut();
     // A topology change supersedes any pending user provisional switch.
     if let Some(b) = ctx.output_revert.take() {
         state.loop_handle.remove(b.timer);
     }
-    let was_dark = ctx.drm_output.is_none();
+    let was_dark = ctx.outputs.iter().all(|p| p.drm_output.is_none());
     let connected = {
         let mgr = ctx.drm_output_manager.borrow();
         let drm = mgr.device();
@@ -316,52 +407,84 @@ pub fn reconcile(state: &mut Loop, ctx_rc: &Ctx) -> Option<OutputChange> {
         let infos = compositor_kernel_drm_connector_scan_base::scan::connectors(drm, &res);
         infos.into_iter().filter(|i| i.state() == connector::State::Connected).collect::<Vec<_>>()
     };
-    // The DESIRED output, recomputed on EVERY topology change exactly like startup:
-    // the preferred monitor (`outputs[0]` identity) if it is connected, else the
-    // first connected. This is what makes a reconnected preferred monitor reclaim
-    // the display (not just failover when the active one vanishes).
-    let target = {
-        let mgr = ctx.drm_output_manager.borrow();
-        pick_target(mgr.device(), &connected)
-    };
-    let already_desired =
-        ctx.drm_output.is_some() && target.as_ref().map(|t| t.handle()) == Some(ctx.connector);
-    info!(
-        "reconcile: {} connected, currently_dark={}, already_driving_preferred={}",
-        connected.len(),
-        was_dark,
-        already_desired
-    );
-    // Already driving the desired (preferred) output → no switch, just refresh the
-    // connected-monitor list so the picker stays current.
-    if already_desired {
-        write_snapshots(state, &ctx);
-        return Some(OutputChange::Changed);
+    let connected_handles: Vec<connector::Handle> = connected.iter().map(|c| c.handle()).collect();
+
+    // 1. Prune SECONDARY outputs whose connector vanished (keep `outputs[0]` anchor).
+    let mut i = 1;
+    while i < ctx.outputs.len() {
+        if !connected_handles.contains(&ctx.outputs[i].connector) {
+            let removed = ctx.outputs.remove(i);
+            state.inner.space_state_mut().state.unmap_output(&removed.output);
+            info!("reconcile: removed disconnected output {:?}", removed.connector);
+            // `removed.drm_output` drops here → frees its CRTC.
+        } else {
+            i += 1;
+        }
     }
-    let Some(target) = target else {
-        go_dark(state, &mut ctx);
-        warn!("no monitor connected — display dark, awaiting hotplug");
-        return Some(OutputChange::WentDark);
-    };
-    // Drive the desired output: preferred monitor reconnected, failover to another
-    // monitor, or recover from dark — all the same "select + bring up" as startup.
-    let requested = {
-        let mgr = ctx.drm_output_manager.borrow();
-        pref_mode(mgr.device(), &target)
-    };
-    match bring_up(&mut ctx, &target, requested) {
-        Ok(()) => {
-            *state.inner.kernel.get_mut(&DISPLAY_OFF_MUT) = false;
-            write_snapshots(state, &ctx);
-            drop(ctx);
-            state.schedule_redraw();
-            info!("display reconcile: now driving the preferred connected output");
-            Some(if was_dark { OutputChange::Recovered } else { OutputChange::Changed })
+
+    // 2. PRIMARY (`outputs[0]`): if it isn't driving a connected monitor, fail over to
+    //    the preferred connected one, else go dark. (Unchanged single-output policy.)
+    let primary_live = ctx.outputs[0].drm_output.is_some()
+        && connected_handles.contains(&ctx.outputs[0].connector);
+    if !primary_live {
+        let target = {
+            let mgr = ctx.drm_output_manager.borrow();
+            pick_target(mgr.device(), &connected)
+        };
+        match target {
+            Some(t) => {
+                let requested = {
+                    let mgr = ctx.drm_output_manager.borrow();
+                    pref_mode(mgr.device(), &t)
+                };
+                if let Err(e) = bring_up(&mut ctx, &t, requested) {
+                    warn!("reconcile primary bring-up failed: {e}; going dark");
+                    go_dark_primary(state, &mut ctx);
+                } else {
+                    *state.inner.kernel.get_mut(&DISPLAY_OFF_MUT) = false;
+                }
+            }
+            None => {
+                go_dark_primary(state, &mut ctx);
+                warn!("no monitor connected — primary dark, awaiting hotplug");
+            }
         }
-        Err(e) => {
-            warn!("reconcile bring-up failed: {e}; going dark");
-            go_dark(state, &mut ctx);
-            Some(OutputChange::WentDark)
+    }
+
+    // 3. ADD every connected monitor not yet driven by any pipe, as an additional
+    //    output. Collect first (releases the manager borrow before `add_output`).
+    let driven: Vec<connector::Handle> = ctx
+        .outputs
+        .iter()
+        .filter(|p| p.drm_output.is_some())
+        .map(|p| p.connector)
+        .collect();
+    let to_add: Vec<connector::Info> =
+        connected.iter().filter(|c| !driven.contains(&c.handle())).cloned().collect();
+    for c in &to_add {
+        let requested = {
+            let mgr = ctx.drm_output_manager.borrow();
+            pref_mode(mgr.device(), c)
+        };
+        match add_output(state, &mut ctx, c, requested) {
+            Ok(()) => info!("reconcile: added output {:?}", c.handle()),
+            Err(e) => warn!("reconcile: add_output failed for {:?}: {e}", c.handle()),
         }
+    }
+
+    // 4. Snapshots + result.
+    let any_live = ctx.outputs.iter().any(|p| p.drm_output.is_some());
+    if any_live {
+        *state.inner.kernel.get_mut(&DISPLAY_OFF_MUT) = false;
+    }
+    write_snapshots(state, &ctx);
+    drop(ctx);
+    state.schedule_redraw();
+    if !any_live {
+        Some(OutputChange::WentDark)
+    } else if was_dark {
+        Some(OutputChange::Recovered)
+    } else {
+        Some(OutputChange::Changed)
     }
 }

@@ -1973,6 +1973,7 @@ dependencies = [
  "compositor_configurator_settings_surface_style",
  "compositor_developer_environment_config_base",
  "compositor_developer_environment_keybinding_base",
+ "compositor_developer_environment_preference_base",
  "compositor_orchestration_driver_output_base",
  "compositor_support_iced_core_engine_base",
  "compositor_y5_audio_controller_interface",
@@ -2009,6 +2010,7 @@ dependencies = [
  "compositor_configurator_settings_surface_control",
  "compositor_configurator_settings_surface_message",
  "compositor_configurator_settings_surface_style",
+ "compositor_developer_environment_preference_base",
  "compositor_orchestration_driver_output_base",
  "compositor_support_iced_core_engine_base",
  "iced_core",
@@ -2049,6 +2051,7 @@ dependencies = [
  "compositor_configurator_bluetooth_backend_base",
  "compositor_configurator_network_backend_base",
  "compositor_developer_environment_config_base",
+ "compositor_developer_environment_preference_base",
  "compositor_orchestration_driver_output_base",
  "compositor_y5_audio_controller_interface",
 ]
@@ -2073,6 +2076,7 @@ dependencies = [
  "compositor_configurator_settings_surface_message",
  "compositor_developer_environment_config_base",
  "compositor_developer_environment_keybinding_base",
+ "compositor_developer_environment_preference_base",
  "compositor_orchestration_driver_output_base",
  "compositor_support_iced_core_engine_base",
  "compositor_y5_audio_controller_interface",
@@ -3500,6 +3504,7 @@ dependencies = [
  "compositor_kernel_drm_connector_scan_base",
  "compositor_kernel_drm_edid_identity_base",
  "compositor_kernel_drm_edid_parse_base",
+ "compositor_kernel_drm_output_physical_base",
  "compositor_kernel_graphic_preference_output_profile",
  "compositor_kernel_native_context_display_base",
  "compositor_kernel_native_context_display_build",
@@ -3509,6 +3514,7 @@ dependencies = [
  "compositor_orchestration_driver_lid_base",
  "compositor_orchestration_driver_output_base",
  "compositor_orchestration_event_output_base",
+ "compositor_support_smithay_dispatch_state_base",
  "smithay",
 ]
 
@@ -3651,6 +3657,7 @@ dependencies = [
  "compositor_kernel_native_assemble_renderer_base",
  "compositor_kernel_native_context_display_base",
  "compositor_kernel_native_context_display_enumerate",
+ "compositor_kernel_native_context_display_switch",
  "compositor_kernel_native_context_render_base",
  "compositor_kernel_native_context_topology_base",
  "compositor_kernel_native_render_execute_base",
@@ -4500,6 +4507,7 @@ dependencies = [
  "compositor_orchestration_environment_type_base",
  "compositor_orchestration_seat_gesture_state",
  "compositor_orchestration_seat_pointer_state",
+ "compositor_orchestration_seat_pointer_teleport",
  "compositor_orchestration_seat_pointer_texture",
  "compositor_orchestration_seat_system_pointer",
  "compositor_orchestration_storage_state_base",
@@ -4521,6 +4529,7 @@ dependencies = [
  "compositor_y5_audio_controller_interface",
  "compositor_y5_camera_state_base",
  "compositor_y5_camera_transform_translate",
+ "compositor_y5_canvas_input_state",
  "compositor_y5_canvas_state_base",
  "compositor_y5_canvas_system_base",
  "compositor_y5_graphic_capture_registry",
@@ -4537,6 +4546,8 @@ dependencies = [
  "compositor_y5_select_state_base",
  "compositor_y5_surface_state_base",
  "compositor_y5_surface_system_base",
+ "compositor_y5_viewport_layout_base",
+ "compositor_y5_viewport_state_base",
  "compositor_y5_window_interface_record",
  "compositor_y5_window_lifecycle_event",
  "compositor_y5_window_lifecycle_state",
@@ -4661,6 +4672,8 @@ dependencies = [
  "compositor_y5_surface_draw_scene",
  "compositor_y5_surface_interface_base",
  "compositor_y5_surface_system_base",
+ "compositor_y5_viewport_layout_base",
+ "compositor_y5_viewport_state_base",
  "compositor_y5_window_interface_record",
  "compositor_y5_window_lifecycle_interface",
  "smithay",
@@ -4928,6 +4941,7 @@ dependencies = [
  "compositor_orchestration_core_state_base",
  "compositor_orchestration_draw_layer_base",
  "compositor_orchestration_input_drive_base",
+ "compositor_orchestration_seat_pointer_teleport",
  "compositor_orchestration_seat_system_pointer",
  "compositor_support_iced_core_engine_base",
  "compositor_support_smithay_dispatch_state_base",
@@ -4936,6 +4950,7 @@ dependencies = [
  "compositor_y5_camera_system_base",
  "compositor_y5_camera_transform_translate",
  "compositor_y5_canvas_input_keyboard",
+ "compositor_y5_canvas_input_state",
  "compositor_y5_canvas_system_base",
  "compositor_y5_lock_system_base",
  "compositor_y5_overview_input_pointer",
@@ -4960,6 +4975,10 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
 ]
+
+[[package]]
+name = "compositor_orchestration_seat_pointer_teleport"
+version = "0.0.1"
 
 [[package]]
 name = "compositor_orchestration_seat_pointer_texture"
@@ -6366,6 +6385,7 @@ version = "0.0.1"
 dependencies = [
  "bitflags 2.13.0",
  "compositor_support_smithay_dispatch_state_base",
+ "compositor_support_smithay_state_fractional_debounce",
  "smithay",
  "tracing",
  "tracing-subscriber",
@@ -7306,6 +7326,7 @@ dependencies = [
  "compositor_support_system_channel_token_base",
  "compositor_support_system_input_event_base",
  "compositor_support_system_input_layer_base",
+ "compositor_support_system_persist_document_entry",
  "compositor_support_system_storage_slot_base",
  "compositor_support_system_storage_token_base",
  "compositor_support_system_trait_system_base",
@@ -7316,6 +7337,8 @@ dependencies = [
  "compositor_y5_group_state_base",
  "compositor_y5_navigator_state_base",
  "compositor_y5_surface_interface_core",
+ "compositor_y5_viewport_persist_doc",
+ "compositor_y5_viewport_state_base",
  "compositor_y5_window_interface_record",
  "smithay",
 ]
@@ -7461,6 +7484,8 @@ dependencies = [
  "compositor_y5_overlay_interface_keyboard",
  "compositor_y5_overview_input_keyboard",
  "compositor_y5_select_system_base",
+ "compositor_y5_viewport_interface_base",
+ "compositor_y5_viewport_state_base",
  "compositor_y5_window_interface_draw",
  "compositor_y5_window_interface_record",
  "compositor_y5_window_lifecycle_interface",
@@ -7509,7 +7534,7 @@ dependencies = [
  "compositor_support_system_storage_slot_base",
  "compositor_support_system_storage_token_base",
  "compositor_support_system_trait_system_base",
- "compositor_y5_camera_state_base",
+ "compositor_support_world_order_track_base",
  "compositor_y5_camera_transform_translate",
  "compositor_y5_canvas_input_state",
  "compositor_y5_canvas_state_base",
@@ -7521,6 +7546,7 @@ dependencies = [
  "compositor_y5_surface_interface_core",
  "compositor_y5_surface_protocol_base",
  "compositor_y5_surface_system_base",
+ "compositor_y5_viewport_state_base",
  "compositor_y5_window_interface_record",
  "smithay",
  "uuid",
@@ -8115,10 +8141,10 @@ version = "0.0.1"
 dependencies = [
  "compositor_support_library_ease_velocity_base",
  "compositor_support_system_trait_system_base",
- "compositor_y5_camera_state_base",
  "compositor_y5_navigator_state_base",
  "compositor_y5_navigator_tick_warp",
  "compositor_y5_navigator_travel_state",
+ "compositor_y5_viewport_state_base",
 ]
 
 [[package]]
@@ -9260,6 +9286,8 @@ dependencies = [
  "compositor_y5_select_state_base",
  "compositor_y5_surface_state_base",
  "compositor_y5_surface_system_base",
+ "compositor_y5_viewport_layout_base",
+ "compositor_y5_viewport_state_base",
  "compositor_y5_window_interface_record",
  "smithay",
  "uuid",
@@ -9315,6 +9343,46 @@ dependencies = [
  "compositor_support_system_trait_system_base",
  "compositor_y5_surface_state_base",
  "smithay",
+]
+
+[[package]]
+name = "compositor_y5_viewport_interface_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_y5_camera_state_base",
+ "compositor_y5_viewport_state_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_y5_viewport_layout_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_y5_viewport_state_base",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_y5_viewport_persist_doc"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_persist_document_trait",
+ "compositor_y5_camera_state_base",
+ "compositor_y5_camera_transform_state",
+ "compositor_y5_viewport_state_base",
+ "serde",
+ "serde_json",
+ "smithay",
+]
+
+[[package]]
+name = "compositor_y5_viewport_state_base"
+version = "0.0.1"
+dependencies = [
+ "compositor_support_system_storage_token_base",
+ "compositor_y5_camera_state_base",
+ "smithay",
+ "uuid",
 ]
 
 [[package]]

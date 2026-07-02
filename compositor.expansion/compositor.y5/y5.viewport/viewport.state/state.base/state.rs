@@ -40,8 +40,88 @@ pub struct Viewports {
     pub visible: std::collections::HashMap<SlotId, Vec<uuid::Uuid>>,
 }
 
-pub static VIEWPORTS: Token<Viewports> = Token::new();
-pub static VIEWPORTS_MUT: TokenMut<Viewports> = TokenMut::new(&VIEWPORTS);
+/// Per-MONITOR view state: one independent [`Viewports`] per physical output, keyed
+/// by the output's EDID key. Each monitor is its OWN viewport — its own camera
+/// (pan/zoom) and its own split/float panes — NOT extended and NOT mirrored. Always
+/// holds the bootstrap entry under `String::new()` (the sole / not-yet-identified
+/// output) so single-output behavior is byte-identical: the sole output uses that
+/// one `Viewports`, exactly as the pre-multi-output token did.
+pub struct OutputViews {
+    pub map: std::collections::HashMap<String, Viewports>,
+    /// The output the direct-storage readers (systems holding only world storage,
+    /// not the Orchestrator) operate on — kept in sync with the cursor's output by
+    /// the pointer path. The Orchestrator's own accessors resolve by render/cursor
+    /// output directly and don't depend on this.
+    pub current: String,
+}
+
+impl Default for OutputViews {
+    fn default() -> Self {
+        let mut map = std::collections::HashMap::new();
+        map.insert(String::new(), Viewports::default());
+        OutputViews { map, current: String::new() }
+    }
+}
+
+impl OutputViews {
+    /// Resolve to a key that EXISTS in the map: `want` if present, else `current`,
+    /// else the bootstrap (always present). Never returns a missing key.
+    fn resolved(&self, want: &str) -> String {
+        if self.map.contains_key(want) {
+            want.to_string()
+        } else if self.map.contains_key(&self.current) {
+            self.current.clone()
+        } else {
+            self.map.keys().next().expect("bootstrap entry always present").clone()
+        }
+    }
+    /// This output's view tree (its own camera + panes). Falls back to `current` /
+    /// bootstrap when `key` is unknown.
+    pub fn views(&self, key: &str) -> &Viewports {
+        let k = self.resolved(key);
+        self.map.get(&k).expect("resolved above")
+    }
+    pub fn views_mut(&mut self, key: &str) -> &mut Viewports {
+        let k = self.resolved(key);
+        self.map.get_mut(&k).expect("resolved above")
+    }
+    /// The current output's view tree (for the direct-storage readers).
+    pub fn current_views(&self) -> &Viewports {
+        self.views(&self.current)
+    }
+    pub fn current_views_mut(&mut self) -> &mut Viewports {
+        let c = self.current.clone();
+        self.views_mut(&c)
+    }
+    /// Ensure `key` has its own view tree, creating it if new — WITHOUT changing
+    /// `current`. The render loop calls this per drawn output so each monitor has its
+    /// own camera, while leaving `current` (the input systems' target) on the
+    /// cursor's output. On the FIRST real output the bootstrap "" tree's state (the
+    /// single-output camera + splits, incl. what was restored from disk) is carried
+    /// over rather than reset, so a pre-multi-output saved layout isn't lost.
+    pub fn ensure(&mut self, key: &str) {
+        if !key.is_empty()
+            && !self.map.contains_key(key)
+            && self.map.len() == 1
+            && self.map.contains_key("")
+        {
+            let vp = self.map.remove("").expect("checked present");
+            self.map.insert(key.to_string(), vp);
+        }
+        self.map.entry(key.to_string()).or_default();
+    }
+
+    /// Ensure `key`'s view tree AND make it current — the output the input systems
+    /// (pan/zoom, hit-test) operate on. Called from the pointer path for the cursor's
+    /// output.
+    pub fn set_current(&mut self, key: &str) {
+        self.ensure(key);
+        self.current = key.to_string();
+    }
+}
+
+pub static OUTPUT_VIEWS: Token<OutputViews> = Token::new();
+pub static OUTPUT_VIEWS_MUT: TokenMut<OutputViews> = TokenMut::new(&OUTPUT_VIEWS);
 
 impl Default for Viewports {
     fn default() -> Self {

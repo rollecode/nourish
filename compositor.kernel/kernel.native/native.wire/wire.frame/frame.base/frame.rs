@@ -35,7 +35,7 @@ pub fn register(
     ctx_rc: Rc<RefCell<NativeRenderContext>>,
 ) {
     let refresh = compositor_kernel_scanout_timing_vblank_base::vblank::interval(
-        &ctx_rc.borrow().mode,
+        &ctx_rc.borrow().pipe().mode,
     );
 
     #[cfg(feature = "flip-estimate")]
@@ -65,6 +65,7 @@ pub fn register(
                     context_ping.clone(),
                     loop_handle_ping.clone(),
                     state,
+                    compositor_kernel_native_render_execute_base::execute::RenderScope::All,
                 );
                 handle_outcome(
                     outcome,
@@ -106,7 +107,7 @@ pub fn register(
                     abort!("DRM device error: {error}");
                 }
                 DecodedDrmEvent::VBlank {
-                    pipe: _crtc,
+                    pipe: crtc,
                     time,
                     sequence,
                 } => {
@@ -136,6 +137,7 @@ pub fn register(
                                     state,
                                     time,
                                     sequence,
+                                    crtc,
                                     refresh,
                                     #[cfg(feature = "flip-estimate")]
                                     &est_for_deliver,
@@ -155,6 +157,7 @@ pub fn register(
                         state,
                         time,
                         sequence,
+                        crtc,
                         refresh,
                         #[cfg(feature = "flip-estimate")]
                         &estimate_vblank,
@@ -178,6 +181,7 @@ pub fn register(
             context_init,
             loop_handle_init.clone(),
             state,
+            compositor_kernel_native_render_execute_base::execute::RenderScope::All,
         );
         handle_outcome(
             outcome,
@@ -203,6 +207,7 @@ fn process_vblank(
     state: &mut Loop,
     time: Option<Duration>,
     sequence: u64,
+    crtc: smithay::reexports::drm::control::crtc::Handle,
     refresh: Duration,
     #[cfg(feature = "flip-estimate")] estimate_slot: &EstimateSlot,
     #[cfg(feature = "timing-predict")] predict_clock: &PredictClock,
@@ -211,15 +216,31 @@ fn process_vblank(
 
     let mut ctx = ctx_rc.borrow_mut();
 
+    // Route the VBlank to the pipe whose CRTC flipped (fallback: the primary output,
+    // e.g. an active-output switch that left the crtc handle stale — single-output).
+    let idx = ctx.outputs.iter().position(|p| p.crtc == crtc).unwrap_or(0);
+
+    // This pipe's flip completed → it is no longer in flight. The re-render below
+    // (on `needs_redraw`) will now redraw THIS output; other pipes still in flight
+    // stay skipped until their own vblank, so each output paces to its own refresh.
+    ctx.outputs[idx].in_flight = false;
+
     // 1. Pop presentation feedback for the frame that just hit screen. No output
     //    during a monitor-switch teardown window → nothing to pop.
-    let pending_feedback = match ctx.drm_output.as_mut() {
+    let pending_feedback = match ctx.outputs[idx].drm_output.as_mut() {
         Some(o) => compositor_kernel_scanout_flip_feedback_base::feedback::pop(o),
         None => None,
     };
 
     let refresh_rate =
-        compositor_kernel_scanout_timing_vblank_base::vblank::refresh_interval(&ctx.mode);
+        compositor_kernel_scanout_timing_vblank_base::vblank::refresh_interval(&ctx.outputs[idx].mode);
+    // Per-output refresh interval — the pacing (empty-frame estimate delay) must
+    // use the interval of the output that ACTUALLY flipped, not the global primary
+    // `refresh`. Otherwise a high-refresh output is paced at a slower neighbour's
+    // rate. `refresh` (the primary's, from register()) is retained only for the
+    // throttle gate above, which is feature-gated off in the shipping build.
+    let this_refresh =
+        compositor_kernel_scanout_timing_vblank_base::vblank::interval(&ctx.outputs[idx].mode);
     drop(ctx);
 
     let stamp = compositor_kernel_scanout_timing_vblank_base::vblank::interpret(
@@ -250,18 +271,21 @@ fn process_vblank(
         );
     }
 
-    // 3. If anything has requested a redraw since last time, render now.
+    // 3. If anything has requested a redraw since last time, render now — but
+    //    ONLY this output (the one that flipped). Other outputs are re-rendered
+    //    on their OWN vblanks, so a fast monitor is never paced by a slow one.
     let was_needed = state.take_needs_redraw();
     if was_needed {
         let outcome = compositor_kernel_native_render_execute_base::execute::execute(
             ctx_rc.clone(),
             loop_handle.clone(),
             state,
+            compositor_kernel_native_render_execute_base::execute::RenderScope::Crtc(crtc),
         );
         handle_outcome(
             outcome,
             loop_handle,
-            refresh,
+            this_refresh,
             #[cfg(feature = "flip-estimate")]
             estimate_slot,
             #[cfg(feature = "timing-predict")]
@@ -308,7 +332,7 @@ fn handle_outcome(
                     compositor_kernel_graphic_draw_present_callbacks::callbacks::send_window_frames(
                         state, &output, &visible,
                     );
-                    compositor_kernel_graphic_draw_present_callbacks::callbacks::send_layer_frames(state);
+                    compositor_kernel_graphic_draw_present_callbacks::callbacks::send_layer_frames(state, &output);
                 },
             );
             *slot = Some(token);

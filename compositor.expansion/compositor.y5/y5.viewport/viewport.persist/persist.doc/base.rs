@@ -5,7 +5,7 @@ use compositor_support_system_persist_document_trait::base::Document;
 use compositor_support_system_persist_document_trait::y5_document;
 use compositor_y5_camera_state_base::state::Camera;
 use compositor_y5_camera_transform_state::state::Transform;
-use compositor_y5_viewport_state_base::state::{Axis, Slot, Viewport, Viewports, VIEWPORTS, VIEWPORTS_MUT};
+use compositor_y5_viewport_state_base::state::{Axis, OutputViews, Slot, Viewport, Viewports, OUTPUT_VIEWS, OUTPUT_VIEWS_MUT};
 use smithay::utils::{Point, Rectangle, Size};
 
 #[derive(Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -93,32 +93,49 @@ fn slot_from(s: &SlotRec) -> Slot {
     }
 }
 
+fn record_of(vp: &Viewports) -> ViewportsRecord {
+    ViewportsRecord {
+        root: vp_to(&vp.root),
+        floating: vp.floating.iter().map(vp_to).collect(),
+        active: vp.active,
+        pointer: vp.pointer,
+        next_id: vp.next_id,
+    }
+}
+
+fn apply_to(vp: &mut Viewports, rec: ViewportsRecord) {
+    vp.root = vp_from(&rec.root);
+    vp.floating = rec.floating.iter().map(vp_from).collect();
+    vp.active = rec.active;
+    vp.pointer = rec.pointer;
+    vp.next_id = rec.next_id;
+}
+
+/// Row id ↔ output key. The bootstrap (sole/unknown-output) `""` key persists under
+/// the legacy `"viewports"` row id, so a viewport layout saved before multi-monitor
+/// still loads onto the single output. Each real monitor persists under its EDID key.
+fn row_id(key: &str) -> String {
+    if key.is_empty() { "viewports".to_string() } else { key.to_string() }
+}
+fn key_of(row_id: &str) -> String {
+    if row_id == "viewports" { String::new() } else { row_id.to_string() }
+}
+
 pub struct ViewportsDoc;
 
 impl Document for ViewportsDoc {
-    type Slot = Viewports;
+    type Slot = OutputViews;
     type Record = ViewportsRecord;
     const TABLE: &'static str = "world.viewport";
     const VERSION: u32 = 1;
 
-    fn rows(s: &Viewports) -> Vec<(String, Vec<(&'static str, String)>, ViewportsRecord)> {
-        let record = ViewportsRecord {
-            root: vp_to(&s.root),
-            floating: s.floating.iter().map(vp_to).collect(),
-            active: s.active,
-            pointer: s.pointer,
-            next_id: s.next_id,
-        };
-        vec![("viewports".to_string(), Vec::new(), record)]
+    fn rows(s: &OutputViews) -> Vec<(String, Vec<(&'static str, String)>, ViewportsRecord)> {
+        s.map.iter().map(|(key, vp)| (row_id(key), Vec::new(), record_of(vp))).collect()
     }
 
-    fn apply(s: &mut Viewports, _id: &str, rec: ViewportsRecord) {
-        s.root = vp_from(&rec.root);
-        s.floating = rec.floating.iter().map(vp_from).collect();
-        s.active = rec.active;
-        s.pointer = rec.pointer;
-        s.next_id = rec.next_id;
+    fn apply(s: &mut OutputViews, id: &str, rec: ViewportsRecord) {
+        apply_to(s.map.entry(key_of(id)).or_default(), rec);
     }
 }
 
-y5_document!(VIEWPORTS_DOC, ViewportsDoc, VIEWPORTS, VIEWPORTS_MUT);
+y5_document!(VIEWPORTS_DOC, ViewportsDoc, OUTPUT_VIEWS, OUTPUT_VIEWS_MUT);

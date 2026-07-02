@@ -5,7 +5,7 @@
 //! modes go via the OUTPUT_MODE_REQUEST channel (apply / confirm+persist / revert).
 use compositor_developer_environment_preference_base::base as pref;
 use compositor_orchestration_core_state_base::Loop;
-use compositor_orchestration_driver_output_base::base::{OutputModeRequest, OutputSwitchRequest, OUTPUT_MODES_SNAPSHOT, OUTPUT_MODE_REQUEST_MUT, OUTPUT_SWITCH_REQUEST_MUT};
+use compositor_orchestration_driver_output_base::base::{OutputModeRequest, OutputSwitchRequest, OUTPUT_MODE_REQUEST_MUT, OUTPUT_SWITCH_REQUEST_MUT};
 use compositor_orchestration_driver_settings_base::base::SETTINGS_MUT;
 use compositor_configurator_settings_surface_message::message::{SettingsMessage, Tab};
 use compositor_configurator_network_backend_base::base::{self as wifi, WifiCmd};
@@ -34,6 +34,7 @@ pub fn handle(state: &mut Loop, _renderer: &mut GlesRenderer, m: SettingsMessage
                 });
             } else {
                 *state.inner.kernel.get_mut(&OUTPUT_MODE_REQUEST_MUT) = Some(OutputModeRequest::Apply {
+                    edid_key: a.edid_key,
                     width: a.mode.width,
                     height: a.mode.height,
                     refresh_mhz: a.mode.refresh_mhz,
@@ -54,8 +55,9 @@ pub fn handle(state: &mut Loop, _renderer: &mut GlesRenderer, m: SettingsMessage
                 pref::set_default(&mut state.inner.preference.outputs, &a.edid_key);
             } else {
                 *state.inner.kernel.get_mut(&OUTPUT_MODE_REQUEST_MUT) = Some(OutputModeRequest::Confirm);
-                let edid = state.inner.kernel.get(&OUTPUT_MODES_SNAPSHOT).edid_key.clone();
-                pref::upsert_output(&mut state.inner.preference.outputs, &edid, pref::ModeRequest::Advertised {
+                // Persist to the SELECTED monitor's profile (multi-output), not the
+                // active output's snapshot key.
+                pref::upsert_output(&mut state.inner.preference.outputs, &a.edid_key, pref::ModeRequest::Advertised {
                     width: a.mode.width,
                     height: a.mode.height,
                     refresh_mhz: a.mode.refresh_mhz,
@@ -110,12 +112,29 @@ pub fn handle(state: &mut Loop, _renderer: &mut GlesRenderer, m: SettingsMessage
                 *state.inner.kernel.get_mut(&OUTPUT_SWITCH_REQUEST_MUT) = Some(OutputSwitchRequest::Revert);
             }
         }
+        // Cursor-teleport layout committed on drag-end: persist the whole
+        // arrangement and rebuild the live teleport layout so crossings take effect
+        // immediately (no reboot). Layout is teleport-only — no modeset.
+        SettingsMessage::LayoutCommit(placements) => {
+            pref::set_layout(&mut state.inner.preference, placements);
+            let _ = pref::save(&state.inner.preference);
+            state.inner.teleport =
+                compositor_orchestration_core_state_base::state::build_teleport(&state.inner.preference);
+            // The tracked placement may have been removed/renumbered; re-resolve lazily.
+            state.inner.cursor_placement = None;
+        }
         SettingsMessage::Fps(_)
         | SettingsMessage::ModeResult(_)
         | SettingsMessage::SyncSystem(..)
         | SettingsMessage::SyncDisplays(_)
         | SettingsMessage::SelectDisplay(_)
         | SettingsMessage::SelectMode(_)
+        // Layout edits are applied UI-locally in the view; only LayoutCommit forwards.
+        | SettingsMessage::LayoutPlace(..)
+        | SettingsMessage::LayoutMove(..)
+        | SettingsMessage::LayoutResize(..)
+        | SettingsMessage::LayoutSelect(_)
+        | SettingsMessage::LayoutRemove(_)
         | SettingsMessage::WifiSelect(_)
         | SettingsMessage::WifiPassword(_) => {}
     }

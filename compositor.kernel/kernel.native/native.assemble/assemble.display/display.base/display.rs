@@ -137,7 +137,10 @@ pub fn assemble() -> DisplayAssembly {
     let parsed = raw
         .as_ref()
         .and_then(compositor_kernel_drm_edid_parse_base::parse::parse);
-    let identity = compositor_kernel_drm_edid_identity_base::identity::identity(parsed.as_ref());
+    let identity = compositor_kernel_drm_edid_identity_base::identity::identity(
+        parsed.as_ref(),
+        &format!("{:?}-{}", connector.interface(), connector.interface_id()),
+    );
     let hdr = raw
         .as_ref()
         .map(compositor_kernel_drm_edid_parse_base::parse::parse_hdr)
