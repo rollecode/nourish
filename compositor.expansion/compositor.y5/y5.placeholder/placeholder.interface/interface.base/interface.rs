@@ -295,6 +295,12 @@ pub fn promote_restored(state: &mut Loop, renderer: &mut GlesRenderer) {
     if state.inner.placeholder().pending_restore.is_empty() {
         return;
     }
+    // Tiles disabled: leave the disk-restored records pending instead of
+    // promoting them, so nothing is lost. They promote normally again once
+    // the setting is re-enabled (a restart, like every Environment change).
+    if !compositor_developer_environment_config_base::base::get().window_close_placeholder {
+        return;
+    }
     if state.inner.surface().registry.is_none() {
         return; // iced not initialised yet — retry next frame.
     }
